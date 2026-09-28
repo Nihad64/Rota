@@ -5,21 +5,21 @@ plugins {
 }
 android {
     namespace = "com.rota.app"
-    compileSdk = 37
+    compileSdk = 35
     defaultConfig {
         applicationId = "com.rota.app"
         minSdk = 26
-        targetSdk = 37
+        targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
     }
     buildFeatures { compose = true }
 }
 dependencies {
-    val bom = platform("androidx.compose:compose-bom:2026.09.00")
+    val bom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(bom)
-    implementation("androidx.activity:activity-compose:1.13.0")
-    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.activity:activity-compose:1.10.0")
+    implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui")
