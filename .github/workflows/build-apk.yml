@@ -1,7 +1,5 @@
 name: Build Rota APK
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 jobs:
   build:
@@ -14,10 +12,10 @@ jobs:
           java-version: "17"
       - uses: android-actions/setup-android@v3
         with:
-          packages: "platforms;android-37 build-tools;36.0.0 platform-tools"
+          packages: "platforms;android-35 build-tools;35.0.0 platform-tools"
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "9.6.0"
+          gradle-version: "8.9"
       - run: gradle --no-daemon :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
