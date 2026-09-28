@@ -1,1 +1,0 @@
-<resources><style name="Theme.Rota" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#17181B</item><item name="android:navigationBarColor">#000000</item><item name="android:statusBarColor">#F7F7F9</item><item name="android:windowLightStatusBar">true</item></style></resources>
