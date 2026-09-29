@@ -19,7 +19,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.DatePicker;
-import android.widget.Dialog;
+import android.app.Dialog;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -345,13 +345,13 @@ public class MainActivity extends Activity {
 
         addActionCard(page, "Yarını planla",
                 "Çalışma saatini ve yapmak istediklerini gir.",
-                () -> showPlanEditor(null, key(addDays(Calendar.getInstance(), 1))));
+                v -> showPlanEditor(null, key(addDays(Calendar.getInstance(), 1))));
         addActionCard(page, "Şimdi ne yapmalıyım?",
                 "Bugünkü ilk tamamlanmamış planını göster.",
-                this::showNextTask);
+                v -> showNextTask());
         addActionCard(page, "Bugünü düzenle",
                 "Bugünkü planlarını hızlıca gözden geçir.",
-                () -> { tab = 0; render(); });
+                v -> { tab = 0; render(); });
 
         LinearLayout tips = cardColumn();
         tips.addView(makeText("Kısa yollar", 17, TEXT, true));
