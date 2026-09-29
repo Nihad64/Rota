@@ -21,15 +21,18 @@ public final class PlanStore {
             JSONArray array = new JSONArray(raw);
             for (int i = 0; i < array.length(); i++) {
                 JSONObject o = array.getJSONObject(i);
-                plans.add(new Plan(
-                        o.getLong("id"),
-                        o.getString("date"),
-                        o.getString("title"),
-                        o.getString("type"),
-                        o.optString("time"),
-                        o.optString("duration"),
-                        o.optBoolean("done")
-                ));
+                Plan p = new Plan(
+                        o.optLong("id", System.currentTimeMillis() + i),
+                        o.optString("date", ""),
+                        o.optString("title", ""),
+                        o.optString("type", Plan.FLEX),
+                        o.optString("time", ""),
+                        o.optString("duration", ""),
+                        o.optBoolean("done", false)
+                );
+                p.startTime = o.optString("startTime", p.time);
+                p.endTime = o.optString("endTime", "");
+                plans.add(p);
             }
         } catch (Exception ignored) {
         }
@@ -48,6 +51,8 @@ public final class PlanStore {
                 o.put("time", p.time);
                 o.put("duration", p.duration);
                 o.put("done", p.done);
+                o.put("startTime", p.startTime == null ? "" : p.startTime);
+                o.put("endTime", p.endTime == null ? "" : p.endTime);
                 array.put(o);
             }
         } catch (Exception ignored) {
