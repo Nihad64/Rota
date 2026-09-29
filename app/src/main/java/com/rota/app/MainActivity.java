@@ -4,43 +4,55 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.app.PendingIntent;
+import android.app.TimePickerDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.MotionEvent;
+import android.view.Gravity;
 import android.view.View;
-import android.widget.EditText;
+import android.view.ViewGroup;
+import android.widget.DatePicker;
+import android.widget.Dialog;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
+    private static final int BG = Color.rgb(247, 247, 249);
+    private static final int CARD = Color.WHITE;
+    private static final int TEXT = Color.rgb(20, 21, 25);
+    private static final int MUTED = Color.rgb(112, 114, 122);
+    private static final int LINE = Color.rgb(229, 230, 234);
+    private static final int ACCENT = Color.rgb(20, 21, 25);
 
-    private RotaView view;
+    private final Locale tr = new Locale("tr", "TR");
     private List<Plan> plans = new ArrayList<>();
+    private LinearLayout content;
+    private int tab = 0;
+    private String selectedDate;
+    private Calendar monthCursor;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        getWindow().setStatusBarColor(Color.rgb(246, 246, 248));
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(Color.WHITE);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        getWindow().setNavigationBarColor(Color.rgb(17, 18, 22));
 
         if (Build.VERSION.SDK_INT >= 33 &&
                 checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -48,474 +60,729 @@ public class MainActivity extends Activity {
         }
 
         plans = PlanStore.load(this);
-        view = new RotaView(this);
-        setContentView(view);
+        selectedDate = key(Calendar.getInstance());
+        monthCursor = Calendar.getInstance();
+        buildShell();
+        render();
     }
 
-    private String todayKey() {
-        return new SimpleDateFormat("yyyy-MM-dd", Locale.GERMANY).format(new Date());
+    private void buildShell() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BG);
+
+        FrameLayout page = new FrameLayout(this);
+        content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setBackgroundColor(BG);
+        page.addView(content, new FrameLayout.LayoutParams(-1, -1));
+
+        TextView fab = makeText("+", 32, Color.WHITE, true);
+        fab.setGravity(Gravity.CENTER);
+        fab.setBackground(round(ACCENT, 22));
+        fab.setElevation(dp(8));
+        FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(dp(64), dp(64), Gravity.BOTTOM | Gravity.END);
+        fp.setMargins(0, 0, dp(20), dp(18));
+        page.addView(fab, fp);
+        fab.setOnClickListener(v -> showPlanEditor(null, selectedDate));
+
+        root.addView(page, new LinearLayout.LayoutParams(-1, 0, 1));
+        root.addView(buildBottomBar(), new LinearLayout.LayoutParams(-1, dp(82)));
+        setContentView(root);
     }
 
-    private String prettyDate() {
-        return new SimpleDateFormat("EEEE · d MMMM", new Locale("tr", "TR")).format(new Date());
+    private LinearLayout buildBottomBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER);
+        bar.setPadding(dp(10), dp(8), dp(10), dp(8));
+        bar.setBackgroundColor(Color.WHITE);
+
+        String[] labels = {"Bugün", "Plan", "Asistan"};
+        String[] icons = {"⌂", "▦", "✦"};
+        for (int i = 0; i < 3; i++) {
+            final int index = i;
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.VERTICAL);
+            item.setGravity(Gravity.CENTER);
+            item.setPadding(dp(8), 0, dp(8), 0);
+            TextView icon = makeText(icons[i], 20, i == tab ? TEXT : MUTED, false);
+            icon.setGravity(Gravity.CENTER);
+            TextView label = makeText(labels[i], 12, i == tab ? TEXT : MUTED, true);
+            label.setGravity(Gravity.CENTER);
+            item.addView(icon, new LinearLayout.LayoutParams(-1, dp(28)));
+            item.addView(label, new LinearLayout.LayoutParams(-1, dp(24)));
+            if (i == tab) item.setBackground(round(Color.rgb(243,243,247), 20));
+            item.setOnClickListener(v -> { tab = index; render(); });
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(58), 1);
+            p.setMargins(dp(4), 0, dp(4), 0);
+            bar.addView(item, p);
+        }
+        return bar;
     }
 
-    private void showAddDialog() {
-        final LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(4), 0, dp(4), 0);
-
-        final EditText title = new EditText(this);
-        title.setHint("Ne yapmak istiyorsun?");
-        title.setSingleLine(true);
-        box.addView(title);
-
-        final TextView typeButton = new TextView(this);
-        typeButton.setText("Tür: Saatli");
-        typeButton.setTextSize(15);
-        typeButton.setTextColor(Color.rgb(30, 31, 35));
-        typeButton.setPadding(0, dp(14), 0, dp(8));
-        box.addView(typeButton);
-
-        final String[] types = {"Saatli", "Tüm gün", "Esnek"};
-        final int[] selected = {0};
-
-        typeButton.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("Plan türü")
-                        .setSingleChoiceItems(types, selected[0], new DialogInterface.OnClickListener() {
-                            @Override public void onClick(DialogInterface dialog, int which) {
-                                selected[0] = which;
-                                typeButton.setText("Tür: " + types[which]);
-                                dialog.dismiss();
-                            }
-                        })
-                        .show();
-            }
-        });
-
-        final EditText time = new EditText(this);
-        time.setHint("Saat · örn. 10:00");
-        time.setSingleLine(true);
-        box.addView(time);
-
-        final EditText duration = new EditText(this);
-        duration.setHint("Süre · örn. 60 dk");
-        duration.setSingleLine(true);
-        box.addView(duration);
-
-        final AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Yeni plan")
-                .setView(box)
-                .setNegativeButton("Vazgeç", null)
-                .setPositiveButton("Ekle", null)
-                .create();
-
-        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
-            @Override public void onShow(DialogInterface dialogInterface) {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
-                    @Override public void onClick(View v) {
-                        String name = title.getText().toString().trim();
-                        if (name.isEmpty()) {
-                            title.setError("Bir isim yaz");
-                            return;
-                        }
-
-                        String type = types[selected[0]];
-                        String t = time.getText().toString().trim();
-                        String dur = duration.getText().toString().trim();
-
-                        if (!Plan.HOURLY.equals(type)) {
-                            t = "";
-                            dur = "";
-                        }
-
-                        Plan plan = new Plan(
-                                System.currentTimeMillis(),
-                                todayKey(),
-                                name,
-                                type,
-                                t,
-                                dur,
-                                false
-                        );
-
-                        plans.add(plan);
-                        PlanStore.save(MainActivity.this, plans);
-
-                        if (Plan.HOURLY.equals(type)) {
-                            scheduleReminder(plan);
-                        }
-
-                        dialog.dismiss();
-                        view.invalidate();
-                    }
-                });
-            }
-        });
-
-        dialog.show();
+    private void render() {
+        content.removeAllViews();
+        if (tab == 0) renderToday();
+        else if (tab == 1) renderCalendar();
+        else renderAssistant();
+        rebuildBottomBar();
     }
 
-    private void scheduleReminder(Plan plan) {
-        if (plan.time == null || !plan.time.matches("\\d{1,2}:\\d{2}")) {
-            return;
+    private void rebuildBottomBar() {
+        ViewGroup root = (ViewGroup) content.getParent().getParent();
+        if (root.getChildCount() > 1) {
+            root.removeViewAt(1);
+            root.addView(buildBottomBar(), new LinearLayout.LayoutParams(-1, dp(82)));
+        }
+    }
+
+    private void renderToday() {
+        Calendar now = Calendar.getInstance();
+        selectedDate = key(now);
+        List<Plan> today = plansFor(selectedDate);
+        int done = 0;
+        Plan next = null;
+        for (Plan p : today) {
+            if (p.done) done++;
+            else if (next == null) next = p;
         }
 
-        try {
-            String[] parts = plan.time.split(":");
-            Calendar alarm = Calendar.getInstance();
-            alarm.set(Calendar.HOUR_OF_DAY, Integer.parseInt(parts[0]));
-            alarm.set(Calendar.MINUTE, Integer.parseInt(parts[1]));
-            alarm.set(Calendar.SECOND, 0);
-            alarm.set(Calendar.MILLISECOND, 0);
+        LinearLayout page = scrollColumn();
+        addHeader(page, "Bugün",
+                new SimpleDateFormat("EEEE · d MMMM", tr).format(now.getTime()),
+                "Takvime git");
 
-            if (alarm.getTimeInMillis() <= System.currentTimeMillis()) {
+        LinearLayout progress = cardColumn();
+        LinearLayout pr = row();
+        LinearLayout left = column();
+        left.addView(makeText("BUGÜNÜN AKIŞI", 12, MUTED, true));
+        left.addView(makeText(done + " / " + today.size(), 28, TEXT, true));
+        pr.addView(left, new LinearLayout.LayoutParams(0, -2, 1));
+        pr.addView(makeText(today.isEmpty() ? "0%" :
+                Math.round(done * 100f / today.size()) + "%", 14, MUTED, true));
+        progress.addView(pr);
+        progress.addView(makeProgressBar(done, today.size()));
+        page.addView(progress, marginParams());
+
+        if (next != null) {
+            LinearLayout nextCard = cardColumn();
+            nextCard.setBackground(round(Color.rgb(28,29,33), 24));
+            TextView small = makeText("SIRADAKİ", 11, Color.rgb(150,151,158), true);
+            TextView title = makeText(next.title, 20, Color.WHITE, true);
+            title.setMaxLines(2);
+            TextView meta = makeText(planMeta(next), 13, Color.rgb(205,206,211), false);
+            nextCard.addView(small);
+            nextCard.addView(title);
+            nextCard.addView(meta);
+            page.addView(nextCard, marginParams());
+        }
+
+        LinearLayout titleRow = row();
+        titleRow.addView(makeText("Bugünün planı", 20, TEXT, true),
+                new LinearLayout.LayoutParams(0, -2, 1));
+        TextView add = makeText("+ Ekle", 14, TEXT, true);
+        titleRow.addView(add);
+        add.setOnClickListener(v -> showPlanEditor(null, selectedDate));
+        page.addView(titleRow, marginParams(20, 20, 20, 10));
+
+        if (today.isEmpty()) {
+            LinearLayout empty = cardColumn();
+            empty.addView(makeText("Günün boş.", 19, TEXT, true));
+            empty.addView(makeText("Saatli, esnek veya tüm gün plan ekleyebilirsin.",
+                    14, MUTED, false));
+            page.addView(empty, marginParams());
+        } else {
+            for (Plan p : today) addPlanCard(page, p);
+        }
+    }
+
+    private View makeProgressBar(int done, int total) {
+        FrameLayout wrap = new FrameLayout(this);
+        wrap.setBackground(round(LINE, 10));
+        int width = total == 0 ? 0 : Math.max(8, (int) (300f * done / total));
+        View fill = new View(this);
+        fill.setBackground(round(ACCENT, 10));
+        wrap.addView(fill, new FrameLayout.LayoutParams(dp(width), dp(8)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(8));
+        lp.topMargin = dp(12);
+        wrap.setLayoutParams(lp);
+        return wrap;
+    }
+
+    private void addPlanCard(LinearLayout parent, Plan p) {
+        LinearLayout card = cardColumn();
+        LinearLayout top = row();
+        LinearLayout main = column();
+        TextView title = makeText(p.title, 17, p.done ? MUTED : TEXT, true);
+        title.setMaxLines(2);
+        main.addView(title);
+        main.addView(makeText(planMeta(p), 13, MUTED, false));
+        top.addView(main, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView check = makeText(p.done ? "✓" : "○", 25,
+                p.done ? TEXT : Color.rgb(175,177,184), true);
+        check.setGravity(Gravity.CENTER);
+        top.addView(check, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        card.addView(top);
+
+        LinearLayout actions = row();
+        actions.setVisibility(View.GONE);
+        TextView edit = makeText("Düzenle", 13, TEXT, true);
+        TextView del = makeText("Sil", 13, Color.rgb(185,50,50), true);
+        actions.addView(edit, new LinearLayout.LayoutParams(0, dp(36), 1));
+        actions.addView(del, new LinearLayout.LayoutParams(0, dp(36), 1));
+        card.addView(actions);
+
+        check.setOnClickListener(v -> {
+            p.done = !p.done;
+            PlanStore.save(this, plans);
+            render();
+        });
+        top.setOnClickListener(v -> {
+            if (actions.getVisibility() == View.GONE) actions.setVisibility(View.VISIBLE);
+            else showPlanEditor(p, p.date);
+        });
+        edit.setOnClickListener(v -> showPlanEditor(p, p.date));
+        del.setOnClickListener(v -> confirmDelete(p));
+        parent.addView(card, marginParams(20, 0, 20, 10));
+    }
+
+    private void renderCalendar() {
+        LinearLayout page = scrollColumn();
+        addHeader(page, "Plan", "Takvim ve tüm günlerin", "Bugüne dön");
+
+        LinearLayout monthBar = row();
+        TextView prev = makeText("‹", 32, TEXT, false);
+        prev.setGravity(Gravity.CENTER);
+        TextView month = makeText(new SimpleDateFormat("MMMM yyyy", tr)
+                .format(monthCursor.getTime()), 19, TEXT, true);
+        month.setGravity(Gravity.CENTER);
+        TextView next = makeText("›", 32, TEXT, false);
+        next.setGravity(Gravity.CENTER);
+        monthBar.addView(prev, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        monthBar.addView(month, new LinearLayout.LayoutParams(0, dp(52), 1));
+        monthBar.addView(next, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        prev.setOnClickListener(v -> { monthCursor.add(Calendar.MONTH, -1); render(); });
+        next.setOnClickListener(v -> { monthCursor.add(Calendar.MONTH, 1); render(); });
+        page.addView(monthBar, marginParams(20, 8, 20, 8));
+
+        LinearLayout week = row();
+        String[] names = {"Pzt","Sal","Çar","Per","Cum","Cmt","Paz"};
+        for (String n : names) {
+            TextView t = makeText(n, 12, MUTED, true);
+            t.setGravity(Gravity.CENTER);
+            week.addView(t, new LinearLayout.LayoutParams(0, dp(30), 1));
+        }
+        page.addView(week, marginParams(20, 0, 20, 4));
+
+        LinearLayout grid = column();
+        Calendar first = (Calendar) monthCursor.clone();
+        first.set(Calendar.DAY_OF_MONTH, 1);
+        int offset = (first.get(Calendar.DAY_OF_WEEK) + 5) % 7;
+        int days = monthCursor.getActualMaximum(Calendar.DAY_OF_MONTH);
+        int cell = 0;
+
+        for (int r = 0; r < 6; r++) {
+            LinearLayout line = row();
+            for (int c = 0; c < 7; c++) {
+                int day = cell - offset + 1;
+                TextView d = makeText("", 14, TEXT, true);
+                d.setGravity(Gravity.CENTER);
+                if (day > 0 && day <= days) {
+                    d.setText(String.valueOf(day));
+                    Calendar date = (Calendar) monthCursor.clone();
+                    date.set(Calendar.DAY_OF_MONTH, day);
+                    String k = key(date);
+                    boolean selected = k.equals(selectedDate);
+                    boolean isToday = k.equals(key(Calendar.getInstance()));
+                    if (selected) {
+                        d.setBackground(round(ACCENT, 16));
+                        d.setTextColor(Color.WHITE);
+                    } else if (isToday) {
+                        d.setBackground(round(Color.rgb(232,232,237), 16));
+                    }
+                    if (!plansFor(k).isEmpty()) d.setText(day + "\n•");
+                    d.setOnClickListener(v -> { selectedDate = k; render(); });
+                }
+                line.addView(d, new LinearLayout.LayoutParams(0, dp(48), 1));
+                cell++;
+            }
+            grid.addView(line, new LinearLayout.LayoutParams(-1, dp(48)));
+        }
+        page.addView(grid, marginParams(20, 0, 20, 12));
+
+        LinearLayout selectedHeader = row();
+        selectedHeader.addView(makeText(prettyKey(selectedDate), 19, TEXT, true),
+                new LinearLayout.LayoutParams(0, -2, 1));
+        TextView add = makeText("+ Plan", 14, TEXT, true);
+        selectedHeader.addView(add);
+        add.setOnClickListener(v -> showPlanEditor(null, selectedDate));
+        page.addView(selectedHeader, marginParams(20, 8, 20, 10));
+
+        List<Plan> selectedPlans = plansFor(selectedDate);
+        if (selectedPlans.isEmpty()) {
+            LinearLayout empty = cardColumn();
+            empty.addView(makeText("Bu gün boş", 18, TEXT, true));
+            empty.addView(makeText("Plan eklemek için + Plan'a dokun.",
+                    14, MUTED, false));
+            page.addView(empty, marginParams());
+        } else {
+            for (Plan p : selectedPlans) addPlanCard(page, p);
+        }
+    }
+
+    private void renderAssistant() {
+        LinearLayout page = scrollColumn();
+        addHeader(page, "Asistan", "Planlarını daha hızlı kur", "");
+
+        LinearLayout hero = cardColumn();
+        hero.setBackground(round(Color.rgb(28,29,33), 26));
+        hero.addView(makeText("Yarınını tek seferde kur.", 24, Color.WHITE, true));
+        hero.addView(makeText("İş, okul, ibadet ve kişisel zamanını aynı akışta düzenle.",
+                14, Color.rgb(205,206,211), false));
+        page.addView(hero, marginParams(20, 0, 20, 12));
+
+        addActionCard(page, "Yarını planla",
+                "Çalışma saatini ve yapmak istediklerini gir.",
+                () -> showPlanEditor(null, key(addDays(Calendar.getInstance(), 1))));
+        addActionCard(page, "Şimdi ne yapmalıyım?",
+                "Bugünkü ilk tamamlanmamış planını göster.",
+                this::showNextTask);
+        addActionCard(page, "Bugünü düzenle",
+                "Bugünkü planlarını hızlıca gözden geçir.",
+                () -> { tab = 0; render(); });
+
+        LinearLayout tips = cardColumn();
+        tips.addView(makeText("Kısa yollar", 17, TEXT, true));
+        tips.addView(makeText(
+                "• Saatli planlar için başlangıç ve bitiş saatini seç.\n" +
+                "• Takvimden istediğin güne doğrudan plan ekle.\n" +
+                "• Bir plana dokunarak düzenle/sil seçeneklerini aç.",
+                14, MUTED, false));
+        page.addView(tips, marginParams());
+    }
+
+    private void addActionCard(LinearLayout parent, String title, String sub,
+                               View.OnClickListener click) {
+        LinearLayout c = cardColumn();
+        LinearLayout r = row();
+        LinearLayout text = column();
+        text.addView(makeText(title, 17, TEXT, true));
+        text.addView(makeText(sub, 13, MUTED, false));
+        r.addView(text, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView arrow = makeText("›", 28, MUTED, false);
+        arrow.setGravity(Gravity.CENTER);
+        r.addView(arrow, new LinearLayout.LayoutParams(dp(34), dp(44)));
+        c.addView(r);
+        c.setOnClickListener(click);
+        parent.addView(c, marginParams(20, 0, 20, 10));
+    }
+
+    private void showNextTask() {
+        for (Plan p : plansFor(key(Calendar.getInstance()))) {
+            if (!p.done) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Şimdi")
+                        .setMessage(p.title + "\n\n" + planMeta(p))
+                        .setPositiveButton("Tamam", null).show();
+                return;
+            }
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Şimdi")
+                .setMessage("Bugün tamamlanmamış bir planın yok.")
+                .setPositiveButton("Tamam", null).show();
+    }
+
+    private void showPlanEditor(Plan editing, String initialDate) {
+        final Dialog dialog = new Dialog(this);
+        LinearLayout box = column();
+        box.setPadding(dp(22), dp(18), dp(22), dp(18));
+        box.setBackground(round(CARD, 28));
+
+        box.addView(makeText(editing == null ? "Yeni plan" : "Planı düzenle",
+                22, TEXT, true));
+
+        TextView dateButton = makeField("Tarih", prettyKey(initialDate));
+        box.addView(dateButton, fieldParams());
+
+        TextView titleField = makeField("Plan adı",
+                editing == null ? "" : editing.title);
+        box.addView(titleField, fieldParams());
+
+        box.addView(makeText("Plan türü", 12, MUTED, true));
+
+        LinearLayout types = row();
+        String[] typeNames = {Plan.HOURLY, Plan.FLEX, Plan.ALL_DAY};
+        TextView[] typeViews = new TextView[3];
+        String[] selectedType = {editing == null ? Plan.HOURLY : editing.type};
+
+        for (int i = 0; i < 3; i++) {
+            final String type = typeNames[i];
+            TextView chip = makeText(type, 12,
+                    type.equals(selectedType[0]) ? Color.WHITE : TEXT, true);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(dp(8), 0, dp(8), 0);
+            chip.setBackground(round(type.equals(selectedType[0])
+                    ? ACCENT : Color.rgb(242,242,246), 18));
+            typeViews[i] = chip;
+            chip.setOnClickListener(v -> {
+                selectedType[0] = type;
+                refreshChips(typeViews, type);
+            });
+            types.addView(chip, new LinearLayout.LayoutParams(0, dp(42), 1));
+            if (i < 2) types.addView(new View(this),
+                    new LinearLayout.LayoutParams(dp(6), 1));
+        }
+        box.addView(types, fieldParams());
+
+        TextView start = makeField("Başlangıç",
+                editing == null ? "Saat seç" :
+                        safe(editing.startTime, editing.time));
+        TextView end = makeField("Bitiş",
+                editing == null || editing.endTime.isEmpty()
+                        ? "Saat seç" : editing.endTime);
+        box.addView(start, fieldParams());
+        box.addView(end, fieldParams());
+        box.addView(makeText(
+                "Süre, başlangıç ve bitiş saatinden otomatik hesaplanır.",
+                12, MUTED, false));
+
+        final String[] chosenDate = {initialDate};
+        dateButton.setOnClickListener(v -> {
+            Calendar c = parseKey(chosenDate[0]);
+            new DatePickerDialog(this,
+                    (view, year, month, day) -> {
+                        Calendar n = Calendar.getInstance();
+                        n.set(year, month, day);
+                        chosenDate[0] = key(n);
+                        dateButton.setText(prettyKey(chosenDate[0]));
+                    },
+                    c.get(Calendar.YEAR), c.get(Calendar.MONTH),
+                    c.get(Calendar.DAY_OF_MONTH)).show();
+        });
+
+        titleField.setOnClickListener(v ->
+                inputDialog("Plan adı",
+                        editing == null ? "" : editing.title,
+                        value -> titleField.setText(value)));
+
+        start.setOnClickListener(v ->
+                chooseTime(start, editing == null ? "" :
+                        safe(editing.startTime, editing.time)));
+        end.setOnClickListener(v ->
+                chooseTime(end, editing == null ? "" : editing.endTime));
+
+        LinearLayout buttons = row();
+        buttons.setGravity(Gravity.END);
+        TextView cancel = makeText("Vazgeç", 14, MUTED, true);
+        TextView save = makeText(editing == null ? "Planı ekle" : "Kaydet",
+                14, TEXT, true);
+        buttons.addView(cancel, new LinearLayout.LayoutParams(dp(90), dp(48)));
+        buttons.addView(save, new LinearLayout.LayoutParams(dp(110), dp(48)));
+        box.addView(buttons);
+
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        save.setOnClickListener(v -> {
+            String title = titleField.getText().toString().trim();
+            if (title.isEmpty()) {
+                inputDialog("Plan adı", "", value -> titleField.setText(value));
                 return;
             }
 
-            Intent intent = new Intent(this, ReminderReceiver.class);
-            intent.putExtra("title", plan.title);
+            Plan p = editing == null
+                    ? new Plan(System.currentTimeMillis(), chosenDate[0], title,
+                    selectedType[0], "", "", false)
+                    : editing;
 
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                    this,
-                    (int) (plan.id & 0x7fffffff),
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
+            p.date = chosenDate[0];
+            p.title = title;
+            p.type = selectedType[0];
+            p.startTime = start.getText().toString().equals("Saat seç")
+                    ? "" : start.getText().toString();
+            p.endTime = end.getText().toString().equals("Saat seç")
+                    ? "" : end.getText().toString();
 
-            AlarmManager manager = (AlarmManager) getSystemService(ALARM_SERVICE);
-            manager.setAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    alarm.getTimeInMillis(),
-                    pendingIntent
-            );
-        } catch (Exception ignored) {
-        }
-    }
-
-    private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
-    }
-
-    private class RotaView extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final float density;
-        private int tab = 0;
-        private final RectF fab = new RectF();
-        private final RectF[] taskRects = new RectF[80];
-
-        RotaView(Context context) {
-            super(context);
-            density = getResources().getDisplayMetrics().density;
-            setBackgroundColor(Color.rgb(246, 246, 248));
-        }
-
-        float d(float n) {
-            return n * density;
-        }
-
-        void text(Canvas canvas, String s, float x, float y, float size, int color, boolean bold) {
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(color);
-            paint.setTextSize(d(size));
-            paint.setTypeface(android.graphics.Typeface.create(
-                    "sans",
-                    bold ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL
-            ));
-            canvas.drawText(s, d(x), d(y), paint);
-        }
-
-        void round(Canvas canvas, float l, float t, float r, float b, float radius, int color) {
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(color);
-            canvas.drawRoundRect(
-                    new RectF(d(l), d(t), d(r), d(b)),
-                    d(radius),
-                    d(radius),
-                    paint
-            );
-        }
-
-        @Override
-        protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-
-            float width = getWidth() / density;
-            float height = getHeight() / density;
-
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(Color.rgb(246, 246, 248));
-            canvas.drawRect(0, 0, getWidth(), getHeight(), paint);
-
-            if (tab == 0) {
-                drawToday(canvas, width, height);
-            } else if (tab == 1) {
-                drawPlan(canvas, width, height);
+            if (Plan.ALL_DAY.equals(p.type)) {
+                p.startTime = "";
+                p.endTime = "";
+                p.time = "";
+                p.duration = "";
             } else {
-                drawAssistant(canvas, width, height);
+                p.time = p.startTime;
+                p.duration = Plan.durationBetween(p.startTime, p.endTime);
             }
 
-            drawBottom(canvas, width, height);
-            drawFab(canvas, width, height);
+            if (editing == null) plans.add(p);
+            PlanStore.save(this, plans);
+            scheduleReminder(p);
+            selectedDate = p.date;
+            monthCursor = parseKey(p.date);
+            dialog.dismiss();
+            render();
+        });
+
+        dialog.setContentView(box);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            dialog.getWindow().setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.90),
+                    -2);
         }
+    }
 
-        void drawHeader(Canvas canvas, String title, String subtitle) {
-            text(canvas, "ROTA", 24, 31, 12, Color.rgb(128, 128, 134), true);
-            text(canvas, title, 24, 72, 38, Color.rgb(22, 23, 26), true);
-            if (subtitle != null) {
-                text(canvas, subtitle, 24, 98, 14, Color.rgb(110, 111, 118), false);
-            }
+    private void refreshChips(TextView[] chips, String selected) {
+        for (TextView c : chips) {
+            boolean on = c.getText().toString().equals(selected);
+            c.setTextColor(on ? Color.WHITE : TEXT);
+            c.setBackground(round(on ? ACCENT : Color.rgb(242,242,246), 18));
         }
+    }
 
-        List<Plan> todayPlans() {
-            List<Plan> result = new ArrayList<>();
-            String key = todayKey();
+    private void inputDialog(String title, String value, ValueCallback callback) {
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setSingleLine(true);
+        input.setText(value);
+        input.setTextSize(16);
+        input.setPadding(dp(4), 0, dp(4), 0);
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(input)
+                .setNegativeButton("Vazgeç", null)
+                .setPositiveButton("Tamam",
+                        (d, w) -> callback.value(input.getText().toString().trim()))
+                .show();
+    }
 
-            for (Plan plan : plans) {
-                if (key.equals(plan.date)) {
-                    result.add(plan);
-                }
-            }
+    private interface ValueCallback { void value(String v); }
 
-            Collections.sort(result, new Comparator<Plan>() {
-                @Override public int compare(Plan a, Plan b) {
-                    if (a.time.isEmpty() && b.time.isEmpty()) {
-                        return a.title.compareToIgnoreCase(b.title);
-                    }
-                    if (a.time.isEmpty()) return 1;
-                    if (b.time.isEmpty()) return -1;
-                    return a.time.compareTo(b.time);
-                }
-            });
-
-            return result;
+    private void chooseTime(TextView target, String existing) {
+        Calendar c = Calendar.getInstance();
+        if (existing != null && existing.matches("\\d{2}:\\d{2}")) {
+            c.set(Calendar.HOUR_OF_DAY,
+                    Integer.parseInt(existing.substring(0, 2)));
+            c.set(Calendar.MINUTE,
+                    Integer.parseInt(existing.substring(3)));
         }
+        new TimePickerDialog(this,
+                (view, hour, minute) ->
+                        target.setText(String.format(Locale.GERMANY,
+                                "%02d:%02d", hour, minute)),
+                c.get(Calendar.HOUR_OF_DAY),
+                c.get(Calendar.MINUTE), true).show();
+    }
 
-        void drawToday(Canvas canvas, float width, float height) {
-            drawHeader(canvas, "Bugün", prettyDate());
+    private void confirmDelete(Plan p) {
+        new AlertDialog.Builder(this)
+                .setTitle("Planı sil?")
+                .setMessage(p.title)
+                .setNegativeButton("Vazgeç", null)
+                .setPositiveButton("Sil", (d, w) -> {
+                    cancelReminder(p);
+                    plans.remove(p);
+                    PlanStore.save(this, plans);
+                    render();
+                }).show();
+    }
 
-            List<Plan> today = todayPlans();
-            int total = today.size();
-            int done = 0;
-            Plan next = null;
+    private void scheduleReminder(Plan p) {
+        cancelReminder(p);
+        if (!Plan.HOURLY.equals(p.type) || p.startTime == null ||
+                !p.startTime.matches("\\d{2}:\\d{2}")) return;
 
-            for (Plan plan : today) {
-                if (plan.done) done++;
-                if (next == null && !plan.done) next = plan;
-            }
+        Calendar alarm = parseKey(p.date);
+        alarm.set(Calendar.HOUR_OF_DAY,
+                Integer.parseInt(p.startTime.substring(0, 2)));
+        alarm.set(Calendar.MINUTE,
+                Integer.parseInt(p.startTime.substring(3)));
+        alarm.set(Calendar.SECOND, 0);
+        alarm.set(Calendar.MILLISECOND, 0);
 
-            round(canvas, 20, 116, width - 20, 190, 24, Color.WHITE);
-            text(canvas, "Bugünün akışı", 38, 143, 13, Color.rgb(116,117,124), true);
-            text(canvas, done + " / " + total, 38, 171, 25, Color.rgb(22,23,26), true);
-            text(canvas, "tamamlandı", 96, 171, 14, Color.rgb(116,117,124), false);
+        if (alarm.getTimeInMillis() <= System.currentTimeMillis()) return;
 
-            round(canvas, 220, 140, width - 38, 156, 8, Color.rgb(235,235,239));
+        Intent intent = new Intent(this, ReminderReceiver.class);
+        intent.putExtra("title", p.title);
+        PendingIntent pi = PendingIntent.getBroadcast(
+                this, (int) (p.id & 0x7fffffff), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-            if (total > 0) {
-                float progress = (width - 258) * (done / (float) total);
-                round(canvas, 220, 140, 220 + progress, 156, 8, Color.rgb(22,23,26));
-            }
-
-            float y = 214;
-
-            if (next != null) {
-                round(canvas, 20, y, width - 20, y + 76, 22, Color.rgb(22,23,26));
-                text(canvas, "SIRADAKİ", 38, y + 25, 11, Color.rgb(180,181,187), true);
-                text(canvas, next.title, 38, y + 50, 19, Color.WHITE, true);
-
-                String meta = Plan.HOURLY.equals(next.type)
-                        ? next.time + " · " + next.duration
-                        : next.type;
-
-                text(canvas, meta, width - 160, y + 50, 12, Color.rgb(205,206,211), false);
-                y += 92;
-            }
-
-            text(canvas, "Bugünün planı", 24, y + 4, 16, Color.rgb(22,23,26), true);
-            y += 22;
-
-            if (today.isEmpty()) {
-                round(canvas, 20, y, width - 20, y + 104, 22, Color.WHITE);
-                text(canvas, "Bugün için henüz plan yok.", 38, y + 44, 16, Color.rgb(22,23,26), true);
-                text(canvas, "＋ ile ilk planını ekle.", 38, y + 70, 13, Color.rgb(116,117,124), false);
-                return;
-            }
-
-            int index = 0;
-
-            for (Plan plan : today) {
-                if (index >= taskRects.length) break;
-
-                RectF rect = new RectF(d(20), d(y), d(width - 20), d(y + 66));
-                taskRects[index] = rect;
-
-                round(canvas, 20, y, width - 20, y + 66, 18, Color.WHITE);
-
-                String left = Plan.HOURLY.equals(plan.type) ? plan.time : " ";
-                text(canvas, left, 38, y + 27, 12, Color.rgb(122,123,130), true);
-                text(canvas, plan.title, 86, y + 27, 16,
-                        plan.done ? Color.rgb(150,151,157) : Color.rgb(22,23,26), true);
-
-                String meta = Plan.HOURLY.equals(plan.type) ? plan.duration : plan.type;
-                text(canvas, meta, 86, y + 48, 12, Color.rgb(122,123,130), false);
-
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(d(2));
-                paint.setColor(plan.done ? Color.rgb(22,23,26) : Color.rgb(190,191,197));
-                canvas.drawCircle(d(width - 44), d(y + 33), d(11), paint);
-
-                if (plan.done) {
-                    paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(Color.rgb(22,23,26));
-                    canvas.drawCircle(d(width - 44), d(y + 33), d(11), paint);
-                    text(canvas, "✓", width - 50, y + 39, 13, Color.WHITE, true);
-                }
-
-                index++;
-                y += 76;
-            }
+        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (am != null) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
+                    alarm.getTimeInMillis(), pi);
         }
+    }
 
-        void drawPlan(Canvas canvas, float width, float height) {
-            drawHeader(canvas, "Plan", "Önümüzdeki günler");
+    private void cancelReminder(Plan p) {
+        Intent i = new Intent(this, ReminderReceiver.class);
+        PendingIntent pi = PendingIntent.getBroadcast(
+                this, (int) (p.id & 0x7fffffff), i,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (am != null) am.cancel(pi);
+        pi.cancel();
+    }
 
-            round(canvas, 20, 116, width - 20, 166, 20, Color.WHITE);
-            text(canvas, "←", 38, 148, 22, Color.rgb(22,23,26), true);
-            text(canvas, "Eylül 2026", width / 2 - 46, 148, 16, Color.rgb(22,23,26), true);
-            text(canvas, "→", width - 58, 148, 22, Color.rgb(22,23,26), true);
-
-            String[] days = {"Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"};
-
-            for (int i = 0; i < 7; i++) {
-                float x = 20 + i * ((width - 40) / 7f);
-                text(canvas, days[i], x + 5, 196, 11, Color.rgb(126,127,133), true);
-            }
-
-            List<Plan> sorted = new ArrayList<>(plans);
-            Collections.sort(sorted, new Comparator<Plan>() {
-                @Override public int compare(Plan a, Plan b) {
-                    return a.date.compareTo(b.date);
-                }
-            });
-
-            float y = 224;
-            int count = 0;
-
-            for (Plan plan : sorted) {
-                if (count++ > 7) break;
-
-                round(canvas, 20, y, width - 20, y + 58, 18, Color.WHITE);
-                text(canvas, plan.date, 36, y + 23, 11, Color.rgb(126,127,133), true);
-                text(canvas, plan.title, 104, y + 24, 15, Color.rgb(22,23,26), true);
-                text(canvas, plan.type, 104, y + 45, 12, Color.rgb(126,127,133), false);
-                y += 68;
-            }
-
-            if (sorted.isEmpty()) {
-                round(canvas, 20, y, width - 20, y + 94, 20, Color.WHITE);
-                text(canvas, "Takvim henüz boş.", 38, y + 40, 16, Color.rgb(22,23,26), true);
-                text(canvas, "Plan ekledikçe burada görünecek.", 38, y + 66, 13, Color.rgb(126,127,133), false);
-            }
+    private String planMeta(Plan p) {
+        if (Plan.ALL_DAY.equals(p.type)) return "Tüm gün";
+        if (!p.startTime.isEmpty() && !p.endTime.isEmpty()) {
+            return p.startTime + " – " + p.endTime + " · " + p.duration;
         }
-
-        void drawAssistant(Canvas canvas, float width, float height) {
-            drawHeader(canvas, "Asistan", "Planların için");
-
-            round(canvas, 20, 116, width - 20, 208, 24, Color.WHITE);
-            text(canvas, "Yarını birlikte kuralım.", 38, 148, 21, Color.rgb(22,23,26), true);
-            text(canvas, "İş, okul, ibadet ve kişisel zamanı", 38, 173, 13, Color.rgb(112,113,120), false);
-            text(canvas, "tek planda dengeleyebilirim.", 38, 192, 13, Color.rgb(112,113,120), false);
-
-            round(canvas, 20, 230, width - 20, 286, 18, Color.rgb(22,23,26));
-            text(canvas, "Yarını planla", 40, 264, 15, Color.WHITE, true);
-
-            round(canvas, 20, 304, width - 20, 362, 18, Color.WHITE);
-            text(canvas, "Şimdi ne yapmalıyım?", 40, 339, 15, Color.rgb(22,23,26), true);
-
-            text(canvas, "Örnek", 24, 396, 12, Color.rgb(126,127,133), true);
-            text(canvas, "“Yarın 14–22 çalışıyorum.", 24, 424, 14, Color.rgb(22,23,26), false);
-            text(canvas, "Sabah Risale ve spor istiyorum.”", 24, 446, 14, Color.rgb(22,23,26), false);
+        if (!p.startTime.isEmpty()) {
+            return p.startTime + (p.duration.isEmpty() ? "" : " · " + p.duration);
         }
+        return Plan.FLEX.equals(p.type) ? "Esnek" : "Saat seçilmedi";
+    }
 
-        void drawBottom(Canvas canvas, float width, float height) {
-            float top = height - 76;
+    private String safe(String a, String b) {
+        return a != null && !a.isEmpty() ? a : (b == null ? "" : b);
+    }
 
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(Color.WHITE);
-            canvas.drawRect(0, d(top), getWidth(), getHeight(), paint);
+    private List<Plan> plansFor(String date) {
+        List<Plan> out = new ArrayList<>();
+        for (Plan p : plans) if (date.equals(p.date)) out.add(p);
+        Collections.sort(out, Comparator
+                .comparing((Plan p) ->
+                        p.startTime == null || p.startTime.isEmpty()
+                                ? "99:99" : p.startTime)
+                .thenComparing(p -> p.title));
+        return out;
+    }
 
-            String[] labels = {"Bugün", "Plan", "Asistan"};
-            String[] icons = {"⌂", "▦", "✦"};
+    private String prettyKey(String k) {
+        return new SimpleDateFormat("EEEE · d MMMM", tr)
+                .format(parseKey(k).getTime());
+    }
 
-            for (int i = 0; i < 3; i++) {
-                float centerX = width * (i + 0.5f) / 3f;
+    private String key(Calendar c) {
+        return String.format(Locale.GERMANY, "%04d-%02d-%02d",
+                c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1,
+                c.get(Calendar.DAY_OF_MONTH));
+    }
 
-                if (tab == i) {
-                    round(canvas, centerX - 54, top + 10, centerX + 54, top + 66, 18, Color.rgb(242,242,246));
-                }
+    private Calendar parseKey(String k) {
+        Calendar c = Calendar.getInstance();
+        try {
+            String[] a = k.split("-");
+            c.set(Integer.parseInt(a[0]), Integer.parseInt(a[1]) - 1,
+                    Integer.parseInt(a[2]), 0, 0, 0);
+            c.set(Calendar.MILLISECOND, 0);
+        } catch (Exception ignored) {}
+        return c;
+    }
 
-                text(canvas, icons[i], centerX - 7, top + 31, 19,
-                        tab == i ? Color.rgb(22,23,26) : Color.rgb(142,143,150), false);
+    private Calendar addDays(Calendar c, int n) {
+        Calendar x = (Calendar) c.clone();
+        x.add(Calendar.DAY_OF_MONTH, n);
+        return x;
+    }
 
-                text(canvas, labels[i], centerX - 27, top + 56, 12,
-                        tab == i ? Color.rgb(22,23,26) : Color.rgb(142,143,150), true);
-            }
-        }
+    private void addHeader(LinearLayout page, String title,
+                           String sub, String action) {
+        LinearLayout h = row();
+        h.setPadding(dp(20), dp(20), dp(20), dp(10));
+        LinearLayout tx = column();
+        tx.addView(makeText("ROTA", 11, MUTED, true));
+        tx.addView(makeText(title, 38, TEXT, true));
+        tx.addView(makeText(sub, 14, MUTED, false));
+        h.addView(tx, new LinearLayout.LayoutParams(0, -2, 1));
 
-        void drawFab(Canvas canvas, float width, float height) {
-            float centerX = width - 58;
-            float centerY = height - 108;
-
-            fab.set(d(centerX - 30), d(centerY - 30), d(centerX + 30), d(centerY + 30));
-            round(canvas, centerX - 30, centerY - 30, centerX + 30, centerY + 30, 19, Color.rgb(22,23,26));
-            text(canvas, "+", centerX - 12, centerY + 10, 35, Color.WHITE, false);
-        }
-
-        @Override
-        public boolean onTouchEvent(MotionEvent event) {
-            if (event.getAction() != MotionEvent.ACTION_UP) return true;
-
-            float x = event.getX() / density;
-            float y = event.getY() / density;
-            float height = getHeight() / density;
-            float width = getWidth() / density;
-
-            if (y > height - 78) {
-                if (x < width / 3f) {
-                    tab = 0;
-                } else if (x < 2 * width / 3f) {
+        if (action != null && !action.isEmpty()) {
+            TextView a = makeText(action, 12, TEXT, true);
+            a.setGravity(Gravity.CENTER);
+            a.setBackground(round(Color.WHITE, 18));
+            a.setPadding(dp(12), 0, dp(12), 0);
+            a.setOnClickListener(v -> {
+                if ("Takvime git".equals(action)) {
                     tab = 1;
+                    render();
                 } else {
-                    tab = 2;
+                    selectedDate = key(Calendar.getInstance());
+                    monthCursor = Calendar.getInstance();
+                    render();
                 }
-                invalidate();
-                return true;
-            }
-
-            if (fab.contains(d(x), d(y))) {
-                showAddDialog();
-                return true;
-            }
-
-            if (tab == 0) {
-                List<Plan> today = todayPlans();
-
-                for (int i = 0; i < today.size() && i < taskRects.length; i++) {
-                    RectF rect = taskRects[i];
-
-                    if (rect != null && rect.contains(d(x), d(y))) {
-                        Plan selected = today.get(i);
-                        selected.done = !selected.done;
-                        PlanStore.save(MainActivity.this, plans);
-                        invalidate();
-                        return true;
-                    }
-                }
-            }
-
-            return true;
+            });
+            h.addView(a, new LinearLayout.LayoutParams(-2, dp(42)));
         }
+        page.addView(h);
+    }
+
+    private LinearLayout scrollColumn() {
+        ScrollView s = new ScrollView(this);
+        s.setFillViewport(true);
+        s.setBackgroundColor(BG);
+        LinearLayout c = column();
+        s.addView(c, new ScrollView.LayoutParams(-1, -2));
+        content.addView(s, new LinearLayout.LayoutParams(-1, 0, 1));
+        return c;
+    }
+
+    private LinearLayout cardColumn() {
+        LinearLayout c = column();
+        c.setPadding(dp(18), dp(16), dp(18), dp(16));
+        c.setBackground(round(CARD, 22));
+        return c;
+    }
+
+    private LinearLayout row() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.HORIZONTAL);
+        l.setGravity(Gravity.CENTER_VERTICAL);
+        return l;
+    }
+
+    private LinearLayout column() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.VERTICAL);
+        return l;
+    }
+
+    private TextView makeText(String text, float size, int color, boolean bold) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextSize(size);
+        t.setTextColor(color);
+        t.setTypeface(Typeface.create("sans",
+                bold ? Typeface.BOLD : Typeface.NORMAL));
+        t.setIncludeFontPadding(false);
+        return t;
+    }
+
+    private TextView makeField(String label, String value) {
+        TextView t = makeText(value, 16, TEXT, false);
+        t.setGravity(Gravity.CENTER_VERTICAL);
+        t.setPadding(dp(14), 0, dp(14), 0);
+        t.setBackground(round(Color.rgb(244,244,247), 16));
+        t.setTag(label);
+        return t;
+    }
+
+    private LinearLayout.LayoutParams fieldParams() {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(54));
+        p.setMargins(0, dp(8), 0, 0);
+        return p;
+    }
+
+    private LinearLayout.LayoutParams marginParams() {
+        return marginParams(20, 0, 20, 10);
+    }
+
+    private LinearLayout.LayoutParams marginParams(int l, int t, int r, int b) {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.setMargins(dp(l), dp(t), dp(r), dp(b));
+        return p;
+    }
+
+    private GradientDrawable round(int color, float radius) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(color);
+        g.setCornerRadius(dp((int) radius));
+        return g;
+    }
+
+    private int dp(int v) {
+        return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
     }
 }
