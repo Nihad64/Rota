@@ -187,7 +187,7 @@ public class MainActivity extends Activity {
         bar.setBackgroundColor(Color.rgb(11, 13, 17));
 
         String[] labels = {"Bugün", "Plan", "Ayarlar"};
-        String[] icons = {"⌂", "▦", "⚙"};
+        String[] icons = {"", "", ""};
         for (int i = 0; i < 3; i++) {
             final int index = i;
             LinearLayout item = new LinearLayout(this);
@@ -195,8 +195,11 @@ public class MainActivity extends Activity {
             item.setGravity(Gravity.CENTER);
             item.setPadding(dp(8), 0, dp(8), 0);
 
-            TextView icon = text(icons[i], 21, index == tab ? ORANGE : MUTED, false);
-            icon.setGravity(Gravity.CENTER);
+            ImageView icon = new ImageView(this);
+            int[] navIcons = {R.drawable.ic_nav_home, R.drawable.ic_nav_calendar, R.drawable.ic_nav_settings};
+            icon.setImageResource(navIcons[i]);
+            icon.setColorFilter(index == tab ? ORANGE : MUTED);
+            icon.setPadding(dp(3), dp(3), dp(3), dp(3));
             TextView label = text(labels[i], 11, index == tab ? TEXT : MUTED, true);
             label.setGravity(Gravity.CENTER);
             item.addView(icon, new LinearLayout.LayoutParams(-1, dp(30)));
@@ -562,7 +565,10 @@ public class MainActivity extends Activity {
         top.addView(tx, new LinearLayout.LayoutParams(0, dp(44), 1));
 
         if (showBell) {
-            TextView bell = iconButton("♧", true);
+            ImageView bell = new ImageView(this);
+            bell.setImageResource(R.drawable.ic_notification_bell);
+            bell.setPadding(dp(10), dp(10), dp(10), dp(10));
+            bell.setBackground(round(SURFACE, 16));
             bell.setOnClickListener(v -> { tap(v); showNotificationInfo(); });
             top.addView(bell, new LinearLayout.LayoutParams(dp(44), dp(44)));
         }
