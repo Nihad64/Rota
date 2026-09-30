@@ -72,9 +72,7 @@ public class MainActivity extends Activity {
         plans.addAll(PlanStore.load(this));
         applyThemeColors();
 
-        getWindow().setStatusBarColor(BG);
-        getWindow().setNavigationBarColor(Color.BLACK);
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        applySystemBars();
         if (Build.VERSION.SDK_INT >= 29) {
             getWindow().setStatusBarContrastEnforced(false);
             getWindow().setNavigationBarContrastEnforced(false);
@@ -148,6 +146,22 @@ public class MainActivity extends Activity {
     private int getStatusBarHeight() {
         int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
         return id == 0 ? dp(24) : getResources().getDimensionPixelSize(id);
+    }
+
+    private void applySystemBars() {
+        boolean dark = "dark".equals(settings().getString("theme", "dark"));
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(dark ? Color.BLACK : BG);
+        int flags = 0;
+        if (!dark) {
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        }
+        getWindow().getDecorView().setSystemUiVisibility(flags);
+        if (Build.VERSION.SDK_INT >= 29) {
+            getWindow().setStatusBarContrastEnforced(false);
+            getWindow().setNavigationBarContrastEnforced(false);
+        }
     }
 
     private void applyThemeColors() {
@@ -1317,8 +1331,7 @@ public class MainActivity extends Activity {
             tap(v);
             settings().edit().putString("theme", "Gece".equals(label) ? "dark" : "light").apply();
             applyThemeColors();
-            getWindow().setStatusBarColor(BG);
-            getWindow().setNavigationBarColor("dark".equals(settings().getString("theme", "dark")) ? Color.BLACK : BG);
+            applySystemBars();
             render();
         });
         return t;
