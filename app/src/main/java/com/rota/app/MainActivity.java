@@ -15,10 +15,13 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -38,17 +41,17 @@ import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
-    private static final int BG = Color.rgb(8, 10, 13);
-    private static final int SURFACE = Color.rgb(17, 20, 25);
-    private static final int SURFACE_2 = Color.rgb(23, 27, 33);
-    private static final int SURFACE_3 = Color.rgb(29, 33, 40);
-    private static final int TEXT = Color.rgb(247, 247, 247);
-    private static final int MUTED = Color.rgb(158, 164, 172);
-    private static final int LINE = Color.rgb(42, 47, 55);
-    private static final int ORANGE = Color.rgb(255, 138, 0);
-    private static final int ORANGE_SOFT = Color.rgb(56, 35, 15);
-    private static final int GREEN = Color.rgb(114, 214, 152);
-    private static final int RED = Color.rgb(255, 108, 108);
+    private int BG = Color.rgb(11, 13, 17);
+    private int SURFACE = Color.rgb(23, 26, 32);
+    private int SURFACE_2 = Color.rgb(31, 35, 42);
+    private int SURFACE_3 = Color.rgb(39, 43, 50);
+    private int TEXT = Color.rgb(245, 245, 245);
+    private int MUTED = Color.rgb(157, 163, 172);
+    private int LINE = Color.rgb(57, 62, 71);
+    private int ORANGE = Color.rgb(255, 139, 0);
+    private int ORANGE_SOFT = Color.rgb(64, 40, 12);
+    private int GREEN = Color.rgb(86, 190, 132);
+    private int RED = Color.rgb(235, 86, 92);
 
     private final Locale tr = new Locale("tr", "TR");
     private final List<Plan> plans = new ArrayList<>();
@@ -67,6 +70,7 @@ public class MainActivity extends Activity {
         selectedDate = key(Calendar.getInstance());
         monthCursor = Calendar.getInstance();
         plans.addAll(PlanStore.load(this));
+        applyThemeColors();
 
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(Color.BLACK);
@@ -115,6 +119,7 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
+        root.setPadding(0, getStatusBarHeight(), 0, 0);
 
         FrameLayout page = new FrameLayout(this);
         content = new LinearLayout(this);
@@ -138,6 +143,40 @@ public class MainActivity extends Activity {
         root.addView(page, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(buildBottomBar(), new LinearLayout.LayoutParams(-1, dp(82)));
         setContentView(root);
+    }
+
+    private int getStatusBarHeight() {
+        int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        return id == 0 ? dp(24) : getResources().getDimensionPixelSize(id);
+    }
+
+    private void applyThemeColors() {
+        boolean dark = "dark".equals(settings().getString("theme", "dark"));
+        if (dark) {
+            BG = Color.rgb(11, 13, 17);
+            SURFACE = Color.rgb(23, 26, 32);
+            SURFACE_2 = Color.rgb(31, 35, 42);
+            SURFACE_3 = Color.rgb(39, 43, 50);
+            TEXT = Color.rgb(245, 245, 245);
+            MUTED = Color.rgb(157, 163, 172);
+            LINE = Color.rgb(57, 62, 71);
+            ORANGE = Color.rgb(255, 139, 0);
+            ORANGE_SOFT = Color.rgb(64, 40, 12);
+            GREEN = Color.rgb(86, 190, 132);
+            RED = Color.rgb(235, 86, 92);
+        } else {
+            BG = Color.rgb(247, 245, 241);
+            SURFACE = Color.rgb(255, 255, 255);
+            SURFACE_2 = Color.rgb(239, 237, 233);
+            SURFACE_3 = Color.rgb(228, 225, 220);
+            TEXT = Color.rgb(28, 29, 31);
+            MUTED = Color.rgb(105, 108, 113);
+            LINE = Color.rgb(215, 211, 205);
+            ORANGE = Color.rgb(238, 119, 0);
+            ORANGE_SOFT = Color.rgb(255, 234, 207);
+            GREEN = Color.rgb(46, 145, 91);
+            RED = Color.rgb(196, 52, 59);
+        }
     }
 
     private LinearLayout buildBottomBar() {
@@ -188,6 +227,8 @@ public class MainActivity extends Activity {
         else if (tab == 1) renderPlan();
         else renderSettings();
         rebuildBottomBar();
+        content.setAlpha(0f);
+        content.animate().alpha(1f).setDuration(180).start();
     }
 
     private void rebuildBottomBar() {
@@ -267,7 +308,7 @@ public class MainActivity extends Activity {
         LinearLayout titleRow = row();
         titleRow.addView(text("Bugünün planı", 20, TEXT, true),
                 new LinearLayout.LayoutParams(0, -2, 1));
-        TextView all = text(today.isEmpty() ? "+ Plan ekle" : "Tümünü gör", 12, MUTED, true);
+        TextView all = text(today.isEmpty() ? "+ Plan ekle" : "Takvime git", 12, MUTED, true);
         titleRow.addView(all);
         all.setOnClickListener(v -> {
             tap(v);
@@ -306,7 +347,7 @@ public class MainActivity extends Activity {
         addTopBar(page, false, true);
 
         LinearLayout title = column();
-        title.addView(text("Plan", 31, TEXT, true));
+        title.addView(text("Plan", 28, TEXT, true));
         title.addView(text("Takvimin ve yaklaşan günlerin.", 14, MUTED, false));
         page.addView(title, margin(20, 8, 20, 12));
 
@@ -334,7 +375,7 @@ public class MainActivity extends Activity {
             week.addView(cell, new LinearLayout.LayoutParams(0, dp(80), 1));
             if (i < 6) week.addView(space(5), new LinearLayout.LayoutParams(dp(5), 1));
         }
-        page.addView(week, margin(20, 0, 20, 14));
+        page.addView(week, margin(20, 0, 20, 16));
 
         LinearLayout calHeader = row();
         String monthLabel = capitalize(new SimpleDateFormat("MMMM yyyy", tr).format(monthCursor.getTime()));
@@ -410,7 +451,8 @@ public class MainActivity extends Activity {
                     if (!past) {
                         d.setOnClickListener(v -> { tap(v); selectedDate = k; monthCursor = date; render(); });
                     } else {
-                        d.setOnClickListener(v -> {});
+                        d.setClickable(false);
+                        d.setAlpha(0.34f);
                     }
                 }
                 line.addView(d, new LinearLayout.LayoutParams(0, dp(50), 1));
@@ -420,7 +462,7 @@ public class MainActivity extends Activity {
         }
         LinearLayout calCard = card();
         calCard.addView(grid);
-        page.addView(calCard, margin(20, 0, 20, 14));
+        page.addView(calCard, margin(20, 0, 20, 16));
 
         LinearLayout selectedHeader = row();
         String selectedTitle = capitalize(new SimpleDateFormat("EEEE · d MMMM", tr).format(parseKey(selectedDate).getTime()));
@@ -448,7 +490,7 @@ public class MainActivity extends Activity {
         addTopBar(page, false, false);
 
         LinearLayout title = column();
-        title.addView(text("Ayarlar", 31, TEXT, true));
+        title.addView(text("Ayarlar", 28, TEXT, true));
         title.addView(text("Rotam'ı kendi akışına göre ayarla.", 14, MUTED, false));
         page.addView(title, margin(20, 8, 20, 16));
 
@@ -475,10 +517,17 @@ public class MainActivity extends Activity {
                 enabled -> settings().edit().putBoolean("quick_plan", enabled).apply()), margin(20, 0, 20, 16));
 
         page.addView(sectionTitle("Görünüm"), margin(20, 0, 20, 7));
-        LinearLayout dark = settingCard();
-        dark.addView(text("Tema", 16, TEXT, true));
-        dark.addView(text("Koyu · Rotam'ın ana görünümü", 12, MUTED, false));
-        page.addView(dark, margin(20, 0, 20, 8));
+        LinearLayout themeCard = settingCard();
+        themeCard.addView(text("Tema", 16, TEXT, true));
+        themeCard.addView(text("Sadece iki seçenek: gece veya gündüz.", 12, MUTED, false), marginTop(3));
+        LinearLayout themeChoices = row();
+        TextView dark = themeChoice("Gece", "dark".equals(settings().getString("theme", "dark")));
+        TextView light = themeChoice("Gündüz", "light".equals(settings().getString("theme", "dark")));
+        themeChoices.addView(dark, new LinearLayout.LayoutParams(0, dp(44), 1));
+        themeChoices.addView(space(8), new LinearLayout.LayoutParams(dp(8), 1));
+        themeChoices.addView(light, new LinearLayout.LayoutParams(0, dp(44), 1));
+        themeCard.addView(themeChoices, marginTop(12));
+        page.addView(themeCard, margin(20, 0, 20, 14));
 
         page.addView(sectionTitle("Rotam AI"), margin(20, 8, 20, 7));
         LinearLayout ai = settingCard();
@@ -513,17 +562,16 @@ public class MainActivity extends Activity {
         top.addView(tx, new LinearLayout.LayoutParams(0, dp(44), 1));
 
         if (showBell) {
-            TextView bell = iconButton("♢", true);
-            bell.setText("♧");
+            TextView bell = iconButton("♧", true);
             bell.setOnClickListener(v -> { tap(v); showNotificationInfo(); });
             top.addView(bell, new LinearLayout.LayoutParams(dp(44), dp(44)));
         }
         if (showCalendar) {
-            TextView cal = iconButton("◫", false);
+            TextView cal = iconButton("▦", false);
             cal.setOnClickListener(v -> { tap(v); selectedDate = key(Calendar.getInstance()); monthCursor = Calendar.getInstance(); render(); });
             top.addView(cal, new LinearLayout.LayoutParams(dp(44), dp(44)));
         }
-        page.addView(top, margin(20, 16, 20, 0));
+        page.addView(top, margin(20, 10, 20, 0));
     }
 
     private View addPlanCard(Plan p, int index) {
@@ -692,7 +740,13 @@ public class MainActivity extends Activity {
             chip.setBackground(round(type.equals(selectedType[0]) ? ORANGE : SURFACE_3, 17));
             chip.setPadding(dp(6), 0, dp(6), 0);
             final String typeCopy = type;
-            chip.setOnClickListener(v -> { tap(v); selectedType[0] = typeCopy; refreshChips(chipViews, typeCopy); });
+            chip.setOnClickListener(v -> {
+                tap(v);
+                selectedType[0] = typeCopy;
+                refreshChips(chipViews, typeCopy);
+                timeRow.setVisibility(Plan.ALL_DAY.equals(typeCopy) ? View.GONE : View.VISIBLE);
+                durationHint.setVisibility(Plan.ALL_DAY.equals(typeCopy) ? View.GONE : View.VISIBLE);
+            });
             chipViews[i] = chip;
             chips.addView(chip, new LinearLayout.LayoutParams(0, dp(42), 1));
             if (i < 2) chips.addView(space(6), new LinearLayout.LayoutParams(dp(6), 1));
@@ -701,11 +755,16 @@ public class MainActivity extends Activity {
 
         TextView start = field("Başlangıç", editing == null ? "" : safe(editing.startTime, editing.time));
         TextView end = field("Bitiş", editing == null ? "" : editing.endTime);
-        box.addView(start, marginTop(8));
-        box.addView(end, marginTop(8));
-        start.setOnClickListener(v -> { tap(v); showTimeChooser(start, start.getText().toString()); });
-        end.setOnClickListener(v -> { tap(v); showTimeChooser(end, end.getText().toString()); });
-        box.addView(text("Süre başlangıç ve bitiş saatinden otomatik hesaplanır.", 11, MUTED, false), marginTop(7));
+        LinearLayout timeRow = row();
+        timeRow.addView(start, new LinearLayout.LayoutParams(0, dp(58), 1));
+        timeRow.addView(space(8), new LinearLayout.LayoutParams(dp(8), 1));
+        timeRow.addView(end, new LinearLayout.LayoutParams(0, dp(58), 1));
+        box.addView(timeRow, marginTop(8));
+        start.setOnClickListener(v -> { tap(v); showTimeChooser(start, actualTime(start.getText().toString())); });
+        end.setOnClickListener(v -> { tap(v); showTimeChooser(end, actualTime(end.getText().toString())); });
+        TextView durationHint = text("Süre başlangıç ve bitiş saatlerinden otomatik hesaplanır.", 11, MUTED, false);
+        box.addView(durationHint, marginTop(7));
+        if (Plan.ALL_DAY.equals(selectedType[0])) timeRow.setVisibility(View.GONE);
 
         TextView note = field("Not", "");
         box.addView(note, marginTop(12));
@@ -751,8 +810,8 @@ public class MainActivity extends Activity {
             p.date = chosenDate[0];
             p.title = t;
             p.type = selectedType[0];
-            p.startTime = "Saat seç".equals(start.getText().toString()) ? "" : start.getText().toString();
-            p.endTime = "Saat seç".equals(end.getText().toString()) ? "" : end.getText().toString();
+            p.startTime = actualTime(start.getText().toString());
+            p.endTime = actualTime(end.getText().toString());
 
             if (Plan.ALL_DAY.equals(p.type)) {
                 p.startTime = "";
@@ -852,37 +911,72 @@ public class MainActivity extends Activity {
     private LinearLayout timeColumn(String label, int[] hm, int index, TextView preview) {
         LinearLayout c = column();
         c.setGravity(Gravity.CENTER);
+        c.setPadding(dp(4), 0, dp(4), 0);
         c.addView(text(label, 11, MUTED, true));
-        TextView up = text("⌃", 24, MUTED, true);
-        up.setGravity(Gravity.CENTER);
-        c.addView(up, new LinearLayout.LayoutParams(-1, dp(42)));
 
-        TextView value = text(String.format(Locale.GERMANY, "%02d", hm[index]), 42, TEXT, true);
+        LinearLayout wheel = column();
+        wheel.setGravity(Gravity.CENTER);
+        wheel.setBackground(round(SURFACE_2, 22));
+
+        TextView before = text("", 17, MUTED, false);
+        before.setGravity(Gravity.CENTER);
+        TextView value = text(String.format(Locale.GERMANY, "%02d", hm[index]), 34, TEXT, true);
         value.setGravity(Gravity.CENTER);
-        value.setBackground(round(SURFACE_2, 22));
-        c.addView(value, new LinearLayout.LayoutParams(dp(120), dp(82)));
+        TextView after = text("", 17, MUTED, false);
+        after.setGravity(Gravity.CENTER);
 
-        TextView down = text("⌄", 24, MUTED, true);
-        down.setGravity(Gravity.CENTER);
-        c.addView(down, new LinearLayout.LayoutParams(-1, dp(42)));
+        wheel.addView(before, new LinearLayout.LayoutParams(-1, dp(34)));
+        wheel.addView(value, new LinearLayout.LayoutParams(-1, dp(58)));
+        wheel.addView(after, new LinearLayout.LayoutParams(-1, dp(34)));
 
-        View.OnClickListener inc = v -> {
-            tap(v);
+        Runnable refresh = () -> {
             int max = index == 0 ? 23 : 59;
-            hm[index] = (hm[index] + 1) > max ? 0 : hm[index] + 1;
-            value.setText(String.format(Locale.GERMANY, "%02d", hm[index]));
+            int current = hm[index];
+            before.setText(String.format(Locale.GERMANY, "%02d", (current - 1 + max + 1) % (max + 1)));
+            value.setText(String.format(Locale.GERMANY, "%02d", current));
+            after.setText(String.format(Locale.GERMANY, "%02d", (current + 1) % (max + 1)));
             preview.setText(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]));
         };
-        View.OnClickListener dec = v -> {
-            tap(v);
-            int min = index == 0 ? 0 : 0;
-            int max = index == 0 ? 23 : 59;
-            hm[index] = (hm[index] - 1) < min ? max : hm[index] - 1;
-            value.setText(String.format(Locale.GERMANY, "%02d", hm[index]));
-            preview.setText(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]));
-        };
-        up.setOnClickListener(inc);
-        down.setOnClickListener(dec);
+        refresh.run();
+
+        final float[] downY = {0f};
+        final boolean[] moved = {false};
+        wheel.setOnTouchListener((v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    downY[0] = event.getY();
+                    moved[0] = false;
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    float dy = event.getY() - downY[0];
+                    if (Math.abs(dy) >= dp(24)) {
+                        int max = index == 0 ? 23 : 59;
+                        hm[index] = dy < 0 ? (hm[index] + 1) % (max + 1) : (hm[index] - 1 + max + 1) % (max + 1);
+                        downY[0] = event.getY();
+                        moved[0] = true;
+                        refresh.run();
+                        tickSound();
+                        wheel.animate().scaleX(0.985f).scaleY(0.985f).setDuration(45)
+                                .withEndAction(() -> wheel.animate().scaleX(1f).scaleY(1f).setDuration(70).start()).start();
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    if (!moved[0]) {
+                        float center = wheel.getHeight() / 2f;
+                        if (event.getY() < center) hm[index] = (hm[index] - 1 + 60) % (index == 0 ? 24 : 60);
+                        else hm[index] = (hm[index] + 1) % (index == 0 ? 24 : 60);
+                        refresh.run();
+                        tickSound();
+                    }
+                    return true;
+            }
+            return true;
+        });
+
+        c.addView(wheel, new LinearLayout.LayoutParams(-1, dp(126)));
+        TextView hint = text("Yukarı / aşağı kaydır", 10, MUTED, false);
+        hint.setGravity(Gravity.CENTER);
+        c.addView(hint, new LinearLayout.LayoutParams(-1, dp(26)));
         return c;
     }
 
@@ -1174,12 +1268,49 @@ public class MainActivity extends Activity {
     }
 
     private TextView field(String label, String value) {
-        TextView t = text(value == null || value.isEmpty() ? "Saat seç" : value, 15, TEXT, false);
+        String display = value == null || value.isEmpty() ? fieldPlaceholder(label) : value;
+        TextView t = text(display, 14, TEXT, false);
         t.setGravity(Gravity.CENTER_VERTICAL);
         t.setPadding(dp(14), 0, dp(14), 0);
         t.setBackground(round(SURFACE_2, 16));
         t.setHint(label);
+        t.setMaxLines(1);
         return t;
+    }
+
+    private String fieldPlaceholder(String label) {
+        if ("Başlangıç".equals(label)) return "Başlangıç saati";
+        if ("Bitiş".equals(label)) return "Bitiş saati";
+        if ("Not".equals(label)) return "Not ekle";
+        if ("Plan adı".equals(label)) return "Plan adı ekle";
+        return label;
+    }
+
+    private String actualTime(String value) {
+        return value != null && value.matches("\\d{2}:\\d{2}") ? value : "";
+    }
+
+    private TextView themeChoice(String label, boolean selected) {
+        TextView t = buttonText(label, selected ? Color.WHITE : TEXT);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(round(selected ? ORANGE : SURFACE_2, 16));
+        t.setOnClickListener(v -> {
+            tap(v);
+            settings().edit().putString("theme", "Gece".equals(label) ? "dark" : "light").apply();
+            applyThemeColors();
+            getWindow().setStatusBarColor(BG);
+            getWindow().setNavigationBarColor("dark".equals(settings().getString("theme", "dark")) ? Color.BLACK : BG);
+            render();
+        });
+        return t;
+    }
+
+    private void tickSound() {
+        try {
+            ToneGenerator tg = new ToneGenerator(AudioManager.STREAM_SYSTEM, 35);
+            tg.startTone(ToneGenerator.TONE_PROP_BEEP, 22);
+            new android.os.Handler().postDelayed(tg::release, 80);
+        } catch (Exception ignored) {}
     }
 
     private TextView buttonText(String s, int color) {
@@ -1412,7 +1543,7 @@ public class MainActivity extends Activity {
     private interface ValueCallback { void value(String value); }
     private interface ToggleCallback { void change(boolean enabled); }
 
-    private static class ProgressRing extends View {
+    private class ProgressRing extends View {
         private final Paint track = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint progress = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint label = new Paint(Paint.ANTI_ALIAS_FLAG);
