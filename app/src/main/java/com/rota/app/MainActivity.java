@@ -878,7 +878,7 @@ public class MainActivity extends Activity {
                 .withEndAction(() -> v.animate().scaleX(1f).scaleY(1f).setDuration(90).start()).start();
         try {
             ToneGenerator tone = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 35);
-            tone.startTone(ToneGenerator.TONE_PROP_CLICK, 35);
+            tone.startTone(ToneGenerator.TONE_PROP_BEEP, 35);
             tone.release();
         } catch (Exception ignored) {}
     }
