@@ -718,7 +718,8 @@ public class MainActivity extends Activity {
         box.addView(titleField, marginTop(14));
         titleField.setOnClickListener(v -> {
             tap(v);
-            showInputDialog("Plan adı", titleField.getText().toString(), value -> titleField.setText(value));
+            String currentTitle = "Plan adı ekle".equals(titleField.getText().toString()) ? "" : titleField.getText().toString();
+            showInputDialog("Plan adı", currentTitle, value -> titleField.setText(value));
         });
 
         TextView dateField = field("Tarih", prettyDate(chosenDate[0]));
@@ -730,6 +731,8 @@ public class MainActivity extends Activity {
 
         box.addView(text("Plan türü", 11, MUTED, true), marginTop(14));
         LinearLayout chips = row();
+        final LinearLayout[] timeRowHolder = {null};
+        final TextView[] durationHintHolder = {null};
         TextView[] chipViews = new TextView[3];
         String[] selectedType = {editing == null ? Plan.HOURLY : editing.type};
         String[] typeNames = {Plan.HOURLY, Plan.FLEX, Plan.ALL_DAY};
@@ -744,8 +747,12 @@ public class MainActivity extends Activity {
                 tap(v);
                 selectedType[0] = typeCopy;
                 refreshChips(chipViews, typeCopy);
-                timeRow.setVisibility(Plan.ALL_DAY.equals(typeCopy) ? View.GONE : View.VISIBLE);
-                durationHint.setVisibility(Plan.ALL_DAY.equals(typeCopy) ? View.GONE : View.VISIBLE);
+                if (timeRowHolder[0] != null) {
+                    timeRowHolder[0].setVisibility(Plan.ALL_DAY.equals(typeCopy) ? View.GONE : View.VISIBLE);
+                }
+                if (durationHintHolder[0] != null) {
+                    durationHintHolder[0].setVisibility(Plan.ALL_DAY.equals(typeCopy) ? View.GONE : View.VISIBLE);
+                }
             });
             chipViews[i] = chip;
             chips.addView(chip, new LinearLayout.LayoutParams(0, dp(42), 1));
@@ -764,7 +771,12 @@ public class MainActivity extends Activity {
         end.setOnClickListener(v -> { tap(v); showTimeChooser(end, actualTime(end.getText().toString())); });
         TextView durationHint = text("Süre başlangıç ve bitiş saatlerinden otomatik hesaplanır.", 11, MUTED, false);
         box.addView(durationHint, marginTop(7));
-        if (Plan.ALL_DAY.equals(selectedType[0])) timeRow.setVisibility(View.GONE);
+        timeRowHolder[0] = timeRow;
+        durationHintHolder[0] = durationHint;
+        if (Plan.ALL_DAY.equals(selectedType[0])) {
+            timeRow.setVisibility(View.GONE);
+            durationHint.setVisibility(View.GONE);
+        }
 
         TextView note = field("Not", "");
         box.addView(note, marginTop(12));
@@ -800,6 +812,7 @@ public class MainActivity extends Activity {
         save.setOnClickListener(v -> {
             tap(v);
             String t = titleField.getText().toString().trim();
+            if ("Plan adı ekle".equals(t)) t = "";
             if (t.isEmpty()) {
                 showInputDialog("Plan adı", "", value -> titleField.setText(value));
                 return;
