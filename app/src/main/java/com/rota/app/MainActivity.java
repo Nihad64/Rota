@@ -198,7 +198,7 @@ public class MainActivity extends Activity {
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER);
         bar.setPadding(dp(10), dp(8), dp(10), dp(8));
-        bar.setBackgroundColor(Color.rgb(11, 13, 17));
+        bar.setBackgroundColor(BG);
 
         String[] labels = {"Bugün", "Plan", "Ayarlar"};
         String[] icons = {"", "", ""};
@@ -219,7 +219,7 @@ public class MainActivity extends Activity {
             item.addView(icon, new LinearLayout.LayoutParams(-1, dp(30)));
             item.addView(label, new LinearLayout.LayoutParams(-1, dp(24)));
 
-            if (index == tab) item.setBackground(round(Color.rgb(25, 29, 35), 20));
+            if (index == tab) item.setBackground(round(SURFACE, 20));
 
             item.setOnClickListener(v -> {
                 tap(v);
@@ -800,7 +800,11 @@ public class MainActivity extends Activity {
 
         TextView note = field("Not", "");
         box.addView(note, marginTop(12));
-        note.setOnClickListener(v -> { tap(v); showInputDialog("Not", note.getText().toString(), value -> note.setText(value)); });
+        note.setOnClickListener(v -> {
+            tap(v);
+            String currentNote = "Not ekle".equals(note.getText().toString()) ? "" : note.getText().toString();
+            showInputDialog("Not", currentNote, value -> note.setText(value));
+        });
 
         LinearLayout reminder = settingCard();
         LinearLayout rr = row();
@@ -996,8 +1000,9 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_UP:
                     if (!moved[0]) {
                         float center = wheel.getHeight() / 2f;
-                        if (event.getY() < center) hm[index] = (hm[index] - 1 + 60) % (index == 0 ? 24 : 60);
-                        else hm[index] = (hm[index] + 1) % (index == 0 ? 24 : 60);
+                        int limit = index == 0 ? 24 : 60;
+                        if (event.getY() < center) hm[index] = (hm[index] - 1 + limit) % limit;
+                        else hm[index] = (hm[index] + 1) % limit;
                         refresh.run();
                         tickSound();
                     }
@@ -1332,6 +1337,7 @@ public class MainActivity extends Activity {
             settings().edit().putString("theme", "Gece".equals(label) ? "dark" : "light").apply();
             applyThemeColors();
             applySystemBars();
+            buildShell();
             render();
         });
         return t;
