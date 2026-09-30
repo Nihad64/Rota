@@ -722,7 +722,7 @@ public class MainActivity extends Activity {
         reminder.addView(rr);
         reminder.setOnClickListener(v -> {
             tap(v);
-            boolean on = "Kapalı".contentEquals(reminderState.getTag());
+            boolean on = "Kapalı".equals(String.valueOf(reminderState.getTag()));
             setToggle(reminderState, on);
         });
         box.addView(reminder, marginTop(12));
@@ -814,17 +814,17 @@ public class MainActivity extends Activity {
         }
         final int[] hm = {c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE)};
 
-        LinearLayout wheel = row();
-        wheel.setGravity(Gravity.CENTER);
-        wheel.addView(timeColumn("Saat", hm, 0), new LinearLayout.LayoutParams(0, dp(220), 1));
-        wheel.addView(text(":", 34, TEXT, true), new LinearLayout.LayoutParams(dp(34), dp(80)));
-        wheel.addView(timeColumn("Dakika", hm, 1), new LinearLayout.LayoutParams(0, dp(220), 1));
-        box.addView(wheel, marginTop(14));
-
         TextView preview = text(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]), 34, TEXT, true);
         preview.setGravity(Gravity.CENTER);
         preview.setBackground(round(SURFACE_2, 20));
         box.addView(preview, new LinearLayout.LayoutParams(-1, dp(72)));
+
+        LinearLayout wheel = row();
+        wheel.setGravity(Gravity.CENTER);
+        wheel.addView(timeColumn("Saat", hm, 0, preview), new LinearLayout.LayoutParams(0, dp(220), 1));
+        wheel.addView(text(":", 34, TEXT, true), new LinearLayout.LayoutParams(dp(34), dp(80)));
+        wheel.addView(timeColumn("Dakika", hm, 1, preview), new LinearLayout.LayoutParams(0, dp(220), 1));
+        box.addView(wheel, marginTop(14));
 
         LinearLayout buttons = row();
         TextView cancel = buttonText("Vazgeç", MUTED);
@@ -849,7 +849,7 @@ public class MainActivity extends Activity {
         fitDialog(dialog, 0.88f);
     }
 
-    private LinearLayout timeColumn(String label, int[] hm, int index) {
+    private LinearLayout timeColumn(String label, int[] hm, int index, TextView preview) {
         LinearLayout c = column();
         c.setGravity(Gravity.CENTER);
         c.addView(text(label, 11, MUTED, true));
@@ -871,11 +871,7 @@ public class MainActivity extends Activity {
             int max = index == 0 ? 23 : 59;
             hm[index] = (hm[index] + 1) > max ? 0 : hm[index] + 1;
             value.setText(String.format(Locale.GERMANY, "%02d", hm[index]));
-            View root = c.getParent();
-            if (root instanceof ViewGroup) {
-                TextView preview = findPreview((ViewGroup) root);
-                if (preview != null) preview.setText(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]));
-            }
+            preview.setText(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]));
         };
         View.OnClickListener dec = v -> {
             tap(v);
@@ -883,11 +879,7 @@ public class MainActivity extends Activity {
             int max = index == 0 ? 23 : 59;
             hm[index] = (hm[index] - 1) < min ? max : hm[index] - 1;
             value.setText(String.format(Locale.GERMANY, "%02d", hm[index]));
-            View root = c.getParent();
-            if (root instanceof ViewGroup) {
-                TextView preview = findPreview((ViewGroup) root);
-                if (preview != null) preview.setText(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]));
-            }
+            preview.setText(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]));
         };
         up.setOnClickListener(inc);
         down.setOnClickListener(dec);
