@@ -1,2 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources><color name="icon_background">#111111</color></resources>
+<resources>
+    <color name="icon_background">#0B0D11</color>
+    <color name="rotam_bg">#080A0D</color>
+    <color name="rotam_surface">#111419</color>
+    <color name="rotam_surface_2">#171B21</color>
+    <color name="rotam_orange">#FF8A00</color>
+</resources>
