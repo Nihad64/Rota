@@ -30,7 +30,7 @@ public class ReminderReceiver extends BroadcastReceiver {
                 : new Notification.Builder(context);
 
         Notification notification = builder
-                .setSmallIcon(android.R.drawable.ic_popup_reminder)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title)
                 .setContentText("Planın başladı.")
                 .setAutoCancel(true)
