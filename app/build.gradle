@@ -10,8 +10,23 @@ android {
         applicationId 'com.rota.app'
         minSdk 26
         targetSdk 35
-        versionCode 4
-        versionName '0.4.0'
+        versionCode 5
+        versionName '0.5.0'
+    }
+
+    signingConfigs {
+        stable {
+            storeFile file("../rotam-stable.jks")
+            storePassword "RotamStable2026!"
+            keyAlias "rotam"
+            keyPassword "RotamStable2026!"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.stable
+        }
     }
 
     compileOptions {
