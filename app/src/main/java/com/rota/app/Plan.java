@@ -17,6 +17,7 @@ public class Plan {
     // New scheduling fields.
     public String startTime;
     public String endTime;
+    public String note;
 
     public Plan(long id, String date, String title, String type, String time, String duration, boolean done) {
         this.id = id;
@@ -28,6 +29,7 @@ public class Plan {
         this.done = done;
         this.startTime = this.time;
         this.endTime = "";
+        this.note = "";
     }
 
     public static String durationBetween(String start, String end) {
