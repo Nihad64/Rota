@@ -1011,7 +1011,7 @@ public class MainActivity extends Activity {
         box.addView(head);
 
         Calendar c = Calendar.getInstance();
-        if (existing != null && existing.matches("\d{2}:\d{2}")) {
+        if (existing != null && existing.matches("\\d{2}:\\d{2}")) {
             c.set(Calendar.HOUR_OF_DAY, Integer.parseInt(existing.substring(0,2)));
             c.set(Calendar.MINUTE, Integer.parseInt(existing.substring(3)));
         }
