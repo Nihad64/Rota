@@ -122,10 +122,6 @@ public class MainActivity extends Activity {
         return settings().getBoolean("quick_plan", true);
     }
 
-    private boolean remindersOn() {
-        return settings().getBoolean("reminders", true);
-    }
-
     private int reminderMinutes() {
         return settings().getInt("reminder_minutes", 15);
     }
