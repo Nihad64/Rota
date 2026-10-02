@@ -31,7 +31,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Button;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -686,7 +685,7 @@ public class MainActivity extends Activity {
 
     private void addTopBar(LinearLayout page, boolean showBell, boolean showCalendar) {
         LinearLayout top = row();
-        ImageView logoView = logo(40);
+        ImageView logoView = logo(44);
         top.addView(logoView, new LinearLayout.LayoutParams(dp(40), dp(40)));
         LinearLayout tx = column();
         tx.setPadding(dp(10), 0, 0, 0);
