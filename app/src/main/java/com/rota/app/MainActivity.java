@@ -31,6 +31,25 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Button;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+import java.security.SecureRandom;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import android.util.Base64;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -103,14 +122,87 @@ public class MainActivity extends Activity {
         return settings().getBoolean("quick_plan", true);
     }
 
+    private boolean remindersOn() {
+        return settings().getBoolean("reminders", true);
+    }
+
+    private int reminderMinutes() {
+        return settings().getInt("reminder_minutes", 15);
+    }
+
+    private String reminderLabel() {
+        int m = reminderMinutes();
+        return m + " dakika önce";
+    }
+
+    private boolean hasAiKey() {
+        return loadAiKey() != null && !loadAiKey().trim().isEmpty();
+    }
+
+    private String loadAiKey() {
+        try {
+            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+            if (!ks.containsAlias("rotam_ai_key")) return "";
+            SecretKey key = ((KeyStore.SecretKeyEntry) ks.getEntry("rotam_ai_key", null)).getSecretKey();
+            String packed = settings().getString("ai_key_blob", "");
+            if (packed.isEmpty()) return "";
+            JSONObject o = new JSONObject(packed);
+            byte[] iv = Base64.decode(o.getString("iv"), Base64.DEFAULT);
+            byte[] data = Base64.decode(o.getString("data"), Base64.DEFAULT);
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
+            return new String(cipher.doFinal(data), StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private void saveAiKey(String value) {
+        try {
+            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+            SecretKey key;
+            if (ks.containsAlias("rotam_ai_key")) {
+                key = ((KeyStore.SecretKeyEntry) ks.getEntry("rotam_ai_key", null)).getSecretKey();
+            } else {
+                KeyGenerator kg = KeyGenerator.getInstance("AES", "AndroidKeyStore");
+                kg.init(256);
+                key = kg.generateKey();
+            }
+            byte[] iv = new byte[12];
+            new SecureRandom().nextBytes(iv);
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+            byte[] data = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
+            JSONObject o = new JSONObject();
+            o.put("iv", Base64.encodeToString(iv, Base64.NO_WRAP));
+            o.put("data", Base64.encodeToString(data, Base64.NO_WRAP));
+            settings().edit().putString("ai_key_blob", o.toString()).apply();
+        } catch (Exception ignored) {}
+    }
+
+    private void clearAiKey() {
+        settings().edit().remove("ai_key_blob").apply();
+    }
+
     private void tap(View v) {
         if (v != null) {
-            v.animate().scaleX(0.97f).scaleY(0.97f).setDuration(70)
-                    .withEndAction(() -> v.animate().scaleX(1f).scaleY(1f).setDuration(110).start()).start();
+            v.animate().scaleX(0.965f).scaleY(0.965f).setDuration(65)
+                    .withEndAction(() -> v.animate().scaleX(1f).scaleY(1f).setDuration(125).start()).start();
+            clickSound();
             if (hapticsOn()) {
                 try { v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); } catch (Exception ignored) {}
             }
         }
+    }
+
+    private void clickSound() {
+        try {
+            ToneGenerator tg = new ToneGenerator(AudioManager.STREAM_SYSTEM, 42);
+            tg.startTone(ToneGenerator.TONE_PROP_ACK, 28);
+            new android.os.Handler().postDelayed(tg::release, 65);
+        } catch (Exception ignored) {}
     }
 
     private void buildShell() {
@@ -513,30 +605,52 @@ public class MainActivity extends Activity {
 
         LinearLayout brand = card();
         LinearLayout br = row();
-        ImageView logo = logo(54);
-        br.addView(logo, new LinearLayout.LayoutParams(dp(54), dp(54)));
+        ImageView brandLogo = logo(52);
+        br.addView(brandLogo, new LinearLayout.LayoutParams(dp(52), dp(52)));
         LinearLayout bx = column();
         bx.addView(text("Rotam", 18, TEXT, true));
-        bx.addView(text("v0.4.0  ·  Daha düzenli bir sen.", 12, MUTED, false));
+        bx.addView(text("v0.6.0  ·  Daha düzenli bir sen.", 12, MUTED, false));
         br.addView(bx, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView arrow = text("›", 25, MUTED, false);
-        arrow.setGravity(Gravity.CENTER);
-        br.addView(arrow, new LinearLayout.LayoutParams(dp(30), dp(44)));
         brand.addView(br);
-        page.addView(brand, margin(20, 0, 20, 16));
+        page.addView(brand, margin(20, 0, 20, 18));
 
         page.addView(sectionTitle("Bildirimler"), margin(20, 0, 20, 7));
-        page.addView(settingRow("Bildirimler", "Plan saatinde hatırlatıcı göster", remindersOn(), true,
-                enabled -> settings().edit().putBoolean("reminders", enabled).apply()), margin(20, 0, 20, 8));
+        page.addView(settingRow("Bildirimler", "Planlardan önce bildirim gönder", remindersOn(), true,
+                enabled -> {
+                    settings().edit().putBoolean("reminders", enabled).apply();
+                    if (!enabled) {
+                        for (Plan p : plans) cancelReminder(p);
+                    } else {
+                        for (Plan p : plans) scheduleReminder(p);
+                    }
+                }), margin(20, 0, 20, 8));
+
+        LinearLayout reminderCard = settingCard();
+        LinearLayout reminderRow = row();
+        LinearLayout reminderText = column();
+        reminderText.addView(text("Hatırlatma zamanı", 15, TEXT, true));
+        reminderText.addView(text("Saatli planlardan ne kadar önce?", 11, MUTED, false));
+        reminderRow.addView(reminderText, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView reminderValue = buttonText(reminderLabel(), ORANGE);
+        reminderValue.setBackground(round(SURFACE_2, 15));
+        reminderValue.setPadding(dp(12), 0, dp(12), 0);
+        reminderRow.addView(reminderValue, new LinearLayout.LayoutParams(dp(118), dp(40)));
+        reminderCard.addView(reminderRow);
+        reminderCard.setOnClickListener(v -> {
+            tap(v);
+            showReminderChooser(reminderValue);
+        });
+        page.addView(reminderCard, margin(20, 0, 20, 8));
+
         page.addView(settingRow("Dokunma titreşimi", "Butonlarda hafif fiziksel geri bildirim", hapticsOn(), true,
                 enabled -> settings().edit().putBoolean("haptics", enabled).apply()), margin(20, 0, 20, 8));
         page.addView(settingRow("Hızlı plan", "Yeni plan açarken seçili günü koru", quickPlanOn(), true,
-                enabled -> settings().edit().putBoolean("quick_plan", enabled).apply()), margin(20, 0, 20, 16));
+                enabled -> settings().edit().putBoolean("quick_plan", enabled).apply()), margin(20, 0, 20, 18));
 
         page.addView(sectionTitle("Görünüm"), margin(20, 0, 20, 7));
         LinearLayout themeCard = settingCard();
         themeCard.addView(text("Tema", 16, TEXT, true));
-        themeCard.addView(text("Sadece iki seçenek: gece veya gündüz.", 12, MUTED, false), marginTop(3));
+        themeCard.addView(text("Gece veya gündüz görünümü.", 12, MUTED, false), marginTop(3));
         LinearLayout themeChoices = row();
         TextView dark = themeChoice("Gece", "dark".equals(settings().getString("theme", "dark")));
         TextView light = themeChoice("Gündüz", "light".equals(settings().getString("theme", "dark")));
@@ -544,23 +658,29 @@ public class MainActivity extends Activity {
         themeChoices.addView(space(8), new LinearLayout.LayoutParams(dp(8), 1));
         themeChoices.addView(light, new LinearLayout.LayoutParams(0, dp(44), 1));
         themeCard.addView(themeChoices, marginTop(12));
-        page.addView(themeCard, margin(20, 0, 20, 14));
+        page.addView(themeCard, margin(20, 0, 20, 18));
 
-        page.addView(sectionTitle("Rotam AI"), margin(20, 8, 20, 7));
+        page.addView(sectionTitle("Rotam AI"), margin(20, 0, 20, 7));
         LinearLayout ai = settingCard();
         LinearLayout ar = row();
         TextView sparkle = text("✦", 22, ORANGE, true);
         ar.addView(sparkle, new LinearLayout.LayoutParams(dp(34), dp(44)));
         LinearLayout ax = column();
-        ax.addView(text("Akıllı planlama", 16, TEXT, true));
-        ax.addView(text("Gününü analiz et ve öneriler al", 12, MUTED, false));
+        ax.addView(text("Yapay zekâ", 16, TEXT, true));
+        ax.addView(text(hasAiKey() ? "Bağlı · Bugününü analiz edebilir" : "OpenAI anahtarını ekle ve AI'ı etkinleştir", 12, MUTED, false));
         ar.addView(ax, new LinearLayout.LayoutParams(0, -2, 1));
         TextView aiArrow = text("›", 25, MUTED, false);
         aiArrow.setGravity(Gravity.CENTER);
         ar.addView(aiArrow, new LinearLayout.LayoutParams(dp(32), dp(44)));
         ai.addView(ar);
-        ai.setOnClickListener(v -> { tap(v); showSmartDialog(); });
+        ai.setOnClickListener(v -> { tap(v); showAiSetupDialog(); });
         page.addView(ai, margin(20, 0, 20, 8));
+
+        LinearLayout aiAction = settingCard();
+        aiAction.addView(text("Bugününü analiz et", 15, TEXT, true));
+        aiAction.addView(text("Planlarını okuyup gerçek AI önerisi al.", 11, MUTED, false));
+        aiAction.setOnClickListener(v -> { tap(v); showAiDialog(); });
+        page.addView(aiAction, margin(20, 0, 20, 8));
 
         LinearLayout about = settingCard();
         about.addView(text("Hakkında", 16, TEXT, true));
@@ -570,11 +690,11 @@ public class MainActivity extends Activity {
 
     private void addTopBar(LinearLayout page, boolean showBell, boolean showCalendar) {
         LinearLayout top = row();
-        ImageView logo = logo(38);
-        top.addView(logo, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        ImageView logoView = logo(40);
+        top.addView(logoView, new LinearLayout.LayoutParams(dp(40), dp(40)));
         LinearLayout tx = column();
         tx.setPadding(dp(10), 0, 0, 0);
-        tx.addView(text("Rotam", 16, TEXT, true));
+        tx.addView(text("Rotam", 17, TEXT, true));
         tx.addView(text("Daha düzenli bir sen.", 10, MUTED, false));
         top.addView(tx, new LinearLayout.LayoutParams(0, dp(44), 1));
 
@@ -587,11 +707,14 @@ public class MainActivity extends Activity {
             top.addView(bell, new LinearLayout.LayoutParams(dp(44), dp(44)));
         }
         if (showCalendar) {
-            TextView cal = iconButton("▦", false);
+            ImageView cal = new ImageView(this);
+            cal.setImageResource(R.drawable.ic_nav_calendar);
+            cal.setPadding(dp(10), dp(10), dp(10), dp(10));
+            cal.setBackground(round(SURFACE, 16));
             cal.setOnClickListener(v -> { tap(v); selectedDate = key(Calendar.getInstance()); monthCursor = Calendar.getInstance(); render(); });
             top.addView(cal, new LinearLayout.LayoutParams(dp(44), dp(44)));
         }
-        page.addView(top, margin(20, 10, 20, 0));
+        page.addView(top, margin(20, 10, 20, 4));
     }
 
     private View addPlanCard(Plan p, int index) {
@@ -720,12 +843,13 @@ public class MainActivity extends Activity {
     private void showPlanEditor(Plan editing, String initialDate) {
         final Dialog dialog = styledDialog();
         LinearLayout box = dialogBox();
+        box.setPadding(dp(18), dp(16), dp(18), dp(16));
 
         LinearLayout header = row();
         LinearLayout htext = column();
-        htext.addView(text(editing == null ? "Yeni plan" : "Planı düzenle", 24, TEXT, true));
-        htext.addView(text(editing == null ? "Hedeflerini planla, adım adım ilerle." : "Planındaki bilgileri güncelle.",
-                12, MUTED, false));
+        htext.addView(text(editing == null ? "Yeni plan" : "Planı düzenle", 23, TEXT, true));
+        htext.addView(text(editing == null ? "Gününü netleştir, tek adım seç." : "Plan bilgilerini güncelle.",
+                11, MUTED, false), marginTop(3));
         header.addView(htext, new LinearLayout.LayoutParams(0, -2, 1));
         TextView close = iconButton("×", false);
         close.setOnClickListener(v -> { tap(v); dialog.dismiss(); });
@@ -733,23 +857,25 @@ public class MainActivity extends Activity {
         box.addView(header);
 
         final String[] chosenDate = {initialDate};
-        TextView titleField = field("Plan adı",
-                editing == null ? "" : editing.title);
-        box.addView(titleField, marginTop(14));
+
+        TextView titleField = field("Plan adı", editing == null ? "" : editing.title);
+        titleField.setBackground(round(SURFACE_2, 15));
+        box.addView(titleField, new LinearLayout.LayoutParams(-1, dp(52)));
         titleField.setOnClickListener(v -> {
             tap(v);
             String currentTitle = "Plan adı ekle".equals(titleField.getText().toString()) ? "" : titleField.getText().toString();
-            showInputDialog("Plan adı", currentTitle, value -> titleField.setText(value));
+            showInputDialog("Plan adı", currentTitle, value -> titleField.setText(value.isEmpty() ? "Plan adı ekle" : value));
         });
 
         TextView dateField = field("Tarih", prettyDate(chosenDate[0]));
-        box.addView(dateField, marginTop(8));
+        dateField.setTextColor(TEXT);
+        box.addView(dateField, margin(8, 0, 0, 0));
         dateField.setOnClickListener(v -> { tap(v); showDateChooser(chosenDate[0], picked -> {
             chosenDate[0] = picked;
             dateField.setText(prettyDate(picked));
         }); });
 
-        box.addView(text("Plan türü", 11, MUTED, true), marginTop(14));
+        box.addView(text("Plan türü", 11, MUTED, true), margin(12, 0, 0, 0));
         LinearLayout chips = row();
         final LinearLayout[] timeRowHolder = {null};
         final TextView[] durationHintHolder = {null};
@@ -760,37 +886,38 @@ public class MainActivity extends Activity {
             String type = typeNames[i];
             TextView chip = text(type, 12, type.equals(selectedType[0]) ? Color.WHITE : TEXT, true);
             chip.setGravity(Gravity.CENTER);
-            chip.setBackground(round(type.equals(selectedType[0]) ? ORANGE : SURFACE_3, 17));
-            chip.setPadding(dp(6), 0, dp(6), 0);
+            chip.setBackground(round(type.equals(selectedType[0]) ? ORANGE : SURFACE_3, 15));
             final String typeCopy = type;
             chip.setOnClickListener(v -> {
                 tap(v);
                 selectedType[0] = typeCopy;
                 refreshChips(chipViews, typeCopy);
-                if (timeRowHolder[0] != null) {
-                    timeRowHolder[0].setVisibility(Plan.ALL_DAY.equals(typeCopy) ? View.GONE : View.VISIBLE);
-                }
-                if (durationHintHolder[0] != null) {
-                    durationHintHolder[0].setVisibility(Plan.ALL_DAY.equals(typeCopy) ? View.GONE : View.VISIBLE);
-                }
+                boolean hide = Plan.ALL_DAY.equals(typeCopy);
+                if (timeRowHolder[0] != null) timeRowHolder[0].setVisibility(hide ? View.GONE : View.VISIBLE);
+                if (durationHintHolder[0] != null) durationHintHolder[0].setVisibility(hide ? View.GONE : View.VISIBLE);
             });
             chipViews[i] = chip;
-            chips.addView(chip, new LinearLayout.LayoutParams(0, dp(42), 1));
+            chips.addView(chip, new LinearLayout.LayoutParams(0, dp(46), 1));
             if (i < 2) chips.addView(space(6), new LinearLayout.LayoutParams(dp(6), 1));
         }
-        box.addView(chips, marginTop(8));
+        box.addView(chips, marginTop(7));
 
         TextView start = field("Başlangıç", editing == null ? "" : safe(editing.startTime, editing.time));
         TextView end = field("Bitiş", editing == null ? "" : editing.endTime);
+        start.setTextSize(15);
+        end.setTextSize(15);
+        start.setGravity(Gravity.CENTER);
+        end.setGravity(Gravity.CENTER);
         LinearLayout timeRow = row();
-        timeRow.addView(start, new LinearLayout.LayoutParams(0, dp(58), 1));
+        timeRow.addView(start, new LinearLayout.LayoutParams(0, dp(64), 1));
         timeRow.addView(space(8), new LinearLayout.LayoutParams(dp(8), 1));
-        timeRow.addView(end, new LinearLayout.LayoutParams(0, dp(58), 1));
-        box.addView(timeRow, marginTop(8));
+        timeRow.addView(end, new LinearLayout.LayoutParams(0, dp(64), 1));
+        box.addView(timeRow, marginTop(7));
         start.setOnClickListener(v -> { tap(v); showTimeChooser(start, actualTime(start.getText().toString())); });
         end.setOnClickListener(v -> { tap(v); showTimeChooser(end, actualTime(end.getText().toString())); });
-        TextView durationHint = text("Süre başlangıç ve bitiş saatlerinden otomatik hesaplanır.", 11, MUTED, false);
-        box.addView(durationHint, marginTop(7));
+
+        TextView durationHint = text("Süre otomatik hesaplanır.", 10, MUTED, false);
+        box.addView(durationHint, marginTop(5));
         timeRowHolder[0] = timeRow;
         durationHintHolder[0] = durationHint;
         if (Plan.ALL_DAY.equals(selectedType[0])) {
@@ -798,39 +925,23 @@ public class MainActivity extends Activity {
             durationHint.setVisibility(View.GONE);
         }
 
-        TextView note = field("Not", "");
-        box.addView(note, marginTop(12));
+        TextView note = field("Not", editing == null ? "" : (editing.note == null ? "" : editing.note));
+        box.addView(note, margin(0, 10, 0, 0));
         note.setOnClickListener(v -> {
             tap(v);
             String currentNote = "Not ekle".equals(note.getText().toString()) ? "" : note.getText().toString();
-            showInputDialog("Not", currentNote, value -> note.setText(value));
+            showInputDialog("Not", currentNote, value -> note.setText(value.isEmpty() ? "Not ekle" : value));
         });
-
-        LinearLayout reminder = settingCard();
-        LinearLayout rr = row();
-        LinearLayout rt = column();
-        rt.addView(text("Hatırlatma", 14, TEXT, true));
-        rt.addView(text("Plan başlamadan 15 dk önce", 11, MUTED, false));
-        rr.addView(rt, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView reminderState = toggle(remindersOn());
-        rr.addView(reminderState, new LinearLayout.LayoutParams(dp(62), dp(34)));
-        reminder.addView(rr);
-        reminder.setOnClickListener(v -> {
-            tap(v);
-            boolean on = "Kapalı".equals(String.valueOf(reminderState.getTag()));
-            setToggle(reminderState, on);
-        });
-        box.addView(reminder, marginTop(12));
 
         LinearLayout buttons = row();
         TextView cancel = buttonText("Vazgeç", MUTED);
         TextView save = buttonText(editing == null ? "Planı oluştur" : "Kaydet", Color.WHITE);
         save.setGravity(Gravity.CENTER);
-        save.setBackground(round(ORANGE, 20));
-        buttons.addView(cancel, new LinearLayout.LayoutParams(dp(100), dp(52)));
+        save.setBackground(round(ORANGE, 18));
+        buttons.addView(cancel, new LinearLayout.LayoutParams(dp(98), dp(52)));
         buttons.addView(space(8), new LinearLayout.LayoutParams(dp(8), 1));
         buttons.addView(save, new LinearLayout.LayoutParams(0, dp(52), 1));
-        box.addView(buttons, marginTop(14));
+        box.addView(buttons, marginTop(12));
 
         cancel.setOnClickListener(v -> { tap(v); dialog.dismiss(); });
         save.setOnClickListener(v -> {
@@ -838,7 +949,7 @@ public class MainActivity extends Activity {
             String t = titleField.getText().toString().trim();
             if ("Plan adı ekle".equals(t)) t = "";
             if (t.isEmpty()) {
-                showInputDialog("Plan adı", "", value -> titleField.setText(value));
+                showInputDialog("Plan adı", "", value -> titleField.setText(value.isEmpty() ? "Plan adı ekle" : value));
                 return;
             }
 
@@ -849,6 +960,7 @@ public class MainActivity extends Activity {
             p.type = selectedType[0];
             p.startTime = actualTime(start.getText().toString());
             p.endTime = actualTime(end.getText().toString());
+            p.note = "Not ekle".equals(note.getText().toString()) ? "" : note.getText().toString().trim();
 
             if (Plan.ALL_DAY.equals(p.type)) {
                 p.startTime = "";
@@ -862,9 +974,7 @@ public class MainActivity extends Activity {
 
             if (editing == null) plans.add(p);
             PlanStore.save(this, plans);
-
-            if (reminderEnabled(reminderState)) scheduleReminder(p);
-            else cancelReminder(p);
+            scheduleReminder(p);
 
             selectedDate = p.date;
             monthCursor = parseKey(p.date);
@@ -893,18 +1003,19 @@ public class MainActivity extends Activity {
     private void showTimeChooser(TextView target, String existing) {
         final Dialog dialog = styledDialog();
         LinearLayout box = dialogBox();
+        box.setPadding(dp(18), dp(16), dp(18), dp(16));
 
         LinearLayout head = row();
         LinearLayout ht = column();
         ht.addView(text("Saat seç", 23, TEXT, true));
-        ht.addView(text("Başlangıç veya bitiş saatini belirle.", 12, MUTED, false));
+        ht.addView(text("Parmağını yukarı veya aşağı kaydır.", 11, MUTED, false), marginTop(3));
         head.addView(ht, new LinearLayout.LayoutParams(0, -2, 1));
         TextView close = iconButton("×", false);
         head.addView(close, new LinearLayout.LayoutParams(dp(44), dp(44)));
         box.addView(head);
 
         Calendar c = Calendar.getInstance();
-        if (existing != null && existing.matches("\\d{2}:\\d{2}")) {
+        if (existing != null && existing.matches("\d{2}:\d{2}")) {
             c.set(Calendar.HOUR_OF_DAY, Integer.parseInt(existing.substring(0,2)));
             c.set(Calendar.MINUTE, Integer.parseInt(existing.substring(3)));
         }
@@ -912,25 +1023,44 @@ public class MainActivity extends Activity {
 
         TextView preview = text(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]), 34, TEXT, true);
         preview.setGravity(Gravity.CENTER);
-        preview.setBackground(round(SURFACE_2, 20));
-        box.addView(preview, new LinearLayout.LayoutParams(-1, dp(72)));
+        preview.setBackground(round(SURFACE_2, 18));
+        box.addView(preview, marginTop(10));
+        preview.getLayoutParams().height = dp(62);
 
         LinearLayout wheel = row();
         wheel.setGravity(Gravity.CENTER);
-        wheel.addView(timeColumn("Saat", hm, 0, preview), new LinearLayout.LayoutParams(0, dp(220), 1));
-        wheel.addView(text(":", 34, TEXT, true), new LinearLayout.LayoutParams(dp(34), dp(80)));
-        wheel.addView(timeColumn("Dakika", hm, 1, preview), new LinearLayout.LayoutParams(0, dp(220), 1));
-        box.addView(wheel, marginTop(14));
+        WheelNumber hourWheel = new WheelNumber(this, 24, hm[0], v -> {
+            hm[0] = v;
+            preview.setText(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]));
+        });
+        WheelNumber minuteWheel = new WheelNumber(this, 60, hm[1], v -> {
+            hm[1] = v;
+            preview.setText(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]));
+        });
+        wheel.addView(hourWheel, new LinearLayout.LayoutParams(0, dp(176), 1));
+        TextView colon = text(":", 32, TEXT, true);
+        colon.setGravity(Gravity.CENTER);
+        wheel.addView(colon, new LinearLayout.LayoutParams(dp(28), dp(90)));
+        wheel.addView(minuteWheel, new LinearLayout.LayoutParams(0, dp(176), 1));
+        box.addView(wheel, marginTop(8));
+
+        LinearLayout labels = row();
+        TextView h = text("SAAT", 10, MUTED, true); h.setGravity(Gravity.CENTER);
+        TextView mn = text("DAKİKA", 10, MUTED, true); mn.setGravity(Gravity.CENTER);
+        labels.addView(h, new LinearLayout.LayoutParams(0, dp(22), 1));
+        labels.addView(space(28), new LinearLayout.LayoutParams(dp(28), 1));
+        labels.addView(mn, new LinearLayout.LayoutParams(0, dp(22), 1));
+        box.addView(labels);
 
         LinearLayout buttons = row();
         TextView cancel = buttonText("Vazgeç", MUTED);
         TextView save = buttonText("Saati seç", Color.WHITE);
         save.setGravity(Gravity.CENTER);
-        save.setBackground(round(ORANGE, 20));
-        buttons.addView(cancel, new LinearLayout.LayoutParams(dp(100), dp(52)));
+        save.setBackground(round(ORANGE, 18));
+        buttons.addView(cancel, new LinearLayout.LayoutParams(dp(98), dp(52)));
         buttons.addView(space(8), new LinearLayout.LayoutParams(dp(8), 1));
         buttons.addView(save, new LinearLayout.LayoutParams(0, dp(52), 1));
-        box.addView(buttons, marginTop(14));
+        box.addView(buttons, marginTop(10));
 
         close.setOnClickListener(v -> { tap(v); dialog.dismiss(); });
         cancel.setOnClickListener(v -> { tap(v); dialog.dismiss(); });
@@ -945,78 +1075,113 @@ public class MainActivity extends Activity {
         fitDialog(dialog, 0.88f);
     }
 
-    private LinearLayout timeColumn(String label, int[] hm, int index, TextView preview) {
-        LinearLayout c = column();
-        c.setGravity(Gravity.CENTER);
-        c.setPadding(dp(4), 0, dp(4), 0);
-        c.addView(text(label, 11, MUTED, true));
+    private class WheelNumber extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int max;
+        private int value;
+        private float downY;
+        private float offset;
+        private float rowHeight;
+        private float lastSoundValue;
+        private final ValueCallbackInt callback;
 
-        LinearLayout wheel = column();
-        wheel.setGravity(Gravity.CENTER);
-        wheel.setBackground(round(SURFACE_2, 22));
+        WheelNumber(Context context, int max, int initial, ValueCallbackInt callback) {
+            super(context);
+            this.max = max;
+            this.value = Math.max(0, Math.min(max - 1, initial));
+            this.callback = callback;
+            paint.setTypeface(Typeface.create("sans", Typeface.NORMAL));
+            setBackground(round(SURFACE_2, 20));
+            setFocusable(true);
+        }
 
-        TextView before = text("", 17, MUTED, false);
-        before.setGravity(Gravity.CENTER);
-        TextView value = text(String.format(Locale.GERMANY, "%02d", hm[index]), 34, TEXT, true);
-        value.setGravity(Gravity.CENTER);
-        TextView after = text("", 17, MUTED, false);
-        after.setGravity(Gravity.CENTER);
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            rowHeight = dp(48);
+            float cx = getWidth() / 2f;
+            float cy = getHeight() / 2f + offset;
 
-        wheel.addView(before, new LinearLayout.LayoutParams(-1, dp(34)));
-        wheel.addView(value, new LinearLayout.LayoutParams(-1, dp(58)));
-        wheel.addView(after, new LinearLayout.LayoutParams(-1, dp(34)));
+            drawNumber(canvas, wrap(value - 1), cx, cy - rowHeight);
+            drawNumber(canvas, value, cx, cy);
+            drawNumber(canvas, wrap(value + 1), cx, cy + rowHeight);
 
-        Runnable refresh = () -> {
-            int max = index == 0 ? 23 : 59;
-            int current = hm[index];
-            before.setText(String.format(Locale.GERMANY, "%02d", (current - 1 + max + 1) % (max + 1)));
-            value.setText(String.format(Locale.GERMANY, "%02d", current));
-            after.setText(String.format(Locale.GERMANY, "%02d", (current + 1) % (max + 1)));
-            preview.setText(String.format(Locale.GERMANY, "%02d:%02d", hm[0], hm[1]));
-        };
-        refresh.run();
+            Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
+            line.setColor(ORANGE);
+            line.setStrokeWidth(dp(2));
+            canvas.drawLine(dp(14), getHeight()/2f - rowHeight/2f, getWidth()-dp(14), getHeight()/2f - rowHeight/2f, line);
+            canvas.drawLine(dp(14), getHeight()/2f + rowHeight/2f, getWidth()-dp(14), getHeight()/2f + rowHeight/2f, line);
+        }
 
-        final float[] downY = {0f};
-        final boolean[] moved = {false};
-        wheel.setOnTouchListener((v, event) -> {
+        private void drawNumber(Canvas canvas, int n, float x, float y) {
+            float dist = Math.abs(y - getHeight()/2f);
+            float scale = Math.max(0.78f, 1f - dist / dp(180));
+            paint.setTextSize(dp(30) * scale);
+            paint.setColor(dist < dp(18) ? TEXT : MUTED);
+            paint.setTypeface(Typeface.create("sans", dist < dp(18) ? Typeface.BOLD : Typeface.NORMAL));
+            String s = String.format(Locale.GERMANY, "%02d", n);
+            Paint.FontMetrics fm = paint.getFontMetrics();
+            canvas.drawText(s, x - paint.measureText(s)/2f, y - (fm.ascent + fm.descent)/2f, paint);
+        }
+
+        private int wrap(int n) {
+            int x = n % max;
+            return x < 0 ? x + max : x;
+        }
+
+        @Override public boolean onTouchEvent(MotionEvent event) {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    downY[0] = event.getY();
-                    moved[0] = false;
+                    downY = event.getY();
+                    lastSoundValue = value;
                     return true;
                 case MotionEvent.ACTION_MOVE:
-                    float dy = event.getY() - downY[0];
-                    if (Math.abs(dy) >= dp(24)) {
-                        int max = index == 0 ? 23 : 59;
-                        hm[index] = dy < 0 ? (hm[index] + 1) % (max + 1) : (hm[index] - 1 + max + 1) % (max + 1);
-                        downY[0] = event.getY();
-                        moved[0] = true;
-                        refresh.run();
+                    float dy = event.getY() - downY;
+                    offset = dy;
+                    while (offset <= -rowHeight) {
+                        offset += rowHeight;
+                        value = wrap(value + 1);
                         tickSound();
-                        wheel.animate().scaleX(0.985f).scaleY(0.985f).setDuration(45)
-                                .withEndAction(() -> wheel.animate().scaleX(1f).scaleY(1f).setDuration(70).start()).start();
+                        callback.value(value);
                     }
+                    while (offset >= rowHeight) {
+                        offset -= rowHeight;
+                        value = wrap(value - 1);
+                        tickSound();
+                        callback.value(value);
+                    }
+                    invalidate();
                     return true;
                 case MotionEvent.ACTION_UP:
-                    if (!moved[0]) {
-                        float center = wheel.getHeight() / 2f;
-                        int limit = index == 0 ? 24 : 60;
-                        if (event.getY() < center) hm[index] = (hm[index] - 1 + limit) % limit;
-                        else hm[index] = (hm[index] + 1) % limit;
-                        refresh.run();
-                        tickSound();
+                case MotionEvent.ACTION_CANCEL:
+                    float snap = offset;
+                    if (Math.abs(snap) > rowHeight / 2f) {
+                        if (snap < 0) {
+                            value = wrap(value + 1);
+                            tickSound();
+                        } else {
+                            value = wrap(value - 1);
+                            tickSound();
+                        }
+                        callback.value(value);
                     }
+                    animate().setDuration(140).start();
+                    final float from = offset;
+                    new android.animation.ValueAnimator().ofFloat(from, 0f).setDuration(140).addUpdateListener(a -> {
+                        offset = (float)a.getAnimatedValue();
+                        invalidate();
+                    });
+                    android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofFloat(from, 0f);
+                    anim.setDuration(140);
+                    anim.setInterpolator(new android.view.animation.DecelerateInterpolator());
+                    anim.addUpdateListener(a -> { offset = (float)a.getAnimatedValue(); invalidate(); });
+                    anim.start();
                     return true;
             }
             return true;
-        });
-
-        c.addView(wheel, new LinearLayout.LayoutParams(-1, dp(126)));
-        TextView hint = text("Yukarı / aşağı kaydır", 10, MUTED, false);
-        hint.setGravity(Gravity.CENTER);
-        c.addView(hint, new LinearLayout.LayoutParams(-1, dp(26)));
-        return c;
+        }
     }
+
+    private interface ValueCallbackInt { void value(int value); }
 
     private TextView findPreview(ViewGroup parent) {
         for (int i = 0; i < parent.getChildCount(); i++) {
@@ -1247,16 +1412,258 @@ public class MainActivity extends Activity {
         final Dialog d = styledDialog();
         LinearLayout box = dialogBox();
         box.addView(text("Bildirimler", 22, TEXT, true));
-        box.addView(text(remindersOn() ? "Hatırlatmalar açık. Saatli planlar 15 dakika önce bildirim oluşturur." :
-                "Hatırlatmalar kapalı.", 13, MUTED, false), marginTop(6));
-        TextView close = buttonText("Tamam", Color.WHITE);
-        close.setGravity(Gravity.CENTER);
-        close.setBackground(round(ORANGE, 18));
-        box.addView(close, marginTop(14));
+        box.addView(text(remindersOn()
+                ? "Saatli planlarda " + reminderLabel() + " önce bildirim gönderilir."
+                : "Bildirimler kapalı.", 13, MUTED, false), marginTop(6));
+        TextView settingsBtn = buttonText("Bildirim ayarları", Color.WHITE);
+        settingsBtn.setGravity(Gravity.CENTER);
+        settingsBtn.setBackground(round(ORANGE, 18));
+        box.addView(settingsBtn, marginTop(14));
+        TextView close = buttonText("Kapat", MUTED);
+        box.addView(close, marginTop(4));
+        settingsBtn.setOnClickListener(v -> {
+            tap(v);
+            d.dismiss();
+            tab = 2;
+            render();
+        });
         close.setOnClickListener(v -> { tap(v); d.dismiss(); });
         d.setContentView(box);
         d.show();
         fitDialog(d, 0.86f);
+    }
+
+    private void showReminderChooser(TextView target) {
+        final Dialog d = styledDialog();
+        LinearLayout box = dialogBox();
+        box.addView(text("Hatırlatma zamanı", 22, TEXT, true));
+        box.addView(text("Saatli planlardan ne kadar önce bildirim gelsin?", 12, MUTED, false), marginTop(4));
+
+        int[] values = {5, 10, 15, 30, 60};
+        String[] labels = {"5 dakika", "10 dakika", "15 dakika", "30 dakika", "1 saat"};
+        for (int i = 0; i < values.length; i++) {
+            final int minutes = values[i];
+            TextView option = buttonText(labels[i], minutes == reminderMinutes() ? Color.WHITE : TEXT);
+            option.setGravity(Gravity.CENTER_VERTICAL);
+            option.setPadding(dp(14), 0, dp(14), 0);
+            option.setBackground(round(minutes == reminderMinutes() ? ORANGE : SURFACE_2, 15));
+            box.addView(option, marginTop(i == 0 ? 12 : 6));
+            option.setOnClickListener(v -> {
+                tap(v);
+                settings().edit().putInt("reminder_minutes", minutes).apply();
+                target.setText(reminderLabel());
+                for (Plan p : plans) scheduleReminder(p);
+                d.dismiss();
+            });
+        }
+        TextView cancel = buttonText("Vazgeç", MUTED);
+        box.addView(cancel, marginTop(10));
+        cancel.setOnClickListener(v -> { tap(v); d.dismiss(); });
+        d.setContentView(box);
+        d.show();
+        fitDialog(d, 0.84f);
+    }
+
+    private void showAiSetupDialog() {
+        final Dialog d = styledDialog();
+        LinearLayout box = dialogBox();
+        box.addView(text("Rotam AI", 23, TEXT, true));
+        box.addView(text("Gerçek yapay zekâ önerileri için OpenAI API anahtarını ekle.", 12, MUTED, false), marginTop(4));
+
+        EditText keyInput = new EditText(this);
+        keyInput.setSingleLine(true);
+        keyInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        keyInput.setTextColor(TEXT);
+        keyInput.setHintTextColor(MUTED);
+        keyInput.setHint(hasAiKey() ? "Anahtar kayıtlı · değiştirmek için yaz" : "sk-...");
+        keyInput.setPadding(dp(14), 0, dp(14), 0);
+        keyInput.setBackground(round(SURFACE_2, 15));
+        box.addView(keyInput, marginTop(12));
+
+        TextView save = buttonText("AI'ı bağla", Color.WHITE);
+        save.setGravity(Gravity.CENTER);
+        save.setBackground(round(ORANGE, 18));
+        box.addView(save, marginTop(10));
+
+        if (hasAiKey()) {
+            TextView clear = buttonText("Anahtarı kaldır", RED);
+            box.addView(clear, marginTop(4));
+            clear.setOnClickListener(v -> {
+                tap(v);
+                clearAiKey();
+                d.dismiss();
+                render();
+            });
+        }
+        TextView close = buttonText("Kapat", MUTED);
+        box.addView(close, marginTop(4));
+
+        save.setOnClickListener(v -> {
+            tap(v);
+            String value = keyInput.getText().toString().trim();
+            if (value.isEmpty()) {
+                showInputDialog("OpenAI API anahtarı", "", entered -> {
+                    if (!entered.trim().isEmpty()) saveAiKey(entered.trim());
+                    d.dismiss();
+                    render();
+                });
+                return;
+            }
+            saveAiKey(value);
+            d.dismiss();
+            render();
+        });
+        close.setOnClickListener(v -> { tap(v); d.dismiss(); });
+
+        d.setContentView(box);
+        d.show();
+        fitDialog(d, 0.88f);
+    }
+
+    private void showAiDialog() {
+        if (!hasAiKey()) {
+            showAiSetupDialog();
+            return;
+        }
+
+        final Dialog d = styledDialog();
+        LinearLayout box = dialogBox();
+        box.addView(text("Rotam AI", 23, TEXT, true));
+        box.addView(text("Bugününü planlarına göre analiz et.", 12, MUTED, false), marginTop(4));
+
+        EditText question = new EditText(this);
+        question.setSingleLine(false);
+        question.setMinLines(2);
+        question.setTextColor(TEXT);
+        question.setHintTextColor(MUTED);
+        question.setHint("Örn. Bugün neyi öne almalıyım?");
+        question.setGravity(Gravity.TOP | Gravity.START);
+        question.setPadding(dp(14), dp(12), dp(14), dp(12));
+        question.setBackground(round(SURFACE_2, 16));
+        box.addView(question, marginTop(12));
+
+        TextView ask = buttonText("AI'a sor", Color.WHITE);
+        ask.setGravity(Gravity.CENTER);
+        ask.setBackground(round(ORANGE, 18));
+        box.addView(ask, marginTop(10));
+
+        TextView result = text("AI cevabı burada görünecek.", 14, MUTED, false);
+        result.setPadding(dp(4), dp(10), dp(4), 0);
+        box.addView(result);
+
+        TextView close = buttonText("Kapat", MUTED);
+        box.addView(close, marginTop(6));
+
+        ask.setOnClickListener(v -> {
+            tap(v);
+            String q = question.getText().toString().trim();
+            if (q.isEmpty()) q = "Bugünkü programımı analiz et ve uygulanabilir, kısa bir öneri ver.";
+            String context = buildAiContext();
+            result.setText("AI düşünüyor…");
+            ask.setEnabled(false);
+            final String prompt = q + "\n\nKullanıcının Rotam planları:\n" + context
+                    + "\n\nTürkçe cevap ver. Kısa, net ve uygulanabilir ol. Plan oluşturma konusunda somut öneriler sun.";
+            new Thread(() -> {
+                final String answer = callOpenAi(prompt);
+                runOnUiThread(() -> {
+                    result.setText(answer);
+                    ask.setEnabled(true);
+                });
+            }).start();
+        });
+
+        close.setOnClickListener(v -> { tap(v); d.dismiss(); });
+        d.setContentView(box);
+        d.show();
+        fitDialog(d, 0.92f);
+    }
+
+    private String buildAiContext() {
+        StringBuilder sb = new StringBuilder();
+        String today = key(Calendar.getInstance());
+        for (Plan p : plansFor(today)) {
+            sb.append("- ").append(p.title);
+            if (p.startTime != null && !p.startTime.isEmpty()) sb.append(" (").append(p.startTime);
+            if (p.endTime != null && !p.endTime.isEmpty()) sb.append("–").append(p.endTime);
+            if (p.startTime != null && !p.startTime.isEmpty()) sb.append(")");
+            sb.append(p.done ? " [tamamlandı]" : " [bekliyor]");
+            if (p.note != null && !p.note.isEmpty()) sb.append(" — ").append(p.note);
+            sb.append("\n");
+        }
+        if (sb.length() == 0) sb.append("- Bugün için henüz plan yok.\n");
+        return sb.toString();
+    }
+
+    private String callOpenAi(String prompt) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://api.openai.com/v1/responses");
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(30000);
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Authorization", "Bearer " + loadAiKey());
+            conn.setRequestProperty("Content-Type", "application/json");
+            JSONObject body = new JSONObject();
+            body.put("model", "gpt-6-luna");
+            body.put("instructions", "Sen Rotam uygulamasının planlama asistanısın. Kullanıcının planlarını düzenlemesine, önceliklendirmesine ve günü gerçekçi biçimde planlamasına yardım et.");
+            body.put("input", prompt);
+            body.put("max_output_tokens", 450);
+            byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
+            try (OutputStream out = conn.getOutputStream()) {
+                out.write(bytes);
+            }
+            int code = conn.getResponseCode();
+            InputStream stream = code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream();
+            String raw = readStream(stream);
+            if (code < 200 || code >= 300) {
+                return "AI bağlantısı başarısız (" + code + "). API anahtarını ve API hesabını kontrol et.";
+            }
+            JSONObject response = new JSONObject(raw);
+            String output = extractOutputText(response);
+            return output.isEmpty() ? "AI boş bir cevap döndürdü." : output;
+        } catch (Exception e) {
+            return "AI bağlantısı kurulamadı. İnternet bağlantını ve API anahtarını kontrol et.";
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private String readStream(InputStream in) throws Exception {
+        if (in == null) return "";
+        StringBuilder sb = new StringBuilder();
+        BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+        String line;
+        while ((line = br.readLine()) != null) sb.append(line);
+        br.close();
+        return sb.toString();
+    }
+
+    private String extractOutputText(JSONObject root) {
+        try {
+            String direct = root.optString("output_text", "");
+            if (!direct.isEmpty()) return direct;
+            JSONArray output = root.optJSONArray("output");
+            if (output == null) return "";
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < output.length(); i++) {
+                JSONObject item = output.optJSONObject(i);
+                if (item == null) continue;
+                JSONArray content = item.optJSONArray("content");
+                if (content == null) continue;
+                for (int j = 0; j < content.length(); j++) {
+                    JSONObject part = content.optJSONObject(j);
+                    if (part != null) {
+                        String t = part.optString("text", "");
+                        if (!t.isEmpty()) sb.append(t).append("\n");
+                    }
+                }
+            }
+            return sb.toString().trim();
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     private LinearLayout settingRow(String title, String sub, boolean on, boolean showState, ToggleCallback cb) {
@@ -1387,7 +1794,7 @@ public class MainActivity extends Activity {
 
     private LinearLayout dialogBox() {
         LinearLayout box = column();
-        box.setPadding(dp(20), dp(18), dp(20), dp(18));
+        box.setPadding(dp(18), dp(16), dp(18), dp(16));
         box.setBackground(round(Color.rgb(14, 17, 21), 28));
         return box;
     }
@@ -1555,7 +1962,7 @@ public class MainActivity extends Activity {
         alarm.set(Calendar.MINUTE, minute);
         alarm.set(Calendar.SECOND, 0);
         alarm.set(Calendar.MILLISECOND, 0);
-        alarm.add(Calendar.MINUTE, -15);
+        alarm.add(Calendar.MINUTE, -reminderMinutes());
         if (alarm.getTimeInMillis() <= System.currentTimeMillis()) return;
 
         Intent intent = new Intent(this, ReminderReceiver.class);
