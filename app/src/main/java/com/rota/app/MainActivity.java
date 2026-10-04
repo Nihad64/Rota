@@ -139,50 +139,15 @@ public class MainActivity extends Activity {
     }
 
     private String loadAiKey() {
-        try {
-            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
-            ks.load(null);
-            if (!ks.containsAlias("rotam_ai_key")) return "";
-            SecretKey key = ((KeyStore.SecretKeyEntry) ks.getEntry("rotam_ai_key", null)).getSecretKey();
-            String packed = settings().getString("ai_key_blob", "");
-            if (packed.isEmpty()) return "";
-            JSONObject o = new JSONObject(packed);
-            byte[] iv = Base64.decode(o.getString("iv"), Base64.DEFAULT);
-            byte[] data = Base64.decode(o.getString("data"), Base64.DEFAULT);
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
-            return new String(cipher.doFinal(data), StandardCharsets.UTF_8);
-        } catch (Exception ignored) {
-            return "";
-        }
+        return settings().getString("gemini_api_key", "");
     }
 
-    private void saveAiKey(String value) {
-        try {
-            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
-            ks.load(null);
-            SecretKey key;
-            if (ks.containsAlias("rotam_ai_key")) {
-                key = ((KeyStore.SecretKeyEntry) ks.getEntry("rotam_ai_key", null)).getSecretKey();
-            } else {
-                KeyGenerator kg = KeyGenerator.getInstance("AES", "AndroidKeyStore");
-                kg.init(256);
-                key = kg.generateKey();
-            }
-            byte[] iv = new byte[12];
-            new SecureRandom().nextBytes(iv);
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
-            byte[] data = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
-            JSONObject o = new JSONObject();
-            o.put("iv", Base64.encodeToString(iv, Base64.NO_WRAP));
-            o.put("data", Base64.encodeToString(data, Base64.NO_WRAP));
-            settings().edit().putString("ai_key_blob", o.toString()).apply();
-        } catch (Exception ignored) {}
+    private boolean saveAiKey(String value) {
+        return settings().edit().putString("gemini_api_key", value).commit();
     }
 
     private void clearAiKey() {
-        settings().edit().remove("ai_key_blob").apply();
+        settings().edit().remove("gemini_api_key").apply();
     }
 
     private void tap(View v) {
