@@ -565,7 +565,7 @@ public class MainActivity extends Activity {
 
         if (showBell) {
             ImageView bell = new ImageView(this);
-            bell.setImageResource(R.drawable.ic_bell);
+            bell.setImageResource(R.drawable.ic_notification_bell);
             bell.setColorFilter(TEXT);
             bell.setPadding(dp(10), dp(10), dp(10), dp(10));
             bell.setBackground(round(SURFACE, 18));
@@ -808,117 +808,13 @@ public class MainActivity extends Activity {
         @Override public boolean onTouchEvent(MotionEvent e){switch(e.getActionMasked()){
             case MotionEvent.ACTION_DOWN:if(!scroller.isFinished())scroller.forceFinished(true);lastY=e.getY();vt=android.view.VelocityTracker.obtain();vt.addMovement(e);return true;
             case MotionEvent.ACTION_MOVE:float dy=e.getY()-lastY;lastY=e.getY();offset+=dy;consume();vt.addMovement(e);invalidate();return true;
-            case MotionEvent.ACTION_UP:vt.addMovement(e);vt.computeCurrentVelocity(1000);float vy=vt.getYVelocity();vt.recycle();vt=null;if(Math.abs(vy)>420){int dy=(int)(-Math.max(-1700,Math.min(1700,vy))*0.22f);scroller.startScroll(0,0,0,dy,330);postInvalidateOnAnimation();}else snap();return true;
+            case MotionEvent.ACTION_UP:vt.addMovement(e);vt.computeCurrentVelocity(1000);float vy=vt.getYVelocity();vt.recycle();vt=null;if(Math.abs(vy)>420){int flingDy=(int)(-Math.max(-1700,Math.min(1700,vy))*0.22f);scroller.startScroll(0,0,0,flingDy,330);postInvalidateOnAnimation();}else snap();return true;
             case MotionEvent.ACTION_CANCEL:if(vt!=null){vt.recycle();vt=null;}snap();return true;
         }return true;}
         private int wrap(int n){int x=n%max;return x<0?x+max:x;}
     }
 
-    private class WheelNumber extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final int max;
-        private int value;
-        private float downY;
-        private float offset;
-        private float rowHeight;
-        private float lastSoundValue;
-        private final ValueCallbackInt callback;
-
-        WheelNumber(Context context, int max, int initial, ValueCallbackInt callback) {
-            super(context);
-            this.max = max;
-            this.value = Math.max(0, Math.min(max - 1, initial));
-            this.callback = callback;
-            paint.setTypeface(Typeface.create("sans", Typeface.NORMAL));
-            setBackground(round(SURFACE_2, 20));
-            setFocusable(true);
-        }
-
-        @Override protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            rowHeight = dp(48);
-            float cx = getWidth() / 2f;
-            float cy = getHeight() / 2f + offset;
-
-            drawNumber(canvas, wrap(value - 1), cx, cy - rowHeight);
-            drawNumber(canvas, value, cx, cy);
-            drawNumber(canvas, wrap(value + 1), cx, cy + rowHeight);
-
-            Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
-            line.setColor(ORANGE);
-            line.setStrokeWidth(dp(2));
-            canvas.drawLine(dp(14), getHeight()/2f - rowHeight/2f, getWidth()-dp(14), getHeight()/2f - rowHeight/2f, line);
-            canvas.drawLine(dp(14), getHeight()/2f + rowHeight/2f, getWidth()-dp(14), getHeight()/2f + rowHeight/2f, line);
-        }
-
-        private void drawNumber(Canvas canvas, int n, float x, float y) {
-            float dist = Math.abs(y - getHeight()/2f);
-            float scale = Math.max(0.78f, 1f - dist / dp(180));
-            paint.setTextSize(dp(30) * scale);
-            paint.setColor(dist < dp(18) ? TEXT : MUTED);
-            paint.setTypeface(Typeface.create("sans", dist < dp(18) ? Typeface.BOLD : Typeface.NORMAL));
-            String s = String.format(Locale.GERMANY, "%02d", n);
-            Paint.FontMetrics fm = paint.getFontMetrics();
-            canvas.drawText(s, x - paint.measureText(s)/2f, y - (fm.ascent + fm.descent)/2f, paint);
-        }
-
-        private int wrap(int n) {
-            int x = n % max;
-            return x < 0 ? x + max : x;
-        }
-
-        @Override public boolean onTouchEvent(MotionEvent event) {
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    downY = event.getY();
-                    lastSoundValue = value;
-                    return true;
-                case MotionEvent.ACTION_MOVE:
-                    float dy = event.getY() - downY;
-                    offset = dy;
-                    while (offset <= -rowHeight) {
-                        offset += rowHeight;
-                        value = wrap(value + 1);
-                        tickSound();
-                        callback.value(value);
-                    }
-                    while (offset >= rowHeight) {
-                        offset -= rowHeight;
-                        value = wrap(value - 1);
-                        tickSound();
-                        callback.value(value);
-                    }
-                    invalidate();
-                    return true;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    float snap = offset;
-                    if (Math.abs(snap) > rowHeight / 2f) {
-                        if (snap < 0) {
-                            value = wrap(value + 1);
-                            tickSound();
-                        } else {
-                            value = wrap(value - 1);
-                            tickSound();
-                        }
-                        callback.value(value);
-                    }
-                    animate().setDuration(140).start();
-                    final float from = offset;
-                    new android.animation.ValueAnimator().ofFloat(from, 0f).setDuration(140).addUpdateListener(a -> {
-                        offset = (float)a.getAnimatedValue();
-                        invalidate();
-                    });
-                    android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofFloat(from, 0f);
-                    anim.setDuration(140);
-                    anim.setInterpolator(new android.view.animation.DecelerateInterpolator());
-                    anim.addUpdateListener(a -> { offset = (float)a.getAnimatedValue(); invalidate(); });
-                    anim.start();
-                    return true;
-            }
-            return true;
-        }
-    }
+    
 
     private interface ValueCallbackInt { void value(int value); }
 
@@ -1409,12 +1305,14 @@ public class MainActivity extends Activity {
     private TextView chip(String s,boolean selected){TextView t=text(s,12,selected?Color.WHITE:TEXT,true);t.setGravity(Gravity.CENTER);t.setBackground(round(selected?ORANGE:SURFACE_2,16));return t;}
     private void setChip(TextView t,boolean selected){t.setTextColor(selected?Color.WHITE:TEXT);t.setBackground(round(selected?ORANGE:SURFACE_2,16));}
     private String durationBetweenSafe(String a,String b){return Plan.durationBetween(a,b);}
+    private LinearLayout buildCalendarEmptyCard(){LinearLayout c=card();c.addView(text("Bu gün için plan yok.",16,TEXT,true));c.addView(text("Takvimden bir gün seç veya yeni plan oluştur.",12,MUTED,false),marginTop(5));return c;}
+
     private String durationText(String a,String b){if(a==null||a.isEmpty())return "Başlangıç saatini seç.";if(b==null||b.isEmpty())return "Bitiş saati isteğe bağlı.";return "Süre: "+Plan.durationBetween(a,b);}
     private int countDone(List<Plan> list){int n=0;for(Plan p:list)if(p.done)n++;return n;}
     private String prettyLabel(String key){return capitalize(new SimpleDateFormat("EEE d MMM",tr).format(parseKey(key).getTime()));}
     private String repeatLabel(String v){if(Plan.REPEAT_DAILY.equals(v))return "Her gün";if(Plan.REPEAT_WEEKDAYS.equals(v))return "Hafta içi";if(Plan.REPEAT_WEEKLY.equals(v))return "Her hafta";return "Tek sefer";}
     private void addGap(LinearLayout l,int v){l.addView(space(v),new LinearLayout.LayoutParams(dp(v),1));}
-    private TextView settingAction(String title,String sub,String value,View.OnClickListener listener){LinearLayout c=settingCard();LinearLayout r=row();LinearLayout tx=column();tx.addView(text(title,15,TEXT,true));tx.addView(text(sub,11,MUTED,false),marginTop(3));r.addView(tx,new LinearLayout.LayoutParams(0,-2,1));TextView val=buttonText(value,ORANGE);val.setGravity(Gravity.CENTER);val.setBackground(round(ORANGE_SOFT,14));r.addView(val,new LinearLayout.LayoutParams(dp(92),dp(36)));c.addView(r);c.setOnClickListener(listener);return c;}
+    private LinearLayout settingAction(String title,String sub,String value,View.OnClickListener listener){LinearLayout c=settingCard();LinearLayout r=row();LinearLayout tx=column();tx.addView(text(title,15,TEXT,true));tx.addView(text(sub,11,MUTED,false),marginTop(3));r.addView(tx,new LinearLayout.LayoutParams(0,-2,1));TextView val=buttonText(value,ORANGE);val.setGravity(Gravity.CENTER);val.setBackground(round(ORANGE_SOFT,14));r.addView(val,new LinearLayout.LayoutParams(dp(92),dp(36)));c.addView(r);c.setOnClickListener(listener);return c;}
     private String quietStart(){return settings().getString("quiet_start","23:00");}
     private String quietEnd(){return settings().getString("quiet_end","08:00");}
     private String quietHoursLabel(){return quietStart()+" – "+quietEnd();}
@@ -1698,6 +1596,19 @@ public class MainActivity extends Activity {
             canvas.drawText(text, cx - tw / 2f, cy - (fm.ascent + fm.descent) / 2f, label);
         }
     }
+
+    @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){
+        super.onActivityResult(requestCode,resultCode,data);
+        if(requestCode==909&&resultCode==RESULT_OK&&data!=null&&data.getData()!=null){
+            try{
+                JSONArray array=new JSONArray();
+                for(Plan p:plans){JSONObject o=new JSONObject();o.put("id",p.id);o.put("date",p.date);o.put("title",p.title);o.put("type",p.type);o.put("time",p.time);o.put("duration",p.duration);o.put("done",p.done);o.put("startTime",p.startTime==null?"":p.startTime);o.put("endTime",p.endTime==null?"":p.endTime);o.put("note",p.note==null?"":p.note);o.put("repeat",p.repeat==null?Plan.REPEAT_NONE:p.repeat);array.put(o);}
+                OutputStream out=getContentResolver().openOutputStream(data.getData());if(out!=null){out.write(array.toString(2).getBytes(StandardCharsets.UTF_8));out.close();toast("Rotam yedeği kaydedildi.");}
+            }catch(Exception ignored){toast("Yedek oluşturulamadı.");}
+        }
+    }
+
+    private void toast(String message){android.widget.Toast.makeText(this,message,android.widget.Toast.LENGTH_SHORT).show();}
 
     private int dp(int v) {
         return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
