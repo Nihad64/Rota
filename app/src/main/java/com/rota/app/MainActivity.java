@@ -343,89 +343,132 @@ public class MainActivity extends Activity {
         }
     }
 
+
     private void renderToday() {
         Calendar now = Calendar.getInstance();
         String todayKey = key(now);
         selectedDate = todayKey;
         List<Plan> today = plansFor(todayKey);
-
         int done = countDone(today);
-        Plan next = null;
+        Plan nextPlan = null;
         for (Plan p : today) {
-            if (!p.done) { next = p; if (p.startTime != null && !p.startTime.isEmpty()) break; }
+            if (!p.done) { nextPlan = p; break; }
         }
 
         LinearLayout page = scrollColumn();
-        addTopBar(page, true, false);
 
-        LinearLayout intro = column();
-        intro.addView(text("Bugün", 31, TEXT, true));
-        intro.addView(text(capitalize(new SimpleDateFormat("EEEE · d MMMM", tr).format(now.getTime())),
-                14, MUTED, false), marginTop(3));
-        page.addView(intro, margin(18, 0, 18, 16));
+        LinearLayout header = row();
+        LinearLayout headText = column();
+        headText.addView(text("Bugün", 32, TEXT, true));
+        headText.addView(text(capitalize(new SimpleDateFormat("EEEE · d MMMM", tr).format(now.getTime())),
+                13, MUTED, false), marginTop(4));
+        header.addView(headText, new LinearLayout.LayoutParams(0, -2, 1));
 
-        LinearLayout focus = card();
-        LinearLayout fr = row();
-        LinearLayout left = column();
-        left.addView(text("GÜNÜN NABZI", 10, ORANGE, true));
-        left.addView(text(today.isEmpty() ? "Günü sen başlat." :
-                next != null ? next.title : "Bugünün bütün planları tamam.", 21, TEXT, true), marginTop(5));
-        left.addView(text(today.isEmpty() ? "Bir plan ekle, Rotam akışı oluştursun." :
-                done + " / " + today.size() + " tamamlandı", 12, MUTED, false), marginTop(4));
-        fr.addView(left, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView bell = iconButton("♧", false);
+        bell.setText("⌁");
+        bell.setTextSize(23);
+        bell.setTextColor(TEXT);
+        bell.setBackground(round(SURFACE, 17));
+        bell.setOnClickListener(v -> { tap(v); showNotificationInfo(); });
+        header.addView(bell, new LinearLayout.LayoutParams(dp(46), dp(46)));
+        page.addView(header, margin(18, 18, 18, 14));
+
+        LinearLayout progress = card();
+        progress.setPadding(dp(18), dp(18), dp(18), dp(18));
+        LinearLayout pr = row();
+        LinearLayout ptxt = column();
+        ptxt.addView(text("BUGÜNÜN DURUMU", 10, ORANGE, true));
+        String headline = today.isEmpty() ? "Henüz bir plan yok" :
+                nextPlan == null ? "Bugünün akışı tamamlandı" : nextPlan.title;
+        ptxt.addView(text(headline, 20, TEXT, true), marginTop(6));
+        ptxt.addView(text(today.isEmpty() ? "İlk planını ekleyerek başlayabilirsin." :
+                done + " / " + today.size() + " plan tamamlandı", 12, MUTED, false), marginTop(5));
+        pr.addView(ptxt, new LinearLayout.LayoutParams(0, -2, 1));
+
         ProgressRing ring = new ProgressRing(this);
-        float progress = today.isEmpty() ? 0f : done / (float) today.size();
-        ring.setProgress(progress);
-        ring.setLabel((int)(progress * 100f) + "%");
-        fr.addView(ring, new LinearLayout.LayoutParams(dp(88), dp(88)));
-        focus.addView(fr);
-        focus.addView(progressBar(done, today.size()), marginTop(14));
-        page.addView(focus, margin(18, 0, 18, 12));
+        float pct = today.isEmpty() ? 0f : done / (float) today.size();
+        ring.setProgress(pct);
+        ring.setLabel((int)(pct * 100f) + "%");
+        pr.addView(ring, new LinearLayout.LayoutParams(dp(82), dp(82)));
+        progress.addView(pr);
+        progress.addView(progressBar(done, today.size()), marginTop(15));
+        page.addView(progress, margin(18, 0, 18, 12));
 
-        LinearLayout stats=row();
-        stats.addView(statBox(String.valueOf(today.size()),"Plan"),new LinearLayout.LayoutParams(0,dp(68),1));
-        stats.addView(space(8),new LinearLayout.LayoutParams(dp(8),1));
-        stats.addView(statBox(String.valueOf(done),"Biten"),new LinearLayout.LayoutParams(0,dp(68),1));
-        stats.addView(space(8),new LinearLayout.LayoutParams(dp(8),1));
-        stats.addView(statBox(next==null?"—":planMeta(next),"Sıradaki"),new LinearLayout.LayoutParams(0,dp(68),1));
-        page.addView(stats,margin(18,0,18,16));
+        LinearLayout quick = row();
+        quick.addView(quickAction("＋", "Plan ekle", v -> {
+            tap(v); showPlanEditor(null, todayKey);
+        }), new LinearLayout.LayoutParams(0, dp(74), 1));
+        addGap(quick, 8);
+        quick.addView(quickAction("AI", "Günün özeti", v -> {
+            tap(v); showAiDialog();
+        }), new LinearLayout.LayoutParams(0, dp(74), 1));
+        page.addView(quick, margin(18, 0, 18, 18));
+
+        LinearLayout section = row();
+        section.addView(text("Bugünün akışı", 20, TEXT, true),
+                new LinearLayout.LayoutParams(0, -2, 1));
+        TextView count = text(today.size() + " plan", 11, MUTED, true);
+        section.addView(count);
+        page.addView(section, margin(18, 0, 18, 9));
+
+        if (today.isEmpty()) {
+            LinearLayout empty = card();
+            empty.setPadding(dp(18), dp(22), dp(18), dp(22));
+            TextView icon = text("＋", 28, ORANGE, true);
+            icon.setGravity(Gravity.CENTER);
+            empty.addView(icon, new LinearLayout.LayoutParams(-1, dp(36)));
+            TextView eTitle = text("Takvimini boş bırakma.", 18, TEXT, true);
+            eTitle.setGravity(Gravity.CENTER);
+            empty.addView(eTitle, marginTop(8));
+            TextView eSub = text("Bir saat, hedef veya tüm gün sürecek bir plan oluştur.", 12, MUTED, false);
+            eSub.setGravity(Gravity.CENTER);
+            empty.addView(eSub, marginTop(5));
+            TextView first = buttonText("İlk planı oluştur", Color.WHITE);
+            first.setBackground(round(ORANGE, 16));
+            empty.addView(first, margin(40, 15, 40, 0));
+            first.setOnClickListener(v -> { tap(v); showPlanEditor(null, todayKey); });
+            page.addView(empty, margin(18, 0, 18, 24));
+        } else {
+            for (int i = 0; i < today.size(); i++) {
+                page.addView(addPlanCard(today.get(i), i), margin(18, 0, 18, 9));
+            }
+        }
 
         if (settings().getBoolean("ai_suggestions", true)) {
-            LinearLayout ai=card();
-            ai.setBackground(round(ORANGE_SOFT,22));
-            LinearLayout ar=row();
-            TextView star=text("✦",23,ORANGE,true); star.setGravity(Gravity.CENTER);
-            ar.addView(star,new LinearLayout.LayoutParams(dp(38),dp(48)));
-            LinearLayout at=column();
-            at.addView(text("ROTAM AI",10,ORANGE,true));
-            at.addView(text(smartMessage(today),14,TEXT,true),marginTop(3));
-            at.addView(text(hasAiKey()?"Gemini ile analiz için dokun.":"Gemini'yi Ayarlar'dan bağla.",11,MUTED,false),marginTop(3));
-            ar.addView(at,new LinearLayout.LayoutParams(0,-2,1));
-            TextView arrow=text("›",28,MUTED,false);arrow.setGravity(Gravity.CENTER);
-            ar.addView(arrow,new LinearLayout.LayoutParams(dp(28),dp(44)));
-            ai.addView(ar);
-            ai.setOnClickListener(v->{tap(v);showAiDialog();});
-            page.addView(ai,margin(18,0,18,18));
-        }
-
-        LinearLayout ph=row();
-        ph.addView(text("Bugünün akışı",21,TEXT,true),new LinearLayout.LayoutParams(0,-2,1));
-        TextView add=text("+ Plan",12,ORANGE,true);ph.addView(add);
-        add.setOnClickListener(v->{tap(v);showPlanEditor(null,todayKey);});
-        page.addView(ph,margin(18,0,18,9));
-
-        if(today.isEmpty()){
-            LinearLayout empty=card();
-            empty.addView(text("Bugün boş.",18,TEXT,true));
-            empty.addView(text("Saatli, esnek veya tüm gün bir plan oluştur.",12,MUTED,false),marginTop(5));
-            TextView start=buttonText("İlk planı ekle",ORANGE);
-            empty.addView(start,marginTop(12));
-            start.setOnClickListener(v->{tap(v);showPlanEditor(null,todayKey);});
-            page.addView(empty,margin(18,0,18,24));
-        }else{
-            for(int i=0;i<today.size();i++) page.addView(addPlanCard(today.get(i),i),margin(18,0,18,9));
+            LinearLayout ai = row();
+            ai.setPadding(dp(16), dp(14), dp(16), dp(14));
+            ai.setBackground(round(SURFACE_2, 18));
+            TextView mark = text("✦", 21, ORANGE, true);
+            mark.setGravity(Gravity.CENTER);
+            ai.addView(mark, new LinearLayout.LayoutParams(dp(34), dp(44)));
+            LinearLayout at = column();
+            at.addView(text("ROTAM AI", 10, ORANGE, true));
+            at.addView(text(hasAiKey() ? "Gemini hazır. Bugünü birlikte düzenleyelim." :
+                    "Gemini'yi Ayarlar'dan bağla.", 13, TEXT, true), marginTop(4));
+            ai.addView(at, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView arrow = text("›", 28, MUTED, false);
+            arrow.setGravity(Gravity.CENTER);
+            ai.addView(arrow, new LinearLayout.LayoutParams(dp(28), dp(44)));
+            ai.setOnClickListener(v -> { tap(v); showAiDialog(); });
+            page.addView(ai, margin(18, 8, 18, 22));
         }
     }
+
+    private LinearLayout quickAction(String icon, String label, View.OnClickListener listener) {
+        LinearLayout q = column();
+        q.setGravity(Gravity.CENTER);
+        q.setPadding(dp(8), dp(8), dp(8), dp(8));
+        q.setBackground(round(SURFACE, 18));
+        TextView i = text(icon, 18, ORANGE, true);
+        i.setGravity(Gravity.CENTER);
+        q.addView(i, new LinearLayout.LayoutParams(-1, dp(28)));
+        TextView l = text(label, 11, TEXT, true);
+        l.setGravity(Gravity.CENTER);
+        q.addView(l, marginTop(3));
+        q.setOnClickListener(listener);
+        return q;
+    }
+
 
     private void renderPlan() {
         Calendar today=Calendar.getInstance();
@@ -575,39 +618,51 @@ public class MainActivity extends Activity {
         page.addView(top, margin(18, 12, 18, 16));
     }
 
-    private View addPlanCard(Plan p, int index) {
-        LinearLayout card = card();
-        card.setAlpha(0f);
-        card.setTranslationY(dp(10));
-        card.animate().alpha(1f).translationY(0).setStartDelay(Math.min(index * 35, 180)).setDuration(220).start();
 
-        LinearLayout line = row();
+    private View addPlanCard(Plan p, int index) {
+        LinearLayout card = column();
+        card.setPadding(dp(15), dp(14), dp(10), dp(10));
+        card.setBackground(round(p.done ? SURFACE_2 : SURFACE, 20));
+        card.setAlpha(0f);
+        card.setTranslationY(dp(8));
+        card.animate().alpha(1f).translationY(0)
+                .setStartDelay(Math.min(index * 35, 180)).setDuration(220).start();
+
+        LinearLayout main = row();
+
+        TextView time = text(planMeta(p), 12, p.done ? MUTED : ORANGE, true);
+        time.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        main.addView(time, new LinearLayout.LayoutParams(dp(78), dp(48)));
+
         View rail = new View(this);
-        rail.setBackground(round(p.done ? Color.rgb(57, 66, 76) : ORANGE, 8));
-        line.addView(rail, new LinearLayout.LayoutParams(dp(4), dp(64)));
+        rail.setBackground(round(p.done ? LINE : ORANGE, 6));
+        main.addView(rail, new LinearLayout.LayoutParams(dp(3), dp(48)));
 
         LinearLayout mid = column();
         mid.setPadding(dp(12), 0, dp(8), 0);
-        String meta = planMeta(p);
-        mid.addView(text(meta, 11, p.done ? MUTED : ORANGE, true));
         TextView title = text(p.title, 16, p.done ? MUTED : TEXT, true);
         title.setMaxLines(2);
         mid.addView(title);
-        mid.addView(text(typeLabel(p.type), 11, MUTED, false));
-        line.addView(mid, new LinearLayout.LayoutParams(0, -2, 1));
+        mid.addView(text(typeLabel(p.type), 11, MUTED, false), marginTop(4));
+        if (p.note != null && !p.note.trim().isEmpty()) {
+            TextView note = text(p.note, 11, MUTED, false);
+            note.setMaxLines(1);
+            mid.addView(note, marginTop(4));
+        }
+        main.addView(mid, new LinearLayout.LayoutParams(0, -2, 1));
 
-        TextView check = text(p.done ? "✓" : "○", 23, p.done ? ORANGE : MUTED, true);
+        TextView check = text(p.done ? "✓" : "○", 24, p.done ? ORANGE : MUTED, true);
         check.setGravity(Gravity.CENTER);
-        if (p.done) check.setBackground(round(ORANGE_SOFT, 18));
-        line.addView(check, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        card.addView(line);
+        check.setBackground(round(p.done ? ORANGE_SOFT : SURFACE_2, 17));
+        main.addView(check, new LinearLayout.LayoutParams(dp(46), dp(46)));
+        card.addView(main);
 
         LinearLayout actions = row();
-        actions.setPadding(dp(16), dp(8), dp(4), 0);
+        actions.setPadding(dp(88), dp(8), 0, 0);
         TextView edit = actionText("Düzenle", TEXT);
         TextView del = actionText("Sil", RED);
-        actions.addView(edit, new LinearLayout.LayoutParams(0, dp(38), 1));
-        actions.addView(del, new LinearLayout.LayoutParams(0, dp(38), 1));
+        actions.addView(edit, new LinearLayout.LayoutParams(dp(86), dp(34)));
+        actions.addView(del, new LinearLayout.LayoutParams(dp(70), dp(34)));
         actions.setVisibility(View.GONE);
         card.addView(actions);
 
@@ -615,8 +670,7 @@ public class MainActivity extends Activity {
             tap(v);
             p.done = !p.done;
             PlanStore.save(this, plans);
-            if (p.done) cancelReminder(p);
-            else scheduleReminder(p);
+            if (p.done) cancelReminder(p); else scheduleReminder(p);
             render();
         });
 
@@ -625,16 +679,16 @@ public class MainActivity extends Activity {
             if (actions.getVisibility() == View.GONE) {
                 actions.setVisibility(View.VISIBLE);
                 actions.setAlpha(0f);
-                actions.animate().alpha(1f).setDuration(160).start();
+                actions.animate().alpha(1f).setDuration(150).start();
             } else {
                 showPlanEditor(p, p.date);
             }
         });
         edit.setOnClickListener(v -> { tap(v); showPlanEditor(p, p.date); });
         del.setOnClickListener(v -> { tap(v); showDeleteDialog(p); });
-
         return card;
     }
+
 
     private LinearLayout statBox(String value, String label) {
         LinearLayout c = column();
@@ -698,65 +752,229 @@ public class MainActivity extends Activity {
         return "SAATSİZ";
     }
 
+
     private void showPlanEditor(Plan editing, String initialDate) {
-        final Dialog d=styledDialog();
-        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);
-        LinearLayout box=dialogBox();box.setPadding(dp(20),dp(20),dp(20),dp(20));
-        LinearLayout head=row();LinearLayout ht=column();
-        ht.addView(text(editing==null?"Yeni plan":"Planı düzenle",25,TEXT,true));
-        ht.addView(text("Sadece gerekli alanları doldur.",11,MUTED,false),marginTop(4));
-        head.addView(ht,new LinearLayout.LayoutParams(0,-2,1));
-        TextView close=iconButton("×",false);head.addView(close,new LinearLayout.LayoutParams(dp(44),dp(44)));box.addView(head);
+        final Dialog d = styledDialog();
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
 
-        final String[] date={initialDate};final String[] kind={editing==null?Plan.HOURLY:editing.type};
-        final String[] start={editing==null?"":actualTime(editing.startTime)};final String[] end={editing==null?"":actualTime(editing.endTime)};
-        final String[] repeat={editing==null?Plan.REPEAT_NONE:(editing.repeat==null?Plan.REPEAT_NONE:editing.repeat)};
+        LinearLayout box = column();
+        box.setPadding(dp(20), dp(18), dp(20), dp(22));
+        box.setBackground(round(Color.rgb(14, 16, 20), 30));
 
-        box.addView(label("PLAN ADI"),marginTop(18));
-        EditText title=input("Örn. İş, Risale, Gym…");title.setText(editing==null?"":editing.title);box.addView(title,marginTop(7));
+        LinearLayout header = row();
+        LinearLayout ht = column();
+        ht.addView(text(editing == null ? "Yeni plan" : "Planı düzenle", 26, TEXT, true));
+        ht.addView(text("Zamanını netleştir, gerisini Rotam halletsin.", 11, MUTED, false), marginTop(5));
+        header.addView(ht, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView close = iconButton("×", false);
+        header.addView(close, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        box.addView(header);
 
-        box.addView(label("TARİH"),marginTop(15));
-        TextView dateBox=bigChoice(prettyDate(date[0]),0);box.addView(dateBox,marginTop(7));
-        dateBox.setOnClickListener(v->{tap(v);showDateChooser(date[0],picked->{date[0]=picked;dateBox.setText(prettyDate(picked));});});
+        final String[] date = { initialDate == null || initialDate.isEmpty() ? key(Calendar.getInstance()) : initialDate };
+        final String[] kind = { editing == null ? Plan.HOURLY : editing.type };
+        final String[] start = { editing == null ? "" : actualTime(editing.startTime) };
+        final String[] end = { editing == null ? "" : actualTime(editing.endTime) };
+        final String[] repeat = { editing == null ? Plan.REPEAT_NONE :
+                (editing.repeat == null ? Plan.REPEAT_NONE : editing.repeat) };
 
-        box.addView(label("PLAN TÜRÜ"),marginTop(15));
-        LinearLayout chips=row();
-        TextView c1=chip("Saatli",Plan.HOURLY.equals(kind[0])),c2=chip("Esnek",Plan.FLEX.equals(kind[0])),c3=chip("Tüm gün",Plan.ALL_DAY.equals(kind[0]));
-        chips.addView(c1,new LinearLayout.LayoutParams(0,dp(46),1));addGap(chips,7);chips.addView(c2,new LinearLayout.LayoutParams(0,dp(46),1));addGap(chips,7);chips.addView(c3,new LinearLayout.LayoutParams(0,dp(46),1));box.addView(chips,marginTop(7));
+        box.addView(fieldTitle("Plan"), marginTop(18));
+        EditText title = input("Örn. İş, Gym, Risale okumak");
+        title.setText(editing == null ? "" : editing.title);
+        title.setTextSize(17);
+        title.setPadding(dp(16), 0, dp(16), 0);
+        box.addView(title, marginTop(7));
 
-        LinearLayout timeSection=column();timeSection.addView(label("ZAMAN"),marginTop(15));
-        LinearLayout trr=row();TextView startBox=bigChoice(start[0].isEmpty()?"Başlangıç":start[0],0),endBox=bigChoice(end[0].isEmpty()?"Bitiş":end[0],0);
-        trr.addView(startBox,new LinearLayout.LayoutParams(0,72,1));addGap(trr,8);trr.addView(endBox,new LinearLayout.LayoutParams(0,72,1));
-        timeSection.addView(trr,marginTop(7));TextView duration=text(durationText(start[0],end[0]),10,MUTED,false);timeSection.addView(duration,marginTop(5));box.addView(timeSection);
-        startBox.setOnClickListener(v->{tap(v);showTimeChooser(val->{start[0]=val;startBox.setText(val);duration.setText(durationText(start[0],end[0]));},start[0]);});
-        endBox.setOnClickListener(v->{tap(v);showTimeChooser(val->{end[0]=val;endBox.setText(val);duration.setText(durationText(start[0],end[0]));},end[0]);});
+        box.addView(fieldTitle("Plan türü"), marginTop(16));
+        LinearLayout types = row();
+        TextView hourly = editorChip("Saatli", Plan.HOURLY.equals(kind[0]));
+        TextView flex = editorChip("Esnek", Plan.FLEX.equals(kind[0]));
+        TextView allDay = editorChip("Tüm gün", Plan.ALL_DAY.equals(kind[0]));
+        types.addView(hourly, new LinearLayout.LayoutParams(0, dp(48), 1));
+        addGap(types, 7);
+        types.addView(flex, new LinearLayout.LayoutParams(0, dp(48), 1));
+        addGap(types, 7);
+        types.addView(allDay, new LinearLayout.LayoutParams(0, dp(48), 1));
+        box.addView(types, marginTop(7));
 
-        box.addView(label("NOT"),marginTop(15));
-        EditText note=input("Bu planla ilgili kısa bir not…");note.setSingleLine(false);note.setMinLines(2);note.setGravity(Gravity.TOP|Gravity.START);note.setPadding(dp(14),dp(12),dp(14),dp(12));box.addView(note,marginTop(7));note.setText(editing==null?"":(editing.note==null?"":editing.note));
+        box.addView(fieldTitle("Tarih"), marginTop(16));
+        LinearLayout dateRow = row();
+        TextView dateBox = editorChoice(prettyDate(date[0]), "⌄");
+        dateRow.addView(dateBox, new LinearLayout.LayoutParams(0, dp(54), 1));
+        box.addView(dateRow, marginTop(7));
 
-        box.addView(label("TEKRAR"),marginTop(15));
-        TextView repeatBox=bigChoice(repeatLabel(repeat[0]),0);box.addView(repeatBox,marginTop(7));
-        repeatBox.setOnClickListener(v->{tap(v);showRepeatChooserCompat(repeatBox,val->{repeat[0]=val;repeatBox.setText(repeatLabel(val));});});
+        LinearLayout timeSection = column();
+        TextView timeLabel = fieldTitle("Saat");
+        timeSection.addView(timeLabel);
+        LinearLayout times = row();
+        TextView startBox = editorChoice(start[0].isEmpty() ? "Başlangıç" : start[0], "⌄");
+        TextView endBox = editorChoice(end[0].isEmpty() ? "Bitiş (isteğe bağlı)" : end[0], "⌄");
+        times.addView(startBox, new LinearLayout.LayoutParams(0, dp(68), 1));
+        addGap(times, 8);
+        times.addView(endBox, new LinearLayout.LayoutParams(0, dp(68), 1));
+        timeSection.addView(times, marginTop(7));
+        TextView duration = text(durationText(start[0], end[0]), 11, MUTED, false);
+        timeSection.addView(duration, marginTop(5));
+        box.addView(timeSection, marginTop(16));
 
-        LinearLayout actions=row();TextView cancel=buttonText("Vazgeç",MUTED),save=buttonText(editing==null?"Planı oluştur":"Kaydet",Color.WHITE);save.setGravity(Gravity.CENTER);save.setBackground(round(ORANGE,18));
-        actions.addView(cancel,new LinearLayout.LayoutParams(dp(100),dp(54)));addGap(actions,8);actions.addView(save,new LinearLayout.LayoutParams(0,dp(54),1));box.addView(actions,marginTop(17));
+        box.addView(fieldTitle("Not"), marginTop(16));
+        EditText note = input("Eklemek istediğin bir detay...");
+        note.setSingleLine(false);
+        note.setMinLines(3);
+        note.setGravity(Gravity.TOP | Gravity.START);
+        note.setPadding(dp(15), dp(13), dp(15), dp(13));
+        note.setText(editing == null || editing.note == null ? "" : editing.note);
+        box.addView(note, marginTop(7));
 
-        View.OnClickListener typeListener=v->{tap(v);if(v==c1)kind[0]=Plan.HOURLY;else if(v==c2)kind[0]=Plan.FLEX;else kind[0]=Plan.ALL_DAY;setChip(c1,Plan.HOURLY.equals(kind[0]));setChip(c2,Plan.FLEX.equals(kind[0]));setChip(c3,Plan.ALL_DAY.equals(kind[0]));timeSection.setVisibility(Plan.ALL_DAY.equals(kind[0])?View.GONE:View.VISIBLE);};
-        c1.setOnClickListener(typeListener);c2.setOnClickListener(typeListener);c3.setOnClickListener(typeListener);
-        if(Plan.ALL_DAY.equals(kind[0]))timeSection.setVisibility(View.GONE);
+        box.addView(fieldTitle("Tekrar"), marginTop(16));
+        TextView repeatBox = editorChoice(repeatLabel(repeat[0]), "⌄");
+        box.addView(repeatBox, marginTop(7));
 
-        close.setOnClickListener(v->{tap(v);d.dismiss();});cancel.setOnClickListener(v->{tap(v);d.dismiss();});
-        save.setOnClickListener(v->{
-            tap(v);String t=title.getText().toString().trim();
-            if(t.isEmpty()){title.setError("Plan adı gerekli");return;}
-            if(!Plan.ALL_DAY.equals(kind[0])&&start[0].isEmpty()){toast("Başlangıç saatini seç.");return;}
-            if(!Plan.ALL_DAY.equals(kind[0])&&!end[0].isEmpty()&&start[0].equals(end[0])){toast("Başlangıç ve bitiş aynı olamaz.");return;}
-            Plan p=editing==null?new Plan(System.currentTimeMillis(),date[0],t,kind[0],start[0],durationBetweenSafe(start[0],end[0]),false):editing;
-            p.date=date[0];p.title=t;p.type=kind[0];p.startTime=Plan.ALL_DAY.equals(kind[0])?"":start[0];p.endTime=Plan.ALL_DAY.equals(kind[0])?"":end[0];p.time=p.startTime;p.duration=durationBetweenSafe(p.startTime,p.endTime);p.note=note.getText().toString().trim();p.repeat=repeat[0];
-            if(editing==null)plans.add(p);PlanStore.save(this,plans);scheduleReminder(p);selectedDate=p.date;monthCursor=parseKey(p.date);d.dismiss();render();
+        TextView hint = text("Hatırlatma Ayarlar'daki global bildirim süresine göre çalışır.",
+                10, MUTED, false);
+        box.addView(hint, marginTop(8));
+
+        LinearLayout actions = row();
+        TextView cancel = buttonText("Vazgeç", MUTED);
+        TextView save = buttonText(editing == null ? "Planı oluştur" : "Değişiklikleri kaydet", Color.WHITE);
+        save.setBackground(round(ORANGE, 18));
+        cancel.setBackground(round(SURFACE_2, 18));
+        actions.addView(cancel, new LinearLayout.LayoutParams(dp(100), dp(56)));
+        addGap(actions, 8);
+        actions.addView(save, new LinearLayout.LayoutParams(0, dp(56), 1));
+        box.addView(actions, marginTop(18));
+
+        dateBox.setOnClickListener(v -> {
+            tap(v);
+            showDateChooser(date[0], picked -> {
+                date[0] = picked;
+                dateBox.setText(prettyDate(picked));
+            });
         });
-        scroll.addView(box);d.setContentView(scroll);d.show();fitDialog(d,0.95f);
+
+        View.OnClickListener chooseStart = v -> {
+            tap(v);
+            showTimeChooser(val -> {
+                start[0] = val;
+                startBox.setText(val);
+                duration.setText(durationText(start[0], end[0]));
+            }, start[0]);
+        };
+        View.OnClickListener chooseEnd = v -> {
+            tap(v);
+            showTimeChooser(val -> {
+                end[0] = val;
+                endBox.setText(val);
+                duration.setText(durationText(start[0], end[0]));
+            }, end[0]);
+        };
+        startBox.setOnClickListener(chooseStart);
+        endBox.setOnClickListener(chooseEnd);
+
+        View.OnClickListener typeListener = v -> {
+            tap(v);
+            if (v == hourly) kind[0] = Plan.HOURLY;
+            else if (v == flex) kind[0] = Plan.FLEX;
+            else kind[0] = Plan.ALL_DAY;
+            setEditorChip(hourly, Plan.HOURLY.equals(kind[0]));
+            setEditorChip(flex, Plan.FLEX.equals(kind[0]));
+            setEditorChip(allDay, Plan.ALL_DAY.equals(kind[0]));
+            timeSection.setVisibility(Plan.ALL_DAY.equals(kind[0]) ? View.GONE : View.VISIBLE);
+        };
+        hourly.setOnClickListener(typeListener);
+        flex.setOnClickListener(typeListener);
+        allDay.setOnClickListener(typeListener);
+        if (Plan.ALL_DAY.equals(kind[0])) timeSection.setVisibility(View.GONE);
+
+        repeatBox.setOnClickListener(v -> {
+            tap(v);
+            showRepeatChooserCompat(repeatBox, val -> repeat[0] = val);
+        });
+
+        close.setOnClickListener(v -> { tap(v); d.dismiss(); });
+        cancel.setOnClickListener(v -> { tap(v); d.dismiss(); });
+
+        save.setOnClickListener(v -> {
+            tap(v);
+            String t = title.getText().toString().trim();
+            if (t.isEmpty()) { title.setError("Plan adı gerekli"); return; }
+
+            if (!Plan.ALL_DAY.equals(kind[0]) && start[0].isEmpty()) {
+                toast("Başlangıç saatini seç.");
+                return;
+            }
+            if (!Plan.ALL_DAY.equals(kind[0]) && !end[0].isEmpty() &&
+                    start[0].equals(end[0])) {
+                toast("Başlangıç ve bitiş aynı olamaz.");
+                return;
+            }
+
+            Plan p = editing == null
+                    ? new Plan(System.currentTimeMillis(), date[0], t, kind[0], start[0],
+                    durationBetweenSafe(start[0], end[0]), false)
+                    : editing;
+
+            p.date = date[0];
+            p.title = t;
+            p.type = kind[0];
+            p.startTime = Plan.ALL_DAY.equals(kind[0]) ? "" : start[0];
+            p.endTime = Plan.ALL_DAY.equals(kind[0]) ? "" : end[0];
+            p.time = p.startTime;
+            p.duration = durationBetweenSafe(p.startTime, p.endTime);
+            p.note = note.getText().toString().trim();
+            p.repeat = repeat[0];
+
+            if (editing == null) plans.add(p);
+            PlanStore.save(this, plans);
+            scheduleReminder(p);
+            selectedDate = p.date;
+            monthCursor = parseKey(p.date);
+            d.dismiss();
+            render();
+        });
+
+        scroll.addView(box);
+        d.setContentView(scroll);
+        d.show();
+        Window w = d.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawableResource(android.R.color.transparent);
+            w.setDimAmount(0.58f);
+            android.view.WindowManager.LayoutParams lp = w.getAttributes();
+            lp.gravity = Gravity.BOTTOM;
+            w.setAttributes(lp);
+            w.setLayout((int)(getResources().getDisplayMetrics().widthPixels * 0.96f),
+                    (int)(getResources().getDisplayMetrics().heightPixels * 0.88f));
+        }
     }
+
+    private TextView fieldTitle(String s) {
+        return text(s.toUpperCase(tr), 10, MUTED, true);
+    }
+
+    private TextView editorChoice(String value, String trailing) {
+        LinearLayout dummy = new LinearLayout(this);
+        TextView t = text(value, 14, TEXT, true);
+        t.setGravity(Gravity.CENTER_VERTICAL);
+        t.setPadding(dp(16), 0, dp(14), 0);
+        t.setBackground(round(SURFACE_2, 17));
+        t.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+        return t;
+    }
+
+    private TextView editorChip(String s, boolean selected) {
+        TextView t = text(s, 12, selected ? Color.WHITE : TEXT, true);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(round(selected ? ORANGE : SURFACE_2, 16));
+        return t;
+    }
+
+    private void setEditorChip(TextView t, boolean selected) {
+        t.setTextColor(selected ? Color.WHITE : TEXT);
+        t.setBackground(round(selected ? ORANGE : SURFACE_2, 16));
+    }
+
 
     private boolean reminderEnabled(TextView state) {
         Object tag = state.getTag();
