@@ -778,7 +778,7 @@ public class MainActivity extends Activity {
         box.addView(text("Saat seç",24,TEXT,true));
         box.addView(text("Yukarı / aşağı kaydır. Bıraktığında saat merkezde kilitlenir.",11,MUTED,false),marginTop(4));
         Calendar c=Calendar.getInstance();
-        if(existing!=null&&existing.matches("\d{2}:\d{2}")){c.set(Calendar.HOUR_OF_DAY,Integer.parseInt(existing.substring(0,2)));c.set(Calendar.MINUTE,Integer.parseInt(existing.substring(3,5)));}
+        if(existing!=null&&existing.matches("\\d{2}:\\d{2}")){c.set(Calendar.HOUR_OF_DAY,Integer.parseInt(existing.substring(0,2)));c.set(Calendar.MINUTE,Integer.parseInt(existing.substring(3,5)));}
         final int[] hm={c.get(Calendar.HOUR_OF_DAY),c.get(Calendar.MINUTE)};
         TextView preview=text(String.format(Locale.GERMANY,"%02d:%02d",hm[0],hm[1]),40,TEXT,true);preview.setGravity(Gravity.CENTER);preview.setBackground(round(SURFACE_2,22));box.addView(preview,marginTop(13));
         LinearLayout wheels=row();
