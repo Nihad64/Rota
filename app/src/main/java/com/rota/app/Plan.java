@@ -4,6 +4,10 @@ public class Plan {
     public static final String HOURLY = "Saatli";
     public static final String ALL_DAY = "Tüm gün";
     public static final String FLEX = "Esnek";
+    public static final String REPEAT_NONE = "none";
+    public static final String REPEAT_DAILY = "daily";
+    public static final String REPEAT_WEEKDAYS = "weekdays";
+    public static final String REPEAT_WEEKLY = "weekly";
 
     public long id;
     public String date;
@@ -18,6 +22,7 @@ public class Plan {
     public String startTime;
     public String endTime;
     public String note;
+    public String repeat;
 
     public Plan(long id, String date, String title, String type, String time, String duration, boolean done) {
         this.id = id;
@@ -30,6 +35,7 @@ public class Plan {
         this.startTime = this.time;
         this.endTime = "";
         this.note = "";
+        this.repeat = REPEAT_NONE;
     }
 
     public static String durationBetween(String start, String end) {

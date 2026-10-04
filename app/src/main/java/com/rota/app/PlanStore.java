@@ -33,6 +33,7 @@ public final class PlanStore {
                 p.startTime = o.optString("startTime", p.time);
                 p.endTime = o.optString("endTime", "");
                 p.note = o.optString("note", "");
+                p.repeat = o.optString("repeat", Plan.REPEAT_NONE);
                 plans.add(p);
             }
         } catch (Exception ignored) {
@@ -55,6 +56,7 @@ public final class PlanStore {
                 o.put("startTime", p.startTime == null ? "" : p.startTime);
                 o.put("endTime", p.endTime == null ? "" : p.endTime);
                 o.put("note", p.note == null ? "" : p.note);
+                o.put("repeat", p.repeat == null ? Plan.REPEAT_NONE : p.repeat);
                 array.put(o);
             }
         } catch (Exception ignored) {
