@@ -16,14 +16,14 @@ public final class MissedPlanManager {
     private static boolean showing;
     private MissedPlanManager(){}
 
-    public static void check(Activity a,List<Plan> plans,Runnable refresh,LaterCallback later){
+    public static void check(Activity a,List<Plan> plans,Runnable refresh,LaterCallback laterCallback){
         if(showing)return;Plan target=null;long now=System.currentTimeMillis();
         for(Plan p:plans){
             if(p.done||Plan.STATUS_DONE.equals(p.status)||Plan.STATUS_CANCELLED.equals(p.status))continue;
             long end=endMillis(p);
             if(end>0&&end<now){target=p;break;}
         }
-        if(target!=null)show(a,plans,target,refresh,later);
+        if(target!=null)show(a,plans,target,refresh,laterCallback);
     }
 
     private static long endMillis(Plan p){
@@ -35,24 +35,24 @@ public final class MissedPlanManager {
         return 0;
     }
 
-    private static void show(Activity a,List<Plan> plans,Plan p,Runnable refresh,LaterCallback later){
+    private static void show(Activity a,List<Plan> plans,Plan p,Runnable refresh,LaterCallback laterCallback){
         showing=true;if(!Plan.STATUS_PENDING_REVIEW.equals(p.status)){p.status=Plan.STATUS_PENDING_REVIEW;PlanStore.save(a,plans);}
         Dialog d=new Dialog(a);d.setCancelable(false);LinearLayout box=col(a);box.setPadding(dp(a,20),dp(a,18),dp(a,20),dp(a,20));box.setBackground(round(BG,28));
         box.addView(t(a,"Bu planı ne yaptın?",24,TEXT,true));
         box.addView(t(a,"Planın zamanı geçti. Rotam kendiliğinden tamamlanmış saymıyor.",12,MUTED,false),mt(a,5));
         LinearLayout info=col(a);info.setPadding(dp(a,15),dp(a,14),dp(a,15),dp(a,14));info.setBackground(round(SURFACE2,18));
         info.addView(t(a,p.title,18,TEXT,true));info.addView(t(a,p.date+" · "+safe(p.startTime)+" – "+safe(p.endTime),11,ORANGE,true),mt(a,5));box.addView(info,mt(a,13));
-        LinearLayout r1=row(a),r2=row(a);TextView done=btn(a,"✓  Tamamladım",Color.WHITE,GREEN),miss=btn(a,"✕  Yapamadım",Color.WHITE,RED),later=btn(a,"↻  Sonra yapacağım",TEXT,SURFACE2),cancel=btn(a,"İptal",Color.rgb(255,150,150),SURFACE2);
-        r1.addView(done,weight(a,1,52));gap(r1,a,7);r1.addView(miss,weight(a,1,52));r2.addView(later,weight(a,1,52));gap(r2,a,7);r2.addView(cancel,weight(a,1,52));
+        LinearLayout r1=row(a),r2=row(a);TextView done=btn(a,"✓  Tamamladım",Color.WHITE,GREEN),miss=btn(a,"✕  Yapamadım",Color.WHITE,RED),laterBtn=btn(a,"↻  Sonra yapacağım",TEXT,SURFACE2),cancel=btn(a,"İptal",Color.rgb(255,150,150),SURFACE2);
+        r1.addView(done,weight(a,1,52));gap(r1,a,7);r1.addView(miss,weight(a,1,52));r2.addView(laterBtn,weight(a,1,52));gap(r2,a,7);r2.addView(cancel,weight(a,1,52));
         box.addView(r1,mt(a,14));box.addView(r2,mt(a,7));
         done.setOnClickListener(v->{p.done=true;p.status=Plan.STATUS_DONE;ReminderScheduler.cancel(a,p);finish(d,a,plans,refresh);});
         miss.setOnClickListener(v->{p.done=false;p.status=Plan.STATUS_MISSED;finish(d,a,plans,refresh);});
-        later.setOnClickListener(v->{d.dismiss();showing=false;p.status=Plan.STATUS_DEFERRED;PlanStore.save(a,plans);if(later!=null)later.reopen(p);});
+        laterBtn.setOnClickListener(v->{d.dismiss();showing=false;p.status=Plan.STATUS_DEFERRED;PlanStore.save(a,plans);if(laterCallback!=null)laterCallback.reopen(p);});
         cancel.setOnClickListener(v->{ReminderScheduler.cancel(a,p);plans.remove(p);finish(d,a,plans,refresh);});
         d.setContentView(box);d.show();fit(d,a,.94f);
     }
 
-    private static void finish(Dialog d,Activity a,List<Plan> plans,Runnable refresh){PlanStore.save(a,plans);d.dismiss();showing=false;if(refresh!=null)refresh.run();new android.os.Handler(a.getMainLooper()).postDelayed(() -> check(a,plans,refresh,later),250);}
+    private static void finish(Dialog d,Activity a,List<Plan> plans,Runnable refresh){PlanStore.save(a,plans);d.dismiss();showing=false;if(refresh!=null)refresh.run();}
     private static String safe(String s){return s==null||s.isEmpty()?"":s;}
     private static LinearLayout col(Activity a){LinearLayout l=new LinearLayout(a);l.setOrientation(LinearLayout.VERTICAL);return l;}
     private static LinearLayout row(Activity a){LinearLayout l=col(a);l.setOrientation(LinearLayout.HORIZONTAL);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
