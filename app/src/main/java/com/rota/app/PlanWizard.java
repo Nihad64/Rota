@@ -148,7 +148,6 @@ public final class PlanWizard {
     private static TextView choice(Activity a,String s){TextView t=txt(a,s,14,TEXT,true);t.setGravity(Gravity.CENTER_VERTICAL);t.setPadding(dp(a,15),0,dp(a,15),0);t.setBackground(round(SURFACE2,17));return t;}
     private static TextView chip(Activity a,String s,boolean sel){return button(a,s,sel?Color.WHITE:TEXT,sel?ORANGE:SURFACE2);}
     private static void setChip(TextView t,boolean sel){t.setTextColor(sel?Color.WHITE:TEXT);t.setBackground(round(sel?ORANGE:SURFACE2,17));}
-    private static TextView mt(Activity a,int top){TextView t=new TextView(a);t.setHeight(dp(a,1));return t;}
     private static LinearLayout.LayoutParams mt(Activity a,int px,boolean dummy){LinearLayout.LayoutParams p=lp(a,-1,-2);p.topMargin=dp(a,px);return p;}
     private static LinearLayout.LayoutParams mt(Activity a,int px){return margin(a,px);}
     private static LinearLayout.LayoutParams margin(Activity a,int top){LinearLayout.LayoutParams p=lp(a,-1,-2);p.topMargin=dp(a,top);return p;}
