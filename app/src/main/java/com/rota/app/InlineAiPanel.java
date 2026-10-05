@@ -102,4 +102,87 @@ public final class InlineAiPanel {
     }
 
 
+    private static String context(List<Plan> plans){
+        StringBuilder b=new StringBuilder();
+        for(Plan p:plans){
+            if(Plan.STATUS_CANCELLED.equals(p.status))continue;
+            b.append("id=").append(p.id).append(" | ").append(p.date).append(" | ").append(p.title)
+             .append(" | ").append(p.startTime).append("–").append(p.endTime)
+             .append(" | ").append(p.category).append(" | ").append(p.status);
+            if(p.details!=null&&!p.details.isEmpty())b.append(" | detay=").append(p.details);
+            if(p.note!=null&&!p.note.isEmpty())b.append(" | not=").append(p.note);
+            b.append("\n");
+        }
+        if(b.length()==0)b.append("Plan yok.\n");
+        return b.toString();
+    }
+
+    private static String call(Activity a,String key,String user,String ctx){
+        HttpURLConnection conn=null;
+        try{
+            Calendar n=Calendar.getInstance();
+            String today=String.format(Locale.GERMANY,"%04d-%02d-%02d",n.get(Calendar.YEAR),n.get(Calendar.MONTH)+1,n.get(Calendar.DAY_OF_MONTH));
+            String prompt="Sen Rotam AI'sın. Türkçe konuş. Bugünün tarihi "+today+". Kullanıcının doğal dildeki isteğini gerçek planlama işlemlerine dönüştür. "+
+                    "Bir istekte birden fazla plan oluşturabilirsin. Yol süresi belirtilirse randevudan önce çıkış planı ekle. "+
+                    "Kullanıcı açıkça söylemedikçe mevcut planları tamamlandı sayma. Eksik kritik bilgi varsa kısa soru sor ve actions boş bırak. "+
+                    "Sadece geçerli JSON döndür: {\\"reply\\":\\"kısa doğal cevap\\",\\"actions\\":[{\\"type\\":\\"create_plan\\",\\"title\\":\\"...\\",\\"category\\":\\"book|work|video|sport|faith|appointment|food|personal\\",\\"date\\":\\"YYYY-MM-DD\\",\\"start\\":\\"HH:MM\\",\\"end\\":\\"HH:MM\\",\\"repeat\\":\\"none|daily|weekdays|weekly\\",\\"note\\":\\"\\",\\"details\\":{}}]}. "+
+                    "Diğer action tipleri: update_plan, reschedule_plan, complete_plan, delete_plan. Güncelleme/silme/tamamlama için planId kullan. Mevcut planlar:\n"+ctx+"\nKullanıcı isteği:\n"+user;
+            URL url=new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent");
+            conn=(HttpURLConnection)url.openConnection();conn.setRequestMethod("POST");conn.setConnectTimeout(15000);conn.setReadTimeout(30000);conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type","application/json");conn.setRequestProperty("x-goog-api-key",key);
+            JSONObject body=new JSONObject();JSONArray contents=new JSONArray();JSONObject content=new JSONObject();JSONArray parts=new JSONArray();JSONObject part=new JSONObject();
+            part.put("text",prompt);parts.put(part);content.put("parts",parts);contents.put(content);body.put("contents",contents);
+            JSONObject cfg=new JSONObject();cfg.put("temperature",0.15);cfg.put("maxOutputTokens",1200);cfg.put("responseMimeType","application/json");body.put("generationConfig",cfg);
+            try(OutputStream out=conn.getOutputStream()){out.write(body.toString().getBytes(StandardCharsets.UTF_8));}
+            int code=conn.getResponseCode();InputStreamReader isr=new InputStreamReader(code>=200&&code<300?conn.getInputStream():conn.getErrorStream(),StandardCharsets.UTF_8);
+            BufferedReader br=new BufferedReader(isr);StringBuilder raw=new StringBuilder();String line;while((line=br.readLine())!=null)raw.append(line);br.close();
+            if(code<200||code>=300)return "{\"reply\":\"Gemini bağlantısı başarısız ("+code+").\",\"actions\":[]}";
+            JSONObject root=new JSONObject(raw.toString());JSONArray cand=root.optJSONArray("candidates");
+            if(cand==null||cand.length()==0)return "{\"reply\":\"Gemini boş yanıt verdi.\",\"actions\":[]}";
+            JSONObject co=cand.getJSONObject(0).optJSONObject("content");JSONArray out=co==null?null:co.optJSONArray("parts");
+            if(out==null||out.length()==0)return "{\"reply\":\"Gemini boş yanıt verdi.\",\"actions\":[]}";
+            return out.getJSONObject(0).optString("text","");
+        }catch(Exception e){return "{\"reply\":\"Gemini bağlantısı kurulamadı.\",\"actions\":[]}";}finally{if(conn!=null)conn.disconnect();}
+    }
+
+    private static String apply(Activity a,List<Plan> plans,String raw){
+        try{
+            JSONObject root=new JSONObject(raw==null?"":raw.trim());JSONArray acts=root.optJSONArray("actions");int created=0,changed=0;
+            if(acts!=null)for(int i=0;i<acts.length();i++){
+                JSONObject x=acts.optJSONObject(i);if(x==null)continue;String type=x.optString("type","");Plan p=find(plans,x);
+                if("create_plan".equals(type)){
+                    String start=x.optString("start",""),end=x.optString("end","");
+                    String pt=x.optBoolean("allDay",false)?Plan.ALL_DAY:(start.isEmpty()?Plan.FLEX:Plan.HOURLY);
+                    Plan n=new Plan(System.currentTimeMillis()+created,x.optString("date",today()),x.optString("title","Plan"),pt,start,x.optString("duration",""),false);
+                    n.startTime=start;n.endTime=end;n.time=start;n.repeat=x.optString("repeat",Plan.REPEAT_NONE);n.note=x.optString("note","");
+                    n.category=x.optString("category","personal");n.details=x.optJSONObject("details")==null?"":x.optJSONObject("details").toString();n.status=Plan.STATUS_PLANNED;
+                    plans.add(n);schedule(a,n);created++;
+                }else if(p!=null&&"complete_plan".equals(type)){p.done=true;p.status=Plan.STATUS_DONE;ReminderScheduler.cancel(a,p);changed++;
+                }else if(p!=null&&"delete_plan".equals(type)){ReminderScheduler.cancel(a,p);plans.remove(p);changed++;
+                }else if(p!=null&&("update_plan".equals(type)||"reschedule_plan".equals(type))){
+                    if(x.has("date"))p.date=x.optString("date",p.date);if(x.has("start"))p.startTime=x.optString("start",p.startTime);if(x.has("end"))p.endTime=x.optString("end",p.endTime);
+                    if(x.has("title"))p.title=x.optString("title",p.title);if(x.has("repeat"))p.repeat=x.optString("repeat",p.repeat);
+                    if(x.has("details")&&x.optJSONObject("details")!=null)p.details=x.optJSONObject("details").toString();
+                    p.time=p.startTime;p.type=p.startTime==null||p.startTime.isEmpty()?Plan.FLEX:Plan.HOURLY;p.done=false;p.status=Plan.STATUS_PLANNED;schedule(a,p);changed++;
+                }
+            }
+            PlanStore.save(a,plans);String reply=root.optString("reply","Tamamdır.");if(created>0)reply+=" "+created+" plan oluşturuldu.";if(changed>0)reply+=" "+changed+" işlem uygulandı.";return reply;
+        }catch(Exception e){return raw==null||raw.isEmpty()?"Gemini yanıt vermedi.":"Yanıt işlenemedi: "+raw;}
+    }
+
+    private static Plan find(List<Plan> plans,JSONObject x){
+        long id=x.optLong("planId",-1);if(id>0)for(Plan p:plans)if(p.id==id)return p;
+        String title=x.optString("title",""),date=x.optString("date","");for(Plan p:plans)if(!title.isEmpty()&&title.equalsIgnoreCase(p.title)&&(date.isEmpty()||date.equals(p.date)))return p;
+        return null;
+    }
+
+    private static void schedule(Activity a,Plan p){
+        SharedPreferences s=a.getSharedPreferences("rotam_settings",0);
+        ReminderScheduler.schedule(a,p,s.getInt("reminder_minutes",15),s.getBoolean("reminders",true));
+    }
+
+    private static String today(){
+        Calendar c=Calendar.getInstance();return String.format(Locale.GERMANY,"%04d-%02d-%02d",c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH));
+    }
+
 }
