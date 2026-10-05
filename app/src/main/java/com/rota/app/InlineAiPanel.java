@@ -185,4 +185,17 @@ public final class InlineAiPanel {
         Calendar c=Calendar.getInstance();return String.format(Locale.GERMANY,"%04d-%02d-%02d",c.get(Calendar.YEAR),c.get(Calendar.MONTH)+1,c.get(Calendar.DAY_OF_MONTH));
     }
 
+    private static LinearLayout col(Activity a){LinearLayout l=new LinearLayout(a);l.setOrientation(LinearLayout.VERTICAL);return l;}
+    private static LinearLayout row(Activity a){LinearLayout l=col(a);l.setOrientation(LinearLayout.HORIZONTAL);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
+    private static TextView txt(Activity a,String s,float size,int color,boolean bold){TextView t=new TextView(a);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setTypeface(Typeface.create("sans",bold?Typeface.BOLD:Typeface.NORMAL));t.setIncludeFontPadding(false);return t;}
+    private static TextView button(Activity a,String s,int fg,int bg){TextView t=txt(a,s,14,fg,true);t.setGravity(Gravity.CENTER);t.setBackground(round(bg,18));return t;}
+    private static LinearLayout.LayoutParams lp(Activity a,int w,int h){return new LinearLayout.LayoutParams(dp(a,w),dp(a,h));}
+    private static LinearLayout.LayoutParams mt(Activity a,int top){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.topMargin=dp(a,top);return p;}
+    private static LinearLayout.LayoutParams weight(Activity a,float weight,int h){return new LinearLayout.LayoutParams(0,dp(a,h),weight);}
+    private static void space(LinearLayout l,Activity a,int w){l.addView(new android.view.View(a),lp(a,w,1));}
+    private static int dp(Activity a,int value){return (int)(value*a.getResources().getDisplayMetrics().density+0.5f);}
+    private static android.graphics.drawable.GradientDrawable round(int color,int radius){android.graphics.drawable.GradientDrawable g=new android.graphics.drawable.GradientDrawable();g.setColor(color);g.setCornerRadius(dp(null,radius));return g;}
+    private static int dp(Object ignored,int value){return value;}
+    private static void toast(Activity a,String s){android.widget.Toast.makeText(a,s,android.widget.Toast.LENGTH_SHORT).show();}
+
 }
