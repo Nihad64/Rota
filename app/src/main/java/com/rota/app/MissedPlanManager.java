@@ -51,7 +51,7 @@ public final class MissedPlanManager {
         d.setContentView(box);d.show();fit(d,a,.94f);
     }
 
-    private static void finish(Dialog d,Activity a,List<Plan> plans,Runnable refresh){PlanStore.save(a,plans);d.dismiss();showing=false;if(refresh!=null)refresh();new android.os.Handler(a.getMainLooper()).postDelayed(()->check(a,plans,refresh),250);}
+    private static void finish(Dialog d,Activity a,List<Plan> plans,Runnable refresh){PlanStore.save(a,plans);d.dismiss();showing=false;if(refresh!=null)refresh();new android.os.Handler(a.getMainLooper()).postDelayed(() -> check(a,plans,refresh),250);}
     private static String safe(String s){return s==null||s.isEmpty()?"":s;}
     private static LinearLayout col(Activity a){LinearLayout l=new LinearLayout(a);l.setOrientation(LinearLayout.VERTICAL);return l;}
     private static LinearLayout row(Activity a){LinearLayout l=col(a);l.setOrientation(LinearLayout.HORIZONTAL);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
