@@ -19,6 +19,8 @@ import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.net.Uri;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -109,6 +111,12 @@ public class MainActivity extends Activity {
         render();
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        ReminderScheduler.rescheduleAll(this, plans);
+        new android.os.Handler(getMainLooper()).postDelayed(() -> MissedPlanManager.check(this, plans, this::render), 350);
+    }
+
     private android.content.SharedPreferences settings() {
         return getSharedPreferences("rotam_settings", MODE_PRIVATE);
     }
@@ -177,18 +185,16 @@ public class MainActivity extends Activity {
         content.setBackgroundColor(BG);
         page.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
-        TextView fab = text("+", 34, Color.WHITE, true);
+        TextView fab = text("✦", 28, Color.WHITE, true);
         fab.setGravity(Gravity.CENTER);
-        fab.setBackground(round(ORANGE, 22));
-        fab.setElevation(dp(10));
+        fab.setContentDescription("Rotam AI");
+        fab.setBackground(round(ORANGE, 31));
+        fab.setElevation(dp(14));
         FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(dp(62), dp(62),
                 Gravity.BOTTOM | Gravity.END);
-        fp.setMargins(0, 0, dp(18), dp(16));
+        fp.setMargins(0, 0, dp(18), dp(18));
         page.addView(fab, fp);
-        fab.setOnClickListener(v -> {
-            tap(v);
-            showPlanEditor(null, quickPlanOn() ? selectedDate : key(Calendar.getInstance()));
-        });
+        fab.setOnClickListener(v -> { tap(v); showInlineAiPanel(); });
 
         root.addView(page, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(buildBottomBar(), new LinearLayout.LayoutParams(-1, dp(82)));
@@ -361,7 +367,7 @@ public class MainActivity extends Activity {
 
         LinearLayout quick = row();
         quick.addView(quickAction("＋", "Plan ekle", v -> {
-            tap(v); showPlanEditor(null, todayKey);
+            tap(v); openPlanWizard(todayKey);
         }), new LinearLayout.LayoutParams(0, dp(74), 1));
         addGap(quick, 8);
         quick.addView(quickAction("AI", "Günün özeti", v -> {
@@ -468,7 +474,7 @@ public class MainActivity extends Activity {
             if(list.isEmpty()) page.addView(buildCalendarEmptyCard(),margin(18,0,18,12));
             else for(int i=0;i<list.size();i++) page.addView(addPlanCard(list.get(i),i),margin(18,0,18,9));
             TextView add=buttonText("+ Plan ekle",ORANGE);add.setGravity(Gravity.CENTER);add.setBackground(round(ORANGE_SOFT,17));
-            add.setOnClickListener(v->{tap(v);showPlanEditor(null,selectedDate);});
+            add.setOnClickListener(v->{tap(v);openPlanWizard(selectedDate);});
             page.addView(add,margin(18,6,18,22));
             return;
         }
@@ -534,6 +540,9 @@ public class MainActivity extends Activity {
         LinearLayout rc=settingCard();LinearLayout rr=row();LinearLayout rt=column();rt.addView(text("Hatırlatma zamanı",15,TEXT,true));rt.addView(text("Tek bir global ayardan kontrol edilir.",11,MUTED,false));rr.addView(rt,new LinearLayout.LayoutParams(0,-2,1));TextView rv=buttonText(reminderLabel(),ORANGE);rv.setGravity(Gravity.CENTER);rv.setBackground(round(ORANGE_SOFT,14));rr.addView(rv,new LinearLayout.LayoutParams(dp(92),dp(36)));rc.addView(rr);rc.setOnClickListener(v->{tap(v);showReminderChooser(rv);});page.addView(rc,margin(18,0,18,7));
         page.addView(settingAction("Sessiz saatler","Gece bildirimlerini sustur.",quietHoursLabel(),v->showQuietHoursDialog()),margin(18,0,18,7));
 
+        if(Build.VERSION.SDK_INT>=31){
+            page.addView(settingAction("Kesin bildirim zamanı","Plan bildirimlerinin tam saatinde çalışması için Android izni.",exactAlarmAllowed()?"Açık":"İzni aç",v->{tap(v);if(!exactAlarmAllowed())requestExactAlarmAccess();}),margin(18,12,18,7));
+        }
         page.addView(sectionTitle("Ses · hareket"),margin(18,12,18,7));
         page.addView(settingRow("UI sesleri","Kısa mekanik tık sesi.",settings().getBoolean("sounds",true),true,on->settings().edit().putBoolean("sounds",on).apply()),margin(18,0,18,7));
         page.addView(settingRow("Titreşim","Hafif dokunsal geri bildirim.",hapticsOn(),true,on->settings().edit().putBoolean("haptics",on).apply()),margin(18,0,18,7));
@@ -717,6 +726,14 @@ public class MainActivity extends Activity {
         return "SAATSİZ";
     }
 
+
+    private void openPlanWizard(String date){
+        PlanWizard.show(this, plans, date, () -> { selectedDate = date; monthCursor = parseKey(date); render(); });
+    }
+
+    private void showInlineAiPanel(){
+        InlineAiPanel.show(this, plans, () -> { ReminderScheduler.rescheduleAll(this, plans); render(); });
+    }
 
     private void showPlanEditor(Plan editing, String initialDate) {
         final Dialog d = styledDialog();
@@ -1214,7 +1231,7 @@ public class MainActivity extends Activity {
         addTomorrow.setOnClickListener(v -> {
             tap(v);
             dialog.dismiss();
-            showPlanEditor(null, key(addDays(Calendar.getInstance(), 1)));
+            openPlanWizard(key(addDays(Calendar.getInstance(), 1)));
         });
 
         TextView done = buttonText("Kapat", MUTED);
@@ -1301,23 +1318,10 @@ public class MainActivity extends Activity {
         d.setContentView(box);d.show();fitDialog(d,0.91f);
     }
 
-    private void showAiDialog() {
-        if(!hasAiKey()){showAiSetupDialog();return;}
-        final Dialog d=styledDialog();LinearLayout box=dialogBox();
-        box.addView(text("Rotam AI",24,TEXT,true));
-        box.addView(text("Gemini, planlarını ve boş zamanını birlikte değerlendirir.",12,MUTED,false),marginTop(4));
-        LinearLayout presets=row();TextView a=buttonText("Bugünü analiz et",TEXT),b=buttonText("Planı sadeleştir",TEXT);a.setGravity(Gravity.CENTER);b.setGravity(Gravity.CENTER);a.setBackground(round(SURFACE_2,17));b.setBackground(round(SURFACE_2,17));
-        presets.addView(a,new LinearLayout.LayoutParams(0,dp(48),1));addGap(presets,7);presets.addView(b,new LinearLayout.LayoutParams(0,dp(48),1));box.addView(presets,marginTop(12));
-        EditText q=input("Örn. Bugün neyi öne almalıyım?");q.setSingleLine(false);q.setMinLines(2);q.setGravity(Gravity.TOP|Gravity.START);q.setPadding(dp(14),dp(12),dp(14),dp(12));box.addView(q,marginTop(10));
-        TextView ask=buttonText("Gemini'ye sor",Color.WHITE);ask.setGravity(Gravity.CENTER);ask.setBackground(round(ORANGE,18));box.addView(ask,marginTop(9));
-        TextView result=text("Yanıt burada görünecek.",13,MUTED,false);result.setPadding(dp(2),dp(12),dp(2),0);box.addView(result);
-        Runnable run=()->{String prompt=q.getText().toString().trim();if(prompt.isEmpty())prompt="Bugünkü planlarımı analiz et ve en fazla 3 kısa, uygulanabilir öneri ver.";String payload=prompt+"\n\nRotam verisi:\n"+buildAiContext()+"\n\nTürkçe, kısa ve somut cevap ver.";result.setText("Gemini düşünüyor…");ask.setEnabled(false);new Thread(()->{String ans=callGemini(payload);runOnUiThread(()->{result.setText(ans);ask.setEnabled(true);});}).start();};
-        ask.setOnClickListener(v->{tap(v);run.run();});
-        a.setOnClickListener(v->{tap(v);q.setText("Bugünkü planlarımı analiz et. Öncelikleri, boşlukları ve olası çakışmaları söyle.");run.run();});
-        b.setOnClickListener(v->{tap(v);q.setText("Bugünkü planımı daha gerçekçi hale getir. Gereksiz yoğunlukları bul ve sadeleştirme öner.");run.run();});
-        TextView close=buttonText("Kapat",MUTED);box.addView(close,marginTop(8));close.setOnClickListener(v->{tap(v);d.dismiss();});
-        d.setContentView(box);d.show();fitDialog(d,0.95f);
+    private void showAiDialog(){
+        showInlineAiPanel();
     }
+
 
     private String buildAiContext(){
         StringBuilder sb=new StringBuilder();String today=key(Calendar.getInstance());
@@ -1695,39 +1699,19 @@ public class MainActivity extends Activity {
         return !x.before(today);
     }
 
-    private void scheduleReminder(Plan p) {
-        cancelReminder(p);
-        if (!remindersOn() || p.done || !Plan.HOURLY.equals(p.type) || p.startTime == null ||
-                !p.startTime.matches("\\d{2}:\\d{2}")) return;
-
-        Calendar alarm = parseKey(p.date);
-        int hour = Integer.parseInt(p.startTime.substring(0, 2));
-        int minute = Integer.parseInt(p.startTime.substring(3));
-        alarm.set(Calendar.HOUR_OF_DAY, hour);
-        alarm.set(Calendar.MINUTE, minute);
-        alarm.set(Calendar.SECOND, 0);
-        alarm.set(Calendar.MILLISECOND, 0);
-        alarm.add(Calendar.MINUTE, -reminderMinutes());
-        if (alarm.getTimeInMillis() <= System.currentTimeMillis()) return;
-
-        Intent intent = new Intent(this, ReminderReceiver.class);
-        intent.putExtra("title", p.title);
-        PendingIntent pi = PendingIntent.getBroadcast(
-                this, (int) (p.id & 0x7fffffff), intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
-        if (am != null) am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarm.getTimeInMillis(), pi);
+    private void scheduleReminder(Plan p){
+        ReminderScheduler.schedule(this,p,reminderMinutes(),remindersOn());
     }
 
-    private void cancelReminder(Plan p) {
-        Intent i = new Intent(this, ReminderReceiver.class);
-        PendingIntent pi = PendingIntent.getBroadcast(
-                this, (int) (p.id & 0x7fffffff), i,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
-        if (am != null) am.cancel(pi);
-        try { pi.cancel(); } catch (Exception ignored) {}
+    private void scheduleAllReminders(){
+        ReminderScheduler.rescheduleAll(this,plans);
     }
+
+
+    private void cancelReminder(Plan p){
+        ReminderScheduler.cancel(this,p);
+    }
+
 
     private interface TimeCallback { void value(String value); }
     private interface DateCallback { void pick(String date); }
@@ -1777,6 +1761,17 @@ public class MainActivity extends Activity {
             Paint.FontMetrics fm = label.getFontMetrics();
             float th = fm.descent - fm.ascent;
             canvas.drawText(text, cx - tw / 2f, cy - (fm.ascent + fm.descent) / 2f, label);
+        }
+    }
+
+    private boolean exactAlarmAllowed(){
+        return ReminderScheduler.exactAlarmAllowed(this);
+    }
+
+    private void requestExactAlarmAccess(){
+        if(android.os.Build.VERSION.SDK_INT>=31){
+            try{startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:"+getPackageName())));}
+            catch(Exception e){toast("Kesin alarm ayarı açılamadı.");}
         }
     }
 
