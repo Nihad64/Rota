@@ -125,7 +125,7 @@ public final class InlineAiPanel {
             String prompt="Sen Rotam AI'sın. Türkçe konuş. Bugünün tarihi "+today+". Kullanıcının doğal dildeki isteğini gerçek planlama işlemlerine dönüştür. "+
                     "Bir istekte birden fazla plan oluşturabilirsin. Yol süresi belirtilirse randevudan önce çıkış planı ekle. "+
                     "Kullanıcı açıkça söylemedikçe mevcut planları tamamlandı sayma. Eksik kritik bilgi varsa kısa soru sor ve actions boş bırak. "+
-                    "Sadece geçerli JSON döndür: {\\"reply\\":\\"kısa doğal cevap\\",\\"actions\\":[{\\"type\\":\\"create_plan\\",\\"title\\":\\"...\\",\\"category\\":\\"book|work|video|sport|faith|appointment|food|personal\\",\\"date\\":\\"YYYY-MM-DD\\",\\"start\\":\\"HH:MM\\",\\"end\\":\\"HH:MM\\",\\"repeat\\":\\"none|daily|weekdays|weekly\\",\\"note\\":\\"\\",\\"details\\":{}}]}. "+
+                    "Sadece geçerli JSON döndür: {\"reply\":\"kısa doğal cevap\",\"actions\":[{\"type\":\"create_plan\",\"title\":\"...\",\"category\":\"book|work|video|sport|faith|appointment|food|personal\",\"date\":\"YYYY-MM-DD\",\"start\":\"HH:MM\",\"end\":\"HH:MM\",\"repeat\":\"none|daily|weekdays|weekly\",\"note\":\"\",\"details\":{}}]}. "+
                     "Diğer action tipleri: update_plan, reschedule_plan, complete_plan, delete_plan. Güncelleme/silme/tamamlama için planId kullan. Mevcut planlar:\n"+ctx+"\nKullanıcı isteği:\n"+user;
             URL url=new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent");
             conn=(HttpURLConnection)url.openConnection();conn.setRequestMethod("POST");conn.setConnectTimeout(15000);conn.setReadTimeout(30000);conn.setDoOutput(true);
