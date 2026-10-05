@@ -29,8 +29,8 @@ public final class MissedPlanManager {
         Calendar c=Calendar.getInstance();
         try{String[] d=p.date.split("-");c.set(Integer.parseInt(d[0]),Integer.parseInt(d[1])-1,Integer.parseInt(d[2]),0,0,0);c.set(Calendar.MILLISECOND,0);}catch(Exception e){return 0;}
         if(Plan.ALL_DAY.equals(p.type))return c.getTimeInMillis()+86400000L-1;
-        if(p.endTime!=null&&p.endTime.matches("\\d{2}:\\d{2}")){c.set(Calendar.HOUR_OF_DAY,Integer.parseInt(p.endTime.substring(0,2)));c.set(Calendar.MINUTE,Integer.parseInt(p.endTime.substring(3));return c.getTimeInMillis();}
-        if(p.startTime!=null&&p.startTime.matches("\\d{2}:\\d{2}")){c.set(Calendar.HOUR_OF_DAY,Integer.parseInt(p.startTime.substring(0,2)));c.set(Calendar.MINUTE,Integer.parseInt(p.startTime.substring(3));return c.getTimeInMillis()+3600000L;}
+        if(p.endTime!=null&&p.endTime.matches("\\d{2}:\\d{2}")){c.set(Calendar.HOUR_OF_DAY,Integer.parseInt(p.endTime.substring(0,2)));c.set(Calendar.MINUTE,Integer.parseInt(p.endTime.substring(3)));return c.getTimeInMillis();}
+        if(p.startTime!=null&&p.startTime.matches("\\d{2}:\\d{2}")){c.set(Calendar.HOUR_OF_DAY,Integer.parseInt(p.startTime.substring(0,2)));c.set(Calendar.MINUTE,Integer.parseInt(p.startTime.substring(3)));return c.getTimeInMillis()+3600000L;}
         return 0;
     }
 
