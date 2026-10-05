@@ -2,11 +2,13 @@ package com.rota.app;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
+import android.view.Window;
 import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
@@ -25,6 +27,10 @@ public final class PlanWizard {
  private static final Locale TR=new Locale("tr","TR");
  private static class Draft{String key,title,icon,date,type=Plan.HOURLY,start="",end="",repeat=Plan.REPEAT_NONE;JSONObject details=new JSONObject();Draft(String d){date=d;}}
  public static void show(Activity a,List<Plan> plans,String date,Callback cb){showCategory(a,plans,new Draft(date),cb);}
+ private static Dialog dialog(Activity a){Dialog d=new Dialog(a);d.setCancelable(true);return d;}
+ private static void fit(Dialog d,Activity a,float frac){Window w=d.getWindow();if(w!=null){w.setBackgroundDrawableResource(android.R.color.transparent);w.setLayout((int)(a.getResources().getDisplayMetrics().widthPixels*frac),-2);}}
+ private static TextView label(Activity a,String s){return txt(a,s,12,MUTED,true);}
+ private static int dp(Context c,int v){return (int)(v*c.getResources().getDisplayMetrics().density+.5f);}
  private static void showCategory(Activity a,List<Plan> plans,Draft d,Callback cb){
   Dialog x=dialog(a);LinearLayout box=box(a);header(a,box,"Yeni plan","Önce ne yapacağını seç.",x);GridLayout grid=new GridLayout(a);grid.setColumnCount(2);
   String[][] cats={{"📚","Kitap / Okuma","book"},{"💼","İş","work"},{"🎬","Video Edit","video"},{"🏋️","Spor","sport"},{"🕌","İbadet","faith"},{"📍","Randevu","appointment"},{"🍳","Yemek","food"},{"◉","Kişisel","personal"}};
