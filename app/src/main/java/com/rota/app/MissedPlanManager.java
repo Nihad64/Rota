@@ -11,18 +11,19 @@ import java.util.Calendar;
 import java.util.List;
 
 public final class MissedPlanManager {
+    public interface LaterCallback { void reopen(Plan plan); }
     private static final int BG=Color.rgb(14,16,20),SURFACE2=Color.rgb(32,36,43),TEXT=Color.rgb(245,245,245),MUTED=Color.rgb(157,163,172),ORANGE=Color.rgb(255,139,0),GREEN=Color.rgb(70,175,112),RED=Color.rgb(210,68,75);
     private static boolean showing;
     private MissedPlanManager(){}
 
-    public static void check(Activity a,List<Plan> plans,Runnable refresh){
+    public static void check(Activity a,List<Plan> plans,Runnable refresh,LaterCallback later){
         if(showing)return;Plan target=null;long now=System.currentTimeMillis();
         for(Plan p:plans){
             if(p.done||Plan.STATUS_DONE.equals(p.status)||Plan.STATUS_CANCELLED.equals(p.status))continue;
             long end=endMillis(p);
             if(end>0&&end<now){target=p;break;}
         }
-        if(target!=null)show(a,plans,target,refresh);
+        if(target!=null)show(a,plans,target,refresh,later);
     }
 
     private static long endMillis(Plan p){
@@ -34,7 +35,7 @@ public final class MissedPlanManager {
         return 0;
     }
 
-    private static void show(Activity a,List<Plan> plans,Plan p,Runnable refresh){
+    private static void show(Activity a,List<Plan> plans,Plan p,Runnable refresh,LaterCallback later){
         showing=true;if(!Plan.STATUS_PENDING_REVIEW.equals(p.status)){p.status=Plan.STATUS_PENDING_REVIEW;PlanStore.save(a,plans);}
         Dialog d=new Dialog(a);d.setCancelable(false);LinearLayout box=col(a);box.setPadding(dp(a,20),dp(a,18),dp(a,20),dp(a,20));box.setBackground(round(BG,28));
         box.addView(t(a,"Bu planı ne yaptın?",24,TEXT,true));
@@ -46,12 +47,12 @@ public final class MissedPlanManager {
         box.addView(r1,mt(a,14));box.addView(r2,mt(a,7));
         done.setOnClickListener(v->{p.done=true;p.status=Plan.STATUS_DONE;ReminderScheduler.cancel(a,p);finish(d,a,plans,refresh);});
         miss.setOnClickListener(v->{p.done=false;p.status=Plan.STATUS_MISSED;finish(d,a,plans,refresh);});
-        later.setOnClickListener(v->{d.dismiss();showing=false;PlanStore.save(a,plans);toast(a,"Plan düzenleme ekranından yeni zamanını seç.");});
+        later.setOnClickListener(v->{d.dismiss();showing=false;p.status=Plan.STATUS_DEFERRED;PlanStore.save(a,plans);if(later!=null)later.reopen(p);});
         cancel.setOnClickListener(v->{ReminderScheduler.cancel(a,p);plans.remove(p);finish(d,a,plans,refresh);});
         d.setContentView(box);d.show();fit(d,a,.94f);
     }
 
-    private static void finish(Dialog d,Activity a,List<Plan> plans,Runnable refresh){PlanStore.save(a,plans);d.dismiss();showing=false;if(refresh!=null)refresh.run();new android.os.Handler(a.getMainLooper()).postDelayed(() -> check(a,plans,refresh),250);}
+    private static void finish(Dialog d,Activity a,List<Plan> plans,Runnable refresh){PlanStore.save(a,plans);d.dismiss();showing=false;if(refresh!=null)refresh.run();new android.os.Handler(a.getMainLooper()).postDelayed(() -> check(a,plans,refresh,later),250);}
     private static String safe(String s){return s==null||s.isEmpty()?"":s;}
     private static LinearLayout col(Activity a){LinearLayout l=new LinearLayout(a);l.setOrientation(LinearLayout.VERTICAL);return l;}
     private static LinearLayout row(Activity a){LinearLayout l=col(a);l.setOrientation(LinearLayout.HORIZONTAL);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
