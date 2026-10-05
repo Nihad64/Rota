@@ -114,7 +114,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         ReminderScheduler.rescheduleAll(this, plans);
-        new android.os.Handler(getMainLooper()).postDelayed(() -> MissedPlanManager.check(this, plans, this::render), 350);
+        new android.os.Handler(getMainLooper()).postDelayed(() -> MissedPlanManager.check(this, plans, this::render, p -> showPlanEditor(p, p.date)), 350);
     }
 
     private android.content.SharedPreferences settings() {
