@@ -9,8 +9,8 @@
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
-        android:icon="@drawable/rotam_canonical_logo"
-        android:roundIcon="@drawable/rotam_canonical_logo">
+        android:icon="@drawable/file_00000000762c82438e3567cbf4812489"
+        android:roundIcon="@drawable/file_00000000762c82438e3567cbf4812489">
         <activity
             android:name=".MainActivity"
             android:exported="true">
