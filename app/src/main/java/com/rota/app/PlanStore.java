@@ -92,7 +92,7 @@ public final class PlanStore {
         // creating an unbounded number of alarms.
         for (int i = 0; i < 45; i++) {
             day.add(Calendar.DAY_OF_MONTH, 1);
-            if (!matchesRepeat(first.repeat, day)) continue;
+            if (!matchesRepeat(first.repeat, day, first)) continue;
 
             Plan n = new Plan(id++, key(day), first.title, first.type, first.time, first.duration, false);
             n.startTime = first.startTime == null ? "" : first.startTime;
@@ -108,9 +108,9 @@ public final class PlanStore {
         }
     }
 
-    private static boolean matchesRepeat(String repeat, Calendar day) {
+    private static boolean matchesRepeat(String repeat, Calendar day, Plan first) {
         if (Plan.REPEAT_DAILY.equals(repeat)) return true;
-        if (Plan.REPEAT_WEEKLY.equals(repeat)) return day.get(Calendar.DAY_OF_WEEK) == day.get(Calendar.DAY_OF_WEEK);
+        if (Plan.REPEAT_WEEKLY.equals(repeat)) return day.get(Calendar.DAY_OF_WEEK) == anchorDayOfWeek(first);
         if (Plan.REPEAT_WEEKDAYS.equals(repeat)) {
             int w = day.get(Calendar.DAY_OF_WEEK);
             return w != Calendar.SATURDAY && w != Calendar.SUNDAY;
@@ -118,7 +118,7 @@ public final class PlanStore {
         return false;
     }
 
-    private static Calendar parseDate(String value) {
+    private static int anchorDayOfWeek(Plan first) {\n        Calendar c = parseDate(first.date);\n        return c == null ? Calendar.MONDAY : c.get(Calendar.DAY_OF_WEEK);\n    }\n\n    private static Calendar parseDate(String value) {
         try {
             String[] p = value.split("-");
             if (p.length != 3) return null;
