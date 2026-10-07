@@ -106,7 +106,7 @@ public final class PlanWizard {
         LinearLayout titleBox = col(a);
         titleBox.addView(txt(a, editing == null ? "Yeni plan" : "Planı düzenle", 23, TEXT, true));
         titleBox.addView(txt(a, "Tek ekranda düzenle · değişiklikleri anında kaydet.", 10, MUTED, false), mt(a, 4));
-        header.addView(titleBox, weight(1, -2));
+        header.addView(titleBox, weight(a, 1, -2));
         TextView close = button(a, "×", TEXT, SURFACE2);
         header.addView(close, lp(a, 44, 44));
         root.addView(header);
