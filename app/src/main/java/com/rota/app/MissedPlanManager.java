@@ -59,6 +59,10 @@ public final class MissedPlanManager {
         show(a,plans,p,refresh,null);
     }
 
+    public static void showExternal(Activity a,List<Plan> plans,Plan p,Runnable refresh,LaterCallback later){
+        show(a,plans,p,refresh,later);
+    }
+
     private static void show(Activity a,List<Plan> plans,Plan p,Runnable refresh,LaterCallback later){
         showing=true;
         p.status=Plan.STATUS_PENDING_REVIEW;
