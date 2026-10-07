@@ -569,7 +569,7 @@ public class MainActivity extends Activity {
     private void addTopBar(LinearLayout page, boolean showBell, boolean showCalendar) {
         LinearLayout top = row();
         ImageView logoView = new ImageView(this);
-        logoView.setImageResource(R.drawable.rotam_logo);
+        logoView.setImageResource(R.drawable.rotam_canonical_logo);
         logoView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         top.addView(logoView, new LinearLayout.LayoutParams(dp(46), dp(46)));
 
@@ -1528,7 +1528,7 @@ public class MainActivity extends Activity {
 
     private ImageView logo(int size) {
         ImageView v = new ImageView(this);
-        v.setImageResource(R.drawable.rotam_logo);
+        v.setImageResource(R.drawable.rotam_canonical_logo);
         v.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         v.setPadding(dp(2), dp(2), dp(2), dp(2));
         return v;
