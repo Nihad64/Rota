@@ -105,8 +105,8 @@ public final class PlanWizard {
             return;
         }
 
-        Dialog dialog = dialog(a);
-        LinearLayout box = dialogBox(a);
+        Dialog dialog = new Dialog(a);
+        LinearLayout box = box(a);
         header(a, box, "Yeni plan", "1 / 3  ·  Önce ne yapmak istediğini seç.", dialog);
 
         GridLayout grid = new GridLayout(a);
@@ -131,16 +131,16 @@ public final class PlanWizard {
         box.addView(grid, mt(a, 10));
         dialog.setContentView(box);
         dialog.show();
-        fit(dialog, a, .96f);
+        fit(dialog, a);
     }
 
     private static void showDetailsStep(Activity a, List<Plan> plans, Draft d, Plan editing, Callback cb) {
-        Dialog dialog = dialog(a);
+        Dialog dialog = new Dialog(a);
         ScrollView scroll = new ScrollView(a);
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
 
-        LinearLayout box = dialogBox(a);
+        LinearLayout box = box(a);
         header(a, box, "Detaylar", "2 / 3  ·  " + labelFor(d.category) + " için gerekli bilgiler.", dialog);
 
         EditText title = input(a, "Plan adı · örn. Diş doktoru / Risale okumak");
@@ -179,7 +179,11 @@ public final class PlanWizard {
                 return;
             }
             d.title = t;
-            d.details = buildDetails(d.category, fields, stages, d.details);
+            try {
+                d.details = new JSONObject(buildDetails(d.category, fields, stages, d.details));
+            } catch (Exception ignored) {
+                d.details = new JSONObject();
+            }
             dialog.dismiss();
             showTimingStep(a, plans, d, editing, cb);
         });
@@ -187,7 +191,7 @@ public final class PlanWizard {
         scroll.addView(box);
         dialog.setContentView(scroll);
         dialog.show();
-        fit(dialog, a, .94f);
+        fit(dialog, a);
     }
 
     private static void rebuildCategoryDetails(Activity a, Draft d, LinearLayout details,
@@ -241,8 +245,8 @@ public final class PlanWizard {
     }
 
     private static void showTimingStep(Activity a, List<Plan> plans, Draft d, Plan editing, Callback cb) {
-        Dialog dialog = dialog(a);
-        LinearLayout box = dialogBox(a);
+        Dialog dialog = new Dialog(a);
+        LinearLayout box = box(a);
         header(a, box, "Zaman", "3 / 3  ·  Tarih, saat ve tekrar.", dialog);
 
         final String[] date = {d.date};
@@ -262,9 +266,9 @@ public final class PlanWizard {
 
         box.addView(textLabel(a, "PLAN TÜRÜ"), mt(a, 15));
         LinearLayout typeRow = row(a);
-        TextView hourly = chip(a, "Saatli", Plan.HOURLY.equals(type[0]));
-        TextView flex = chip(a, "Esnek", Plan.FLEX.equals(type[0]));
-        TextView allDay = chip(a, "Tüm gün", Plan.ALL_DAY.equals(type[0]));
+        TextView hourly = button(a, "Saatli", Plan.HOURLY.equals(type[0]) ? Color.WHITE : TEXT, Plan.HOURLY.equals(type[0]) ? ORANGE : SURFACE2);
+        TextView flex = button(a, "Esnek", Plan.FLEX.equals(type[0]) ? Color.WHITE : TEXT, Plan.FLEX.equals(type[0]) ? ORANGE : SURFACE2);
+        TextView allDay = button(a, "Tüm gün", Plan.ALL_DAY.equals(type[0]) ? Color.WHITE : TEXT, Plan.ALL_DAY.equals(type[0]) ? ORANGE : SURFACE2);
         typeRow.addView(hourly, weight(a, 1f, 48));
         gap(typeRow, a, 7);
         typeRow.addView(flex, weight(a, 1f, 48));
@@ -392,7 +396,7 @@ public final class PlanWizard {
 
         dialog.setContentView(box);
         dialog.show();
-        fit(dialog, a, .94f);
+        fit(dialog, a);
     }
 
     private static TextView textLabel(Activity a, String s) {
