@@ -118,7 +118,12 @@ public final class PlanStore {
         return false;
     }
 
-    private static int anchorDayOfWeek(Plan first) {\n        Calendar c = parseDate(first.date);\n        return c == null ? Calendar.MONDAY : c.get(Calendar.DAY_OF_WEEK);\n    }\n\n    private static Calendar parseDate(String value) {
+    private static int anchorDayOfWeek(Plan first) {
+        Calendar c = parseDate(first.date);
+        return c == null ? Calendar.MONDAY : c.get(Calendar.DAY_OF_WEEK);
+    }
+
+    private static Calendar parseDate(String value) {
         try {
             String[] p = value.split("-");
             if (p.length != 3) return null;
