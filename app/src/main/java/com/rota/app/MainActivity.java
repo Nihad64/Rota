@@ -1007,7 +1007,9 @@ public class MainActivity extends Activity {
         return "";
     }
 
-    private void toast(String s) { android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_SHORT).show(); }\n\n    private String categoryLabel(String k) {
+    private void toast(String s) { android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_SHORT).show(); }
+
+    private String categoryLabel(String k) {
         if ("book".equals(k)) return "Kitap";
         if ("work".equals(k)) return "İş";
         if ("video".equals(k)) return "Video";
