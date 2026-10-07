@@ -139,13 +139,9 @@ public final class PlanWizard {
             currentFields.clear();
             stageFields.clear();
             Field[] fields = fieldsFor(selectedCat[0]);
-            body.removeView(detailsBox);
-            // Reinsert the details box immediately after the category grid.
-            int idx = body.indexOfChild(categories);
-            body.addView(detailsBox, idx + 1, mt(a, 12));
 
             if ("video".equals(selectedCat[0])) {
-                body.addView(txt(a, "AŞAMALAR", 10, MUTED, true), idx + 2 == body.getChildCount() ? mt(a, 14) : mt(a, 14));
+                detailsBox.addView(txt(a, "AŞAMALAR", 10, MUTED, true), mt(a, 4));
                 LinearLayout stageBox = col(a);
                 JSONArray stages = detailArray(d.details, "stages");
                 if (stages != null && stages.length() > 0) {
@@ -157,24 +153,26 @@ public final class PlanWizard {
                     addStage(a, stageBox, stageFields, "Yazılar / altyazı", 0);
                     addStage(a, stageBox, stageFields, "Müzik / ses", 0);
                 }
-                body.addView(stageBox, mt(a, 7));
-                TextView addStage = button(a, "＋  Aşama ekle", ORANGE, SURFACE2);
-                body.addView(addStage, mt(a, 7));
-                addStage.setOnClickListener(v -> addStage(a, stageBox, stageFields, "", 0));
+                detailsBox.addView(stageBox, mt(a, 5));
+                TextView add = button(a, "＋  Aşama ekle", ORANGE, SURFACE2);
+                detailsBox.addView(add, mt(a, 7));
+                add.setOnClickListener(v -> addStage(a, stageBox, stageFields, "", 0));
+
                 EditText project = input(a, "Video / proje adı");
                 project.setText(readDetail(d.details, "project", 0));
-                body.addView(project, mt(a, 12));
+                detailsBox.addView(project, mt(a, 11));
                 currentFields.add(project);
+
                 EditText extra = multiInput(a, "Ek bilgi");
                 extra.setText(readDetail(d.details, "extra", 1));
-                body.addView(extra, mt(a, 8));
+                detailsBox.addView(extra, mt(a, 8));
                 currentFields.add(extra);
             } else {
                 for (int i = 0; i < fields.length; i++) {
                     Field f = fields[i];
                     EditText e = f.multi ? multiInput(a, f.hint) : input(a, f.hint);
                     e.setText(readDetail(d.details, f.key, i));
-                    body.addView(e, mt(a, i == 0 ? 12 : 8));
+                    detailsBox.addView(e, mt(a, i == 0 ? 4 : 8));
                     currentFields.add(e);
                 }
             }
