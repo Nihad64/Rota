@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(0);
         buildShell();
         render();
+        if (notificationEnabled()) requestNotificationPermission();
     }
 
     @Override
@@ -576,9 +577,6 @@ public class MainActivity extends Activity {
         p.addView(cardText("Rotam AI, planlarını okuyabilir, yeni planlar oluşturabilir ve açıkça istediğinde mevcut planlarını değiştirebilir."),
                 margins(18, 0, 18, 14));
 
-        p.addView(sectionTitle("Görünüm"), margins(18, 4, 18, 8));
-        p.addView(settingRow("Tema", "Şimdilik odak modu: koyu.", "Gece", SURFACE2, v -> {}), margins(18, 0, 18, 8));
-
         p.addView(sectionTitle("Rotam"), margins(18, 4, 18, 8));
         p.addView(cardText("Rotam 2.2.0\nKişisel planlama + Gemini AI\nVeriler bu cihazda saklanır."),
                 margins(18, 0, 18, 28));
@@ -684,7 +682,7 @@ public class MainActivity extends Activity {
                 target = p;
             }
         }
-        if (target != null) MissedPlanManager.showExternal(this, plans, target, this::render);
+        if (target != null) MissedPlanManager.showExternal(this, plans, target, this::render, this::reopenMissed);
     }
 
     private void toggleDone(Plan p) {
