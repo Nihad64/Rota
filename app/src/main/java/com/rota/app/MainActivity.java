@@ -520,7 +520,7 @@ public class MainActivity extends Activity {
         List<Plan> list = forDate(date);
         p.addView(text("Günün akışı", 18, TEXT, true), margins(18, 0, 18, 9));
         if (list.isEmpty()) {
-            p.addView(cardText("Bu gün için plan yok.").also(v -> {}), margins(18, 0, 18, 10));
+            p.addView(cardText("Bu gün için plan yok."), margins(18, 0, 18, 10));
         } else {
             for (Plan q : list) p.addView(planCard(q), margins(18, 0, 18, 9));
         }
@@ -1007,7 +1007,7 @@ public class MainActivity extends Activity {
         return "";
     }
 
-    private String categoryLabel(String k) {
+    private void toast(String s) { android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_SHORT).show(); }\n\n    private String categoryLabel(String k) {
         if ("book".equals(k)) return "Kitap";
         if ("work".equals(k)) return "İş";
         if ("video".equals(k)) return "Video";
