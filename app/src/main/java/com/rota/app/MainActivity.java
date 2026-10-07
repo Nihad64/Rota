@@ -396,7 +396,7 @@ public class MainActivity extends Activity {
             TextView first = buttonText("İlk planı oluştur", Color.WHITE);
             first.setBackground(round(ORANGE, 16));
             empty.addView(first, margin(40, 15, 40, 0));
-            first.setOnClickListener(v -> { tap(v); showPlanEditor(null, todayKey); });
+            first.setOnClickListener(v -> { tap(v); openPlanWizard(todayKey); });
             page.addView(empty, margin(18, 0, 18, 24));
         } else {
             for (int i = 0; i < today.size(); i++) {
