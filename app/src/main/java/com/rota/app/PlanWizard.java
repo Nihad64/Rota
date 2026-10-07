@@ -96,231 +96,318 @@ public final class PlanWizard {
     }
 
     private static void showEditor(Activity a, List<Plan> plans, Draft d, Plan editing, Callback cb) {
-        Dialog dialog = new Dialog(a);
-        dialog.setCancelable(true);
+        showCategoryStep(a, plans, d, editing, cb);
+    }
 
-        LinearLayout root = col(a);
-        root.setBackground(round(BG, 28));
+    private static void showCategoryStep(Activity a, List<Plan> plans, Draft d, Plan editing, Callback cb) {
+        if (editing != null) {
+            showDetailsStep(a, plans, d, editing, cb);
+            return;
+        }
 
-        LinearLayout header = row(a);
-        LinearLayout titleBox = col(a);
-        titleBox.addView(txt(a, editing == null ? "Yeni plan" : "Planı düzenle", 23, TEXT, true));
-        titleBox.addView(txt(a, "Tek ekranda düzenle · değişiklikleri anında kaydet.", 10, MUTED, false), mt(a, 4));
-        header.addView(titleBox, weight(a, 1, -2));
-        TextView close = button(a, "×", TEXT, SURFACE2);
-        header.addView(close, lp(a, 44, 44));
-        root.addView(header);
+        Dialog dialog = dialog(a);
+        LinearLayout box = dialogBox(a);
+        header(a, box, "Yeni plan", "1 / 3  ·  Önce ne yapmak istediğini seç.", dialog);
 
-        ScrollView scroll = new ScrollView(a);
-        scroll.setFillViewport(true);
-        scroll.setClipToPadding(false);
-        LinearLayout body = col(a);
-        body.setPadding(0, dp(a, 2), 0, dp(a, 18));
-        scroll.addView(body);
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-
-        body.addView(txt(a, "PLAN ADI", 10, MUTED, true), mt(a, 15));
-        EditText title = input(a, "Örn. Diş doktoru");
-        title.setText(d.title);
-        body.addView(title, mt(a, 7));
-
-        body.addView(txt(a, "KATEGORİ", 10, MUTED, true), mt(a, 16));
-        GridLayout categories = new GridLayout(a);
-        categories.setColumnCount(2);
-        LinearLayout detailsBox = col(a);
-        body.addView(categories, mt(a, 7));
-
-        final String[] selectedCat = {d.category};
-        final List<EditText> currentFields = new ArrayList<>();
-        final List<EditText> stageFields = new ArrayList<>();
-
-        Runnable rebuildDetails = () -> {
-            detailsBox.removeAllViews();
-            currentFields.clear();
-            stageFields.clear();
-            Field[] fields = fieldsFor(selectedCat[0]);
-
-            if ("video".equals(selectedCat[0])) {
-                detailsBox.addView(txt(a, "AŞAMALAR", 10, MUTED, true), mt(a, 4));
-                LinearLayout stageBox = col(a);
-                JSONArray stages = detailArray(d.details, "stages");
-                if (stages != null && stages.length() > 0) {
-                    for (int i = 0; i < stages.length(); i++)
-                        addStage(a, stageBox, stageFields, stages.optString(i, ""), 0);
-                } else {
-                    addStage(a, stageBox, stageFields, "Kaba kurgu", 0);
-                    addStage(a, stageBox, stageFields, "İnce kurgu", 0);
-                    addStage(a, stageBox, stageFields, "Yazılar / altyazı", 0);
-                    addStage(a, stageBox, stageFields, "Müzik / ses", 0);
-                }
-                detailsBox.addView(stageBox, mt(a, 5));
-                TextView add = button(a, "＋  Aşama ekle", ORANGE, SURFACE2);
-                detailsBox.addView(add, mt(a, 7));
-                add.setOnClickListener(v -> addStage(a, stageBox, stageFields, "", 0));
-
-                EditText project = input(a, "Video / proje adı");
-                project.setText(readDetail(d.details, "project", 0));
-                detailsBox.addView(project, mt(a, 11));
-                currentFields.add(project);
-
-                EditText extra = multiInput(a, "Ek bilgi");
-                extra.setText(readDetail(d.details, "extra", 1));
-                detailsBox.addView(extra, mt(a, 8));
-                currentFields.add(extra);
-            } else {
-                for (int i = 0; i < fields.length; i++) {
-                    Field f = fields[i];
-                    EditText e = f.multi ? multiInput(a, f.hint) : input(a, f.hint);
-                    e.setText(readDetail(d.details, f.key, i));
-                    detailsBox.addView(e, mt(a, i == 0 ? 4 : 8));
-                    currentFields.add(e);
-                }
-            }
-        };
-
-        // Category cards
+        GridLayout grid = new GridLayout(a);
+        grid.setColumnCount(2);
         for (String[] c : CATS) {
             LinearLayout card = categoryCard(a, c[0], c[1], c[2].equals(d.category));
             GridLayout.LayoutParams gp = new GridLayout.LayoutParams(
                     GridLayout.spec(GridLayout.UNDEFINED, 1f),
                     GridLayout.spec(GridLayout.UNDEFINED, 1f));
-            gp.width = 0; gp.height = dp(a, 70);
+            gp.width = 0;
+            gp.height = dp(a, 78);
             gp.setMargins(dp(a, 4), dp(a, 4), dp(a, 4), dp(a, 4));
-            categories.addView(card, gp);
+            grid.addView(card, gp);
+
             card.setOnClickListener(v -> {
-                for (int i = 0; i < categories.getChildCount(); i++) {
-                    View ch = categories.getChildAt(i);
-                    if (ch instanceof LinearLayout) ch.setBackground(round(SURFACE, 18));
-                }
-                card.setBackground(round(ORANGE, 18));
-                selectedCat[0] = c[2];
-                rebuildDetails.run();
+                d.category = c[2];
+                dialog.dismiss();
+                showDetailsStep(a, plans, d, null, cb);
             });
         }
 
-        body.addView(detailsBox, mt(a, 12));
-        rebuildDetails.run();
+        box.addView(grid, mt(a, 10));
+        dialog.setContentView(box);
+        dialog.show();
+        fit(dialog, a, .96f);
+    }
 
-        body.addView(txt(a, "ZAMAN", 10, MUTED, true), mt(a, 18));
-        body.addView(textHint(a, "Tarih, saat ve tekrar aynı bölümde."), mt(a, 5));
+    private static void showDetailsStep(Activity a, List<Plan> plans, Draft d, Plan editing, Callback cb) {
+        Dialog dialog = dialog(a);
+        ScrollView scroll = new ScrollView(a);
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
+
+        LinearLayout box = dialogBox(a);
+        header(a, box, "Detaylar", "2 / 3  ·  " + labelFor(d.category) + " için gerekli bilgiler.", dialog);
+
+        EditText title = input(a, "Plan adı · örn. Diş doktoru / Risale okumak");
+        title.setText(d.title == null ? "" : d.title);
+        title.setTextSize(16);
+        box.addView(textLabel(a, "PLAN ADI"), mt(a, 15));
+        box.addView(title, mt(a, 7));
+
+        box.addView(textLabel(a, "KATEGORİYE ÖZEL"), mt(a, 16));
+
+        final List<EditText> fields = new ArrayList<>();
+        final List<EditText> stages = new ArrayList<>();
+        final LinearLayout details = col(a);
+        box.addView(details, mt(a, 6));
+
+        rebuildCategoryDetails(a, d, details, fields, stages);
+
+        LinearLayout actions = row(a);
+        TextView back = button(a, "‹  Geri", MUTED, SURFACE2);
+        TextView next = button(a, "Devam et  ›", Color.WHITE, ORANGE);
+        actions.addView(back, weight(a, .34f, 52));
+        gap(actions, a, 8);
+        actions.addView(next, weight(a, .66f, 52));
+        box.addView(actions, mt(a, 14));
+
+        back.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (editing == null) showCategoryStep(a, plans, d, null, cb);
+            else dialog.dismiss();
+        });
+
+        next.setOnClickListener(v -> {
+            String t = title.getText().toString().trim();
+            if (t.isEmpty()) {
+                title.setError("Plan adı gerekli");
+                return;
+            }
+            d.title = t;
+            d.details = buildDetails(d.category, fields, stages, d.details);
+            dialog.dismiss();
+            showTimingStep(a, plans, d, editing, cb);
+        });
+
+        scroll.addView(box);
+        dialog.setContentView(scroll);
+        dialog.show();
+        fit(dialog, a, .94f);
+    }
+
+    private static void rebuildCategoryDetails(Activity a, Draft d, LinearLayout details,
+                                               List<EditText> fields, List<EditText> stages) {
+        details.removeAllViews();
+        fields.clear();
+        stages.clear();
+
+        if ("video".equals(d.category)) {
+            details.addView(textLabel(a, "PROJE"), mt(a, 4));
+            EditText project = input(a, "Video / proje adı");
+            project.setText(readDetail(d.details, "project", 0));
+            details.addView(project, mt(a, 6));
+            fields.add(project);
+
+            details.addView(textLabel(a, "AŞAMALAR"), mt(a, 12));
+            LinearLayout stageBox = col(a);
+            JSONArray saved = detailArray(d.details, "stages");
+            if (saved != null && saved.length() > 0) {
+                for (int i = 0; i < saved.length(); i++) {
+                    addStage(a, stageBox, stages, saved.optString(i, ""), 0);
+                }
+            } else {
+                addStage(a, stageBox, stages, "Kaba kurgu", 0);
+                addStage(a, stageBox, stages, "İnce kurgu", 0);
+                addStage(a, stageBox, stages, "Yazılar / altyazı", 0);
+                addStage(a, stageBox, stages, "Müzik / ses", 0);
+            }
+            details.addView(stageBox);
+
+            TextView add = button(a, "＋  Aşama ekle", ORANGE, SURFACE2);
+            details.addView(add, mt(a, 7));
+            add.setOnClickListener(v -> addStage(a, stageBox, stages, "", 0));
+
+            details.addView(textLabel(a, "EK BİLGİ"), mt(a, 12));
+            EditText extra = multiInput(a, "İstediğin ek bilgiyi buraya yaz...");
+            extra.setText(readDetail(d.details, "extra", 1));
+            details.addView(extra, mt(a, 6));
+            fields.add(extra);
+            return;
+        }
+
+        Field[] defs = fieldsFor(d.category);
+        for (int i = 0; i < defs.length; i++) {
+            Field f = defs[i];
+            EditText e = f.multi ? multiInput(a, f.hint) : input(a, f.hint);
+            e.setText(readDetail(d.details, f.key, i));
+            details.addView(e, mt(a, i == 0 ? 4 : 8));
+            fields.add(e);
+        }
+    }
+
+    private static void showTimingStep(Activity a, List<Plan> plans, Draft d, Plan editing, Callback cb) {
+        Dialog dialog = dialog(a);
+        LinearLayout box = dialogBox(a);
+        header(a, box, "Zaman", "3 / 3  ·  Tarih, saat ve tekrar.", dialog);
 
         final String[] date = {d.date};
         final String[] start = {d.start};
         final String[] end = {d.end};
-        final String[] repeat = {d.repeat};
-        final String[] type = {d.type};
+        final String[] type = {d.type == null ? Plan.HOURLY : d.type};
+        final String[] repeat = {d.repeat == null ? Plan.REPEAT_NONE : d.repeat};
 
+        box.addView(textLabel(a, "TARİH"), mt(a, 15));
         TextView dateBtn = choice(a, pretty(date[0]));
-        body.addView(dateBtn, mt(a, 9));
+        box.addView(dateBtn, mt(a, 6));
+
         dateBtn.setOnClickListener(v -> pickDate(a, date[0], picked -> {
-            date[0] = picked; dateBtn.setText(pretty(picked));
+            date[0] = picked;
+            dateBtn.setText(pretty(picked));
         }));
 
+        box.addView(textLabel(a, "PLAN TÜRÜ"), mt(a, 15));
         LinearLayout typeRow = row(a);
-        TextView timed = button(a, "Saatli", Color.WHITE, !Plan.ALL_DAY.equals(type[0]) ? ORANGE : SURFACE2);
-        TextView allDay = button(a, "Tüm gün", !Plan.ALL_DAY.equals(type[0]) ? MUTED : Color.WHITE,
-                Plan.ALL_DAY.equals(type[0]) ? ORANGE : SURFACE2);
-        typeRow.addView(timed, weight(a, 1, 46));
-        gap(typeRow, a, 8);
-        typeRow.addView(allDay, weight(a, 1, 46));
-        body.addView(typeRow, mt(a, 8));
+        TextView hourly = chip(a, "Saatli", Plan.HOURLY.equals(type[0]));
+        TextView flex = chip(a, "Esnek", Plan.FLEX.equals(type[0]));
+        TextView allDay = chip(a, "Tüm gün", Plan.ALL_DAY.equals(type[0]));
+        typeRow.addView(hourly, weight(a, 1f, 48));
+        gap(typeRow, a, 7);
+        typeRow.addView(flex, weight(a, 1f, 48));
+        gap(typeRow, a, 7);
+        typeRow.addView(allDay, weight(a, 1f, 48));
+        box.addView(typeRow, mt(a, 6));
 
         LinearLayout times = row(a);
         TextView startBtn = choice(a, start[0].isEmpty() ? "Başlangıç" : start[0]);
         TextView endBtn = choice(a, end[0].isEmpty() ? "Bitiş · isteğe bağlı" : end[0]);
-        times.addView(startBtn, weight(a, 1, 60));
+        times.addView(startBtn, weight(a, 1f, 62));
         gap(times, a, 8);
-        times.addView(endBtn, weight(a, 1, 60));
-        body.addView(times, mt(a, 8));
+        times.addView(endBtn, weight(a, 1f, 62));
+        box.addView(times, mt(a, 9));
         times.setVisibility(Plan.ALL_DAY.equals(type[0]) ? View.GONE : View.VISIBLE);
 
         startBtn.setOnClickListener(v -> timePicker(a, start[0], value -> {
-            start[0] = value; startBtn.setText(value);
+            start[0] = value;
+            startBtn.setText(value);
         }));
         endBtn.setOnClickListener(v -> timePicker(a, end[0], value -> {
-            end[0] = value; endBtn.setText(value);
+            end[0] = value;
+            endBtn.setText(value);
         }));
 
-        timed.setOnClickListener(v -> {
-            type[0] = Plan.HOURLY;
-            setChip(timed, true); setChip(allDay, false);
-            times.setVisibility(View.VISIBLE);
-        });
-        allDay.setOnClickListener(v -> {
-            type[0] = Plan.ALL_DAY;
-            start[0] = ""; end[0] = "";
-            startBtn.setText("Başlangıç"); endBtn.setText("Bitiş · isteğe bağlı");
-            setChip(timed, false); setChip(allDay, true);
-            times.setVisibility(View.GONE);
-        });
-
-        TextView repeatBtn = choice(a, repeatLabel(repeat[0]));
-        body.addView(txt(a, "TEKRAR", 10, MUTED, true), mt(a, 15));
-        body.addView(repeatBtn, mt(a, 6));
-        repeatBtn.setOnClickListener(v -> chooseRepeat(a, repeat[0], value -> {
-            repeat[0] = value; repeatBtn.setText(repeatLabel(value));
-        }));
-
-        body.addView(txt(a, "NOT", 10, MUTED, true), mt(a, 15));
-        EditText note = multiInput(a, "Bu plan için ek bilgi...");
-        note.setText(d.note);
-        body.addView(note, mt(a, 6));
-
-        LinearLayout actions = col(a);
-        TextView save = button(a, editing == null ? "✓  Planı oluştur" : "✓  Değişiklikleri kaydet",
-                Color.WHITE, ORANGE);
-        TextView cancel = button(a, "Vazgeç", MUTED, SURFACE2);
-        actions.addView(save, new LinearLayout.LayoutParams(-1, dp(a, 52)));
-        actions.addView(cancel, mt(a, 8));
-        root.addView(actions, mt(a, 10));
-
-        close.setOnClickListener(v -> dialog.dismiss());
-        cancel.setOnClickListener(v -> dialog.dismiss());
-
-        save.setOnClickListener(v -> {
-            String name = title.getText().toString().trim();
-            if (name.isEmpty()) {
-                title.setError("Plan adı gerekli");
-                return;
+        View.OnClickListener typeListener = v -> {
+            if (v == hourly) type[0] = Plan.HOURLY;
+            else if (v == flex) type[0] = Plan.FLEX;
+            else type[0] = Plan.ALL_DAY;
+            setChip(hourly, Plan.HOURLY.equals(type[0]));
+            setChip(flex, Plan.FLEX.equals(type[0]));
+            setChip(allDay, Plan.ALL_DAY.equals(type[0]));
+            times.setVisibility(Plan.ALL_DAY.equals(type[0]) ? View.GONE : View.VISIBLE);
+            if (Plan.ALL_DAY.equals(type[0])) {
+                start[0] = "";
+                end[0] = "";
+                startBtn.setText("Başlangıç");
+                endBtn.setText("Bitiş · isteğe bağlı");
             }
+        };
+        hourly.setOnClickListener(typeListener);
+        flex.setOnClickListener(typeListener);
+        allDay.setOnClickListener(typeListener);
+
+        box.addView(textLabel(a, "TEKRAR"), mt(a, 15));
+        TextView repeatBtn = choice(a, repeatLabel(repeat[0]));
+        box.addView(repeatBtn, mt(a, 6));
+        repeatBtn.setOnClickListener(v -> chooseRepeat(a, repeat[0], value -> {
+            repeat[0] = value;
+            repeatBtn.setText(repeatLabel(value));
+        }));
+
+        box.addView(textLabel(a, "NOT"), mt(a, 15));
+        EditText note = multiInput(a, "Bu plan için ek bilgi...");
+        note.setText(d.note == null ? "" : d.note);
+        box.addView(note, mt(a, 6));
+
+        box.addView(textHint(a, "Hatırlatma süresi Ayarlar bölümündeki global ayardan kontrol edilir."),
+                mt(a, 8));
+
+        LinearLayout actions = row(a);
+        TextView back = button(a, "‹  Geri", MUTED, SURFACE2);
+        TextView create = button(a, editing == null ? "✓  Planı oluştur" : "✓  Kaydet",
+                Color.WHITE, ORANGE);
+        actions.addView(back, weight(a, .34f, 54));
+        gap(actions, a, 8);
+        actions.addView(create, weight(a, .66f, 54));
+        box.addView(actions, mt(a, 15));
+
+        back.setOnClickListener(v -> {
+            dialog.dismiss();
+            showDetailsStep(a, plans, d, editing, cb);
+        });
+
+        create.setOnClickListener(v -> {
             if (!Plan.ALL_DAY.equals(type[0]) && start[0].isEmpty()) {
                 startBtn.setError("Başlangıç saatini seç");
                 return;
             }
-            String finalDate = validDate(date[0]) ? date[0] : key(Calendar.getInstance());
+            if (!Plan.ALL_DAY.equals(type[0]) && !end[0].isEmpty() && start[0].equals(end[0])) {
+                endBtn.setError("Bitiş saati başlangıçla aynı olamaz");
+                return;
+            }
+
+            d.date = validDate(date[0]) ? date[0] : key(Calendar.getInstance());
+            d.start = start[0];
+            d.end = end[0];
+            d.type = type[0];
+            d.repeat = repeat[0];
+            d.note = note.getText().toString().trim();
+
             if (editing == null) {
-                Plan n = new Plan(PlanStore.nextId(plans), finalDate, name, type[0], start[0],
-                        Plan.durationBetween(start[0], end[0]), false);
-                n.startTime = start[0]; n.endTime = end[0]; n.time = start[0];
-                n.repeat = repeat[0]; n.category = selectedCat[0];
-                n.note = note.getText().toString().trim();
-                n.details = buildDetails(selectedCat[0], currentFields, stageFields, d.details);
-                n.status = Plan.STATUS_PLANNED;
-                PlanStore.addWithRepeat(plans, n);
+                Plan p = new Plan(PlanStore.nextId(plans), d.date, d.title, d.type, d.start,
+                        Plan.durationBetween(d.start, d.end), false);
+                p.startTime = d.start;
+                p.endTime = d.end;
+                p.time = d.start;
+                p.repeat = d.repeat;
+                p.category = d.category;
+                p.note = d.note;
+                p.details = d.details == null ? "" : d.details.toString();
+                p.status = Plan.STATUS_PLANNED;
+                PlanStore.addWithRepeat(plans, p);
             } else {
-                editing.date = finalDate;
-                editing.title = name;
-                editing.type = type[0];
-                editing.startTime = start[0];
-                editing.endTime = end[0];
-                editing.time = start[0];
-                editing.duration = Plan.durationBetween(start[0], end[0]);
-                editing.repeat = repeat[0];
-                editing.category = selectedCat[0];
-                editing.note = note.getText().toString().trim();
-                editing.details = buildDetails(selectedCat[0], currentFields, stageFields, d.details);
+                editing.date = d.date;
+                editing.title = d.title;
+                editing.type = d.type;
+                editing.startTime = d.start;
+                editing.endTime = d.end;
+                editing.time = d.start;
+                editing.duration = Plan.durationBetween(d.start, d.end);
+                editing.repeat = d.repeat;
+                editing.category = d.category;
+                editing.note = d.note;
+                editing.details = d.details == null ? "" : d.details.toString();
                 editing.status = Plan.STATUS_PLANNED;
                 editing.done = false;
             }
+
             PlanStore.save(a, plans);
             ReminderScheduler.rescheduleAll(a, plans);
             dialog.dismiss();
             if (cb != null) cb.saved();
         });
 
-        dialog.setContentView(root);
+        dialog.setContentView(box);
         dialog.show();
-        fit(dialog, a);
+        fit(dialog, a, .94f);
+    }
+
+    private static TextView textLabel(Activity a, String s) {
+        return txt(a, s, 10, MUTED, true);
+    }
+
+    private static String labelFor(String k) {
+        if ("book".equals(k)) return "Kitap / Okuma";
+        if ("work".equals(k)) return "İş";
+        if ("video".equals(k)) return "Video Edit";
+        if ("sport".equals(k)) return "Spor";
+        if ("faith".equals(k)) return "İbadet";
+        if ("appointment".equals(k)) return "Randevu";
+        if ("food".equals(k)) return "Yemek";
+        return "Kişisel";
     }
 
     private static String buildDetails(String category, List<EditText> fields,
