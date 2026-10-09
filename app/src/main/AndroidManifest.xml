@@ -9,8 +9,8 @@
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
-        android:icon="@drawable/file_00000000762c82438e3567cbf4812489"
-        android:roundIcon="@drawable/file_00000000762c82438e3567cbf4812489">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true">
