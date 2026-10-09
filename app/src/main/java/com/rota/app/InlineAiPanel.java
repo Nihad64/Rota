@@ -3,6 +3,7 @@ package com.rota.app;
 import android.Manifest;
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.res.Resources;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -151,9 +152,11 @@ public final class InlineAiPanel {
         input.setHint("Gemini'ye yaz…");
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
                 | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
         input.setPadding(dp(a, 14), dp(a, 9), dp(a, 14), dp(a, 9));
         input.setBackground(round(SURFACE2, 18));
         composer.addView(input, new LinearLayout.LayoutParams(0, dp(a, 52), 1));
+        chips.setTag(input);
 
         TextView mic = button(a, "🎙", TEXT, SURFACE3, 18);
         composer.addView(mic, lp(a, 48, 48));
@@ -204,9 +207,14 @@ public final class InlineAiPanel {
 
         send.setOnClickListener(v -> submit.run());
         input.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND
+                    || actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                submit.run();
+                return true;
+            }
             if (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER
-                    && event.isShiftPressed()) return false;
-            if (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER) {
+                    && event.getAction() == android.view.KeyEvent.ACTION_UP
+                    && !event.isShiftPressed()) {
                 submit.run();
                 return true;
             }
@@ -982,11 +990,9 @@ public final class InlineAiPanel {
     private static android.graphics.drawable.GradientDrawable round(int c, int r) {
         android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
         g.setColor(c);
-        g.setCornerRadius(dpRadiusHack(c,r));
+        g.setCornerRadius(r * Resources.getSystem().getDisplayMetrics().density);
         return g;
     }
-
-    private static float dpRadiusHack(int ignored, int r) { return r; }
 
     private static String today() {
         Calendar c=Calendar.getInstance();
