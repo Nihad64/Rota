@@ -915,7 +915,12 @@ public final class InlineAiPanel {
                     .append(p.startTime == null ? "" : p.startTime).append("–")
                     .append(p.endTime == null ? "" : p.endTime).append(" | ")
                     .append(p.title).append(" | category=").append(p.category)
-                    .append(" | status=").append(p.status).append("\n");
+                    .append(" | status=").append(p.status);
+            if (p.note != null && !p.note.trim().isEmpty())
+                b.append(" | note=").append(p.note.trim());
+            if (p.details != null && !p.details.trim().isEmpty())
+                b.append(" | details=").append(p.details.trim());
+            b.append("\n");
             if (++shown >= 60) break;
         }
         return b.length() == 0 ? "Henüz plan yok.\n" : b.toString();
