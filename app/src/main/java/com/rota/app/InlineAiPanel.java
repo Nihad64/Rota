@@ -297,6 +297,7 @@ public final class InlineAiPanel {
         private volatile boolean ready;
         private volatile boolean recording;
         private volatile boolean closed;
+        private volatile boolean socketEnded;
         private volatile boolean modelBusy;
         private volatile boolean startAfterReady;
         private volatile AudioRecord recorder;
@@ -340,12 +341,14 @@ public final class InlineAiPanel {
 
                     @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) {
                         ready = false;
+                        socketEnded = true;
                         stopRecording();
                         setStatus("Gemini Live bağlantısı kurulamadı. API anahtarını ve kota erişimini kontrol et.");
                     }
 
                     @Override public void onClosed(WebSocket webSocket, int code, String reason) {
                         ready = false;
+                        socketEnded = true;
                         if (!closed) setStatus("Gemini Live bağlantısı kapandı.");
                     }
                 });
@@ -356,7 +359,7 @@ public final class InlineAiPanel {
 
         boolean isReady() { return ready && !closed; }
         boolean isRecording() { return recording; }
-        boolean isClosed() { return closed; }
+        boolean isClosed() { return closed || socketEnded; }
 
         void sendSetup() {
             try {
