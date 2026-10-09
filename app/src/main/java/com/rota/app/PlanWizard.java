@@ -344,11 +344,11 @@ public final class PlanWizard {
         });
 
         create.setOnClickListener(v -> {
-            if (!Plan.ALL_DAY.equals(type[0]) && start[0].isEmpty()) {
+            if (Plan.HOURLY.equals(type[0]) && start[0].isEmpty()) {
                 startBtn.setError("Başlangıç saatini seç");
                 return;
             }
-            if (!Plan.ALL_DAY.equals(type[0]) && !end[0].isEmpty() && start[0].equals(end[0])) {
+            if (Plan.HOURLY.equals(type[0]) && !end[0].isEmpty() && start[0].equals(end[0])) {
                 endBtn.setError("Bitiş saati başlangıçla aynı olamaz");
                 return;
             }
