@@ -319,85 +319,94 @@ public class MainActivity extends Activity {
         String todayKey = key(now);
         selectedDate = todayKey;
         List<Plan> today = plansFor(todayKey);
+        int total = today.size();
         int done = countDone(today);
         Plan nextPlan = null;
         for (Plan p : today) {
-            if (!p.done) { nextPlan = p; break; }
+            if (!p.done && !Plan.STATUS_DONE.equals(p.status) && !Plan.STATUS_CANCELLED.equals(p.status)) {
+                nextPlan = p;
+                break;
+            }
         }
 
         LinearLayout page = scrollColumn();
+        addTopBar(page, true, false);
 
-        LinearLayout header = row();
-        LinearLayout headText = column();
-        headText.addView(text("Bugün", 32, TEXT, true));
-        headText.addView(text(capitalize(new SimpleDateFormat("EEEE · d MMMM", tr).format(now.getTime())),
-                13, MUTED, false), marginTop(4));
-        header.addView(headText, new LinearLayout.LayoutParams(0, -2, 1));
+        int hour = now.get(Calendar.HOUR_OF_DAY);
+        String greeting = hour >= 5 && hour < 12 ? "Günaydın"
+                : hour >= 12 && hour < 18 ? "İyi günler" : "İyi akşamlar";
+        page.addView(text(greeting, 27, TEXT, true), margin(18, 0, 18, 2));
+        page.addView(text(capitalize(new SimpleDateFormat("EEEE · d MMMM", tr).format(now.getTime())),
+                13, MUTED, false), margin(18, 0, 18, 16));
 
-        TextView bell = iconButton("♧", false);
-        bell.setText("⌁");
-        bell.setTextSize(23);
-        bell.setTextColor(TEXT);
-        bell.setBackground(round(SURFACE, 17));
-        bell.setOnClickListener(v -> { tap(v); showNotificationInfo(); });
-        header.addView(bell, new LinearLayout.LayoutParams(dp(46), dp(46)));
-        page.addView(header, margin(18, 18, 18, 14));
-
-        LinearLayout progress = card();
-        progress.setPadding(dp(18), dp(18), dp(18), dp(18));
-        LinearLayout pr = row();
-        LinearLayout ptxt = column();
-        ptxt.addView(text("BUGÜNÜN DURUMU", 10, ORANGE, true));
-        String headline = today.isEmpty() ? "Henüz bir plan yok" :
-                nextPlan == null ? "Bugünün akışı tamamlandı" : nextPlan.title;
-        ptxt.addView(text(headline, 20, TEXT, true), marginTop(6));
-        ptxt.addView(text(today.isEmpty() ? "İlk planını ekleyerek başlayabilirsin." :
-                done + " / " + today.size() + " plan tamamlandı", 12, MUTED, false), marginTop(5));
-        pr.addView(ptxt, new LinearLayout.LayoutParams(0, -2, 1));
-
+        LinearLayout summary = card();
+        summary.setPadding(dp(17), dp(17), dp(17), dp(17));
+        LinearLayout main = row();
         ProgressRing ring = new ProgressRing(this);
-        float pct = today.isEmpty() ? 0f : done / (float) today.size();
+        float pct = total == 0 ? 0f : done / (float) total;
         ring.setProgress(pct);
-        ring.setLabel((int)(pct * 100f) + "%");
-        pr.addView(ring, new LinearLayout.LayoutParams(dp(82), dp(82)));
-        progress.addView(pr);
-        progress.addView(progressBar(done, today.size()), marginTop(15));
-        page.addView(progress, margin(18, 0, 18, 12));
+        ring.setLabel((int) (pct * 100f) + "%");
+        main.addView(ring, new LinearLayout.LayoutParams(dp(82), dp(82)));
+
+        LinearLayout info = column();
+        info.setPadding(dp(14), 0, 0, 0);
+        info.addView(text("BUGÜNÜN GİDİŞATI", 10, ORANGE, true));
+        String headline = total == 0 ? "Gününü planla"
+                : nextPlan == null ? "Planların tamamlandı" : nextPlan.title;
+        TextView head = text(headline, 19, TEXT, true);
+        head.setMaxLines(2);
+        info.addView(head, marginTop(5));
+        String stats = total == 0 ? "İlk adımını ekle."
+                : done + " / " + total + " plan tamamlandı";
+        info.addView(text(stats, 12, MUTED, false), marginTop(5));
+        main.addView(info, new LinearLayout.LayoutParams(0, -2, 1));
+        summary.addView(main);
+        summary.addView(progressBar(done, total), marginTop(13));
+        page.addView(summary, margin(18, 0, 18, 12));
 
         LinearLayout quick = row();
-        quick.addView(quickAction("＋", "Plan ekle", v -> {
-            tap(v); openPlanWizard(todayKey);
-        }), new LinearLayout.LayoutParams(0, dp(74), 1));
-        addGap(quick, 8);
-        quick.addView(quickAction("AI", "Günün özeti", v -> {
-            tap(v); showAiDialog();
-        }), new LinearLayout.LayoutParams(0, dp(74), 1));
-        page.addView(quick, margin(18, 0, 18, 18));
+        quick.addView(quickAction("＋", "Plan oluştur", v -> {
+            tap(v);
+            openPlanWizard(todayKey);
+        }), new LinearLayout.LayoutParams(0, dp(88), 1));
+        addGap(quick, 10);
+        quick.addView(quickAction("✦", "Gemini ile konuş", v -> {
+            tap(v);
+            showInlineAiPanel();
+        }), new LinearLayout.LayoutParams(0, dp(88), 1));
+        page.addView(quick, margin(18, 0, 18, 20));
 
         LinearLayout section = row();
         section.addView(text("Bugünün akışı", 20, TEXT, true),
                 new LinearLayout.LayoutParams(0, -2, 1));
-        TextView count = text(today.size() + " plan", 11, MUTED, true);
+        TextView count = text(total + (total == 1 ? " plan" : " plan"), 12, MUTED, true);
         section.addView(count);
-        page.addView(section, margin(18, 0, 18, 9));
+        page.addView(section, margin(18, 0, 18, 10));
 
         if (today.isEmpty()) {
             LinearLayout empty = card();
-            empty.setPadding(dp(18), dp(22), dp(18), dp(22));
-            TextView icon = text("＋", 28, ORANGE, true);
+            empty.setPadding(dp(18), dp(20), dp(18), dp(18));
+            LinearLayout emptyIconRow = row();
+            TextView icon = text("◷", 22, ORANGE, true);
             icon.setGravity(Gravity.CENTER);
-            empty.addView(icon, new LinearLayout.LayoutParams(-1, dp(36)));
-            TextView eTitle = text("Takvimini boş bırakma.", 18, TEXT, true);
-            eTitle.setGravity(Gravity.CENTER);
-            empty.addView(eTitle, marginTop(8));
-            TextView eSub = text("Bir saat, hedef veya tüm gün sürecek bir plan oluştur.", 12, MUTED, false);
-            eSub.setGravity(Gravity.CENTER);
-            empty.addView(eSub, marginTop(5));
+            icon.setBackground(round(SURFACE_2, 16));
+            emptyIconRow.addView(icon, new LinearLayout.LayoutParams(dp(46), dp(46)));
+            LinearLayout copy = column();
+            copy.setPadding(dp(12), 0, 0, 0);
+            copy.addView(text("Henüz plan yok", 17, TEXT, true));
+            copy.addView(text("Bir görev, randevu veya hedef ekleyerek başla.", 12, MUTED, false),
+                    marginTop(5));
+            emptyIconRow.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+            empty.addView(emptyIconRow);
             TextView first = buttonText("İlk planı oluştur", Color.WHITE);
+            first.setGravity(Gravity.CENTER);
             first.setBackground(round(ORANGE, 16));
-            empty.addView(first, margin(40, 15, 40, 0));
-            first.setOnClickListener(v -> { tap(v); openPlanWizard(todayKey); });
-            page.addView(empty, margin(18, 0, 18, 24));
+            empty.addView(first, margin(0, 15, 0, 0));
+            first.setOnClickListener(v -> {
+                tap(v);
+                openPlanWizard(todayKey);
+            });
+            page.addView(empty, margin(18, 0, 18, 14));
         } else {
             for (int i = 0; i < today.size(); i++) {
                 page.addView(addPlanCard(today.get(i), i), margin(18, 0, 18, 9));
@@ -405,40 +414,53 @@ public class MainActivity extends Activity {
         }
 
         if (settings().getBoolean("ai_suggestions", true)) {
-            LinearLayout ai = row();
-            ai.setPadding(dp(16), dp(14), dp(16), dp(14));
-            ai.setBackground(round(SURFACE_2, 18));
-            TextView mark = text("✦", 21, ORANGE, true);
+            LinearLayout ai = card();
+            ai.setPadding(dp(15), dp(14), dp(14), dp(14));
+            ai.setBackground(round(SURFACE_2, 20));
+            LinearLayout ar = row();
+            TextView mark = text("✦", 23, ORANGE, true);
             mark.setGravity(Gravity.CENTER);
-            ai.addView(mark, new LinearLayout.LayoutParams(dp(34), dp(44)));
-            LinearLayout at = column();
-            at.addView(text("ROTAM AI", 10, ORANGE, true));
-            at.addView(text(hasAiKey() ? "Gemini hazır. Bugünü birlikte düzenleyelim." :
-                    "Gemini'yi Ayarlar'dan bağla.", 13, TEXT, true), marginTop(4));
-            ai.addView(at, new LinearLayout.LayoutParams(0, -2, 1));
-            TextView arrow = text("›", 28, MUTED, false);
+            mark.setBackground(round(SURFACE, 14));
+            ar.addView(mark, new LinearLayout.LayoutParams(dp(42), dp(42)));
+            LinearLayout copy = column();
+            copy.setPadding(dp(11), 0, dp(7), 0);
+            copy.addView(text("ROTAM AI", 10, ORANGE, true));
+            copy.addView(text(hasAiKey()
+                    ? "Planlarını konuşarak veya yazarak düzenle."
+                    : "Gemini'yi bağlayıp gününü birlikte planla.",
+                    13, TEXT, true), marginTop(4));
+            ar.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView arrow = text("›", 25, MUTED, true);
             arrow.setGravity(Gravity.CENTER);
-            ai.addView(arrow, new LinearLayout.LayoutParams(dp(28), dp(44)));
-            ai.setOnClickListener(v -> { tap(v); showAiDialog(); });
-            page.addView(ai, margin(18, 8, 18, 22));
+            ar.addView(arrow, new LinearLayout.LayoutParams(dp(26), dp(40)));
+            ai.addView(ar);
+            ai.setOnClickListener(v -> {
+                tap(v);
+                showInlineAiPanel();
+            });
+            page.addView(ai, margin(18, 2, 18, 20));
         }
     }
 
     private LinearLayout quickAction(String icon, String label, View.OnClickListener listener) {
         LinearLayout q = column();
-        q.setGravity(Gravity.CENTER);
-        q.setPadding(dp(8), dp(8), dp(8), dp(8));
-        q.setBackground(round(SURFACE, 18));
-        TextView i = text(icon, 18, ORANGE, true);
+        q.setGravity(Gravity.CENTER_VERTICAL);
+        q.setPadding(dp(14), dp(12), dp(14), dp(12));
+        q.setBackground(round(SURFACE, 20));
+        LinearLayout r = row();
+        TextView i = text(icon, 20, ORANGE, true);
         i.setGravity(Gravity.CENTER);
-        q.addView(i, new LinearLayout.LayoutParams(-1, dp(28)));
-        TextView l = text(label, 11, TEXT, true);
-        l.setGravity(Gravity.CENTER);
-        q.addView(l, marginTop(3));
+        i.setBackground(round(SURFACE_2, 14));
+        r.addView(i, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        TextView l = text(label, 13, TEXT, true);
+        l.setMaxLines(2);
+        l.setGravity(Gravity.CENTER_VERTICAL);
+        l.setPadding(dp(10), 0, 0, 0);
+        r.addView(l, new LinearLayout.LayoutParams(0, -2, 1));
+        q.addView(r);
         q.setOnClickListener(listener);
         return q;
     }
-
 
     private void renderPlan() {
         Calendar today=Calendar.getInstance();
@@ -654,7 +676,7 @@ public class MainActivity extends Activity {
                 actions.setAlpha(0f);
                 actions.animate().alpha(1f).setDuration(150).start();
             } else {
-                showPlanEditor(p, p.date);
+                openPlanEdit(p);
             }
         });
         edit.setOnClickListener(v -> { tap(v); PlanWizard.showEdit(this, plans, p, () -> { PlanStore.save(this, plans); ReminderScheduler.rescheduleAll(this, plans); render(); }); });
@@ -727,11 +749,28 @@ public class MainActivity extends Activity {
 
 
     private void openPlanWizard(String date){
-        PlanWizard.show(this, plans, date, () -> { selectedDate = date; monthCursor = parseKey(date); render(); });
+        PlanWizard.show(this, plans, date, () -> {
+            selectedDate = date;
+            monthCursor = parseKey(date);
+            PlanStore.save(this, plans);
+            ReminderScheduler.rescheduleAll(this, plans);
+            render();
+        });
+    }
+
+    private void openPlanEdit(Plan editing) {
+        PlanWizard.showEdit(this, plans, editing, () -> {
+            PlanStore.save(this, plans);
+            ReminderScheduler.rescheduleAll(this, plans);
+            render();
+        });
     }
 
     private void showInlineAiPanel(){
-        InlineAiPanel.show(this, plans, () -> { ReminderScheduler.rescheduleAll(this, plans); render(); });
+        InlineAiPanel.show(this, plans, () -> {
+            ReminderScheduler.rescheduleAll(this, plans);
+            render();
+        });
     }
 
     private void showPlanEditor(Plan editing, String initialDate) {
