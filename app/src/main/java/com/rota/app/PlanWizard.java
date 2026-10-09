@@ -488,11 +488,34 @@ public final class PlanWizard {
         LinearLayout r = row(a);
         EditText e = input(a, "Aşama");
         e.setText(value);
-        r.addView(e, weight(a, 1, 48));
-        TextView del = button(a, "×", MUTED, SURFACE2);
-        r.addView(del, lp(a, 46, 48));
+        r.addView(e, weight(a, 1, 46));
+
+        TextView up = button(a, "↑", MUTED, SURFACE2);
+        r.addView(up, lp(a, 34, 42));
+        TextView down = button(a, "↓", MUTED, SURFACE2);
+        r.addView(down, lp(a, 34, 42));
+        TextView del = button(a, "×", Color.WHITE, Color.rgb(133, 51, 56));
+        r.addView(del, lp(a, 34, 42));
+
         box.addView(r, mt(a, 6));
         stages.add(e);
+
+        up.setOnClickListener(v -> {
+            int index = stages.indexOf(e);
+            if (index <= 0) return;
+            stages.remove(index);
+            stages.add(index - 1, e);
+            box.removeView(r);
+            box.addView(r, index - 1);
+        });
+        down.setOnClickListener(v -> {
+            int index = stages.indexOf(e);
+            if (index < 0 || index >= stages.size() - 1) return;
+            stages.remove(index);
+            stages.add(index + 1, e);
+            box.removeView(r);
+            box.addView(r, index + 1);
+        });
         del.setOnClickListener(v -> {
             stages.remove(e);
             box.removeView(r);
