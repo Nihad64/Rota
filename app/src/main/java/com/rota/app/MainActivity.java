@@ -553,7 +553,7 @@ public class MainActivity extends Activity {
         page.addView(text("Rotam'ı kendi çalışma biçimine göre ayarla.",13,MUTED,false),margin(18,0,18,18));
 
         LinearLayout identity=card();LinearLayout ir=row();ImageView li=logo(54);ir.addView(li,new LinearLayout.LayoutParams(dp(54),dp(54)));
-        LinearLayout it=column();it.addView(text("Rotam",18,TEXT,true));it.addView(text("Büyük güncelleme · 1.0",11,MUTED,false),marginTop(3));ir.addView(it,new LinearLayout.LayoutParams(0,-2,1));identity.addView(ir);
+        LinearLayout it=column();it.addView(text("Rotam",18,TEXT,true));it.addView(text("Sürüm 2.4.0 · Gemini Live",11,MUTED,false),marginTop(3));ir.addView(it,new LinearLayout.LayoutParams(0,-2,1));identity.addView(ir);
         page.addView(identity,margin(18,0,18,18));
 
         page.addView(sectionTitle("Bildirimler"),margin(18,0,18,7));
@@ -580,8 +580,10 @@ public class MainActivity extends Activity {
         page.addView(theme,margin(18,0,18,7));
 
         page.addView(sectionTitle("Rotam AI · Gemini"),margin(18,12,18,7));
-        LinearLayout ai=settingCard();LinearLayout ar=row();TextView star=text("✦",24,ORANGE,true);star.setGravity(Gravity.CENTER);ar.addView(star,new LinearLayout.LayoutParams(dp(40),dp(46)));LinearLayout ax=column();ax.addView(text("Google Gemini",15,TEXT,true));ax.addView(text(hasAiKey()?"Bağlı · ücretsiz API katmanı kullanılabilir.":"Bağlı değil · Gemini API anahtarı gerekli.",11,hasAiKey()?GREEN:MUTED,false),marginTop(3));ar.addView(ax,new LinearLayout.LayoutParams(0,-2,1));TextView go=buttonText("Ayarla",ORANGE);ar.addView(go,new LinearLayout.LayoutParams(dp(72),dp(40)));ai.addView(ar);ai.setOnClickListener(v->{tap(v);showAiSetupDialog();});page.addView(ai,margin(18,0,18,7));
+        LinearLayout ai=settingCard();LinearLayout ar=row();TextView star=text("✦",24,ORANGE,true);star.setGravity(Gravity.CENTER);ar.addView(star,new LinearLayout.LayoutParams(dp(40),dp(46)));LinearLayout ax=column();ax.addView(text("Google Gemini",15,TEXT,true));ax.addView(text(hasAiKey()?"API anahtarı kayıtlı.":"Gemini API anahtarı gerekli.",11,hasAiKey()?GREEN:MUTED,false),marginTop(3));ar.addView(ax,new LinearLayout.LayoutParams(0,-2,1));TextView go=buttonText("Ayarla",ORANGE);ar.addView(go,new LinearLayout.LayoutParams(dp(72),dp(40)));ai.addView(ar);ai.setOnClickListener(v->{tap(v);showAiSetupDialog();});page.addView(ai,margin(18,0,18,7));
         page.addView(settingRow("AI önerileri","Ana ekranda Rotam AI kartını göster.",settings().getBoolean("ai_suggestions",true),true,on->settings().edit().putBoolean("ai_suggestions",on).apply()),margin(18,0,18,7));
+        page.addView(settingAction("Canlı sesli sohbet","Gemini Live ile konuş; planlarını sesle düzenle.","Aç",v->{tap(v);showInlineAiPanel();}),margin(18,0,18,7));
+        page.addView(text("Sesli sohbet Google Gemini API kotanı kullanır. Ücretlendirme API projenin ayarlarına bağlıdır; kota sorunu olursa başka bir modele otomatik geçilmez.",10,MUTED,false),margin(18,2,18,18));
 
         page.addView(sectionTitle("Veriler"),margin(18,12,18,7));
         LinearLayout ex=settingCard();LinearLayout er=row();LinearLayout et=column();et.addView(text("Planları dışa aktar",14,TEXT,true));et.addView(text("JSON yedek oluştur.",10,MUTED,false));er.addView(et,new LinearLayout.LayoutParams(0,-2,1));TextView eb=buttonText("Yedekle",ORANGE);er.addView(eb);ex.addView(er);ex.setOnClickListener(v->{tap(v);exportPlans();});page.addView(ex,margin(18,0,18,7));
