@@ -445,7 +445,7 @@ public final class PlanWizard {
         if ("work".equals(k)) return new Field[]{
                 new Field("workplace", "İş yeri / proje", false),
                 new Field("break", "Mola süresi · örn. 30 dk", false),
-                new Field("schedule", "Çalışma düzeni · örn. 14:00–22:00", false),
+                new Field("workDays", "Çalışılan günler · örn. Pzt–Cum", false),
                 new Field("extra", "Ek bilgi", true)
         };
         if ("sport".equals(k)) return new Field[]{
