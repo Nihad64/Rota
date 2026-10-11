@@ -10,8 +10,8 @@ android {
         applicationId 'com.rota.app'
         minSdk 26
         targetSdk 35
-        versionCode 31
-        versionName '2.5.5'
+        versionCode 32
+        versionName '2.5.6'
     }
 
     signingConfigs {
