@@ -1373,7 +1373,7 @@ public class MainActivity extends Activity {
         HttpURLConnection conn=null;
         try{
             String key=loadAiKey();if(key==null||key.isEmpty())return "Gemini anahtarı bulunamadı.";
-            String model="gemini-3.5-flash-lite";
+            String model="gemini-2.0-flash-lite";
             URL url=new URL("https://generativelanguage.googleapis.com/v1beta/models/"+model+":generateContent?key="+java.net.URLEncoder.encode(key,StandardCharsets.UTF_8.name()));
             conn=(HttpURLConnection)url.openConnection();conn.setRequestMethod("POST");conn.setConnectTimeout(15000);conn.setReadTimeout(30000);conn.setDoOutput(true);conn.setRequestProperty("Content-Type","application/json");
             JSONObject body=new JSONObject();JSONArray contents=new JSONArray();JSONObject content=new JSONObject();JSONArray parts=new JSONArray();JSONObject part=new JSONObject();
