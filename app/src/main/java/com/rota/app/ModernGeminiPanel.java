@@ -294,7 +294,7 @@ public final class ModernGeminiPanel {
                     "\nCevabı SADECE JSON ver: {\\\"reply\\\":\\\"kısa Türkçe cevap\\\",\\\"actions\\\":[]} . Action tipleri: create_plan, update_plan, complete_plan, delete_plan. create_plan: title,date,start,end,category,type,all_day,note,repeat,details. update_plan: id ve değiştirmek istediğin alanlar. complete_plan: id,done. delete_plan: id. Kategoriler: book, work, video, sport, faith, appointment, food, personal. Tarih YYYY-MM-DD, saat HH:MM.";
             String prompt = system + "\nKullanıcı: " + user;
 
-            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent");
+            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent");
             conn = (HttpURLConnection)url.openConnection();
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(15000);
@@ -335,10 +335,11 @@ public final class ModernGeminiPanel {
         } finally { if (conn != null) conn.disconnect(); }
     }
 
+    /** Gemini TTS (gemini-2.5-flash-preview-tts): returns raw 24kHz 16-bit mono PCM, wrapped here as WAV. */
     private static String callTts(String key, String reply) {
         HttpURLConnection conn = null;
         try {
-            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/interactions");
+            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent");
             conn = (HttpURLConnection)url.openConnection();
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(15000);
@@ -346,45 +347,45 @@ public final class ModernGeminiPanel {
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("x-goog-api-key", key);
-
-            JSONObject contentPart = new JSONObject().put("type", "text").put("text", reply)
-                    .put("annotations", new JSONArray().put(new JSONObject().put("type", "speech_metadata").put("style", "natural, warm, calm and conversational Turkish")));
-            JSONObject inputItem = new JSONObject().put("type", "user_input").put("content", new JSONArray().put(contentPart));
-            JSONObject speech = new JSONObject().put("voice", "Sulafat");
             JSONObject body = new JSONObject()
-                    .put("model", "gemini-3.8-flash-lite-tts")
-                    .put("input", new JSONArray().put(inputItem))
-                    .put("response_format", new JSONObject().put("type", "audio"))
-                    .put("generation_config", new JSONObject().put("speech_config", new JSONArray().put(speech)));
-
+                    .put("contents", new JSONArray().put(new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", "Sıcak, sakin ve doğal bir Türkçe ile söyle: " + reply)))))
+                    .put("generationConfig", new JSONObject()
+                            .put("responseModalities", new JSONArray().put("AUDIO"))
+                            .put("speechConfig", new JSONObject().put("voiceConfig", new JSONObject().put("prebuiltVoiceConfig", new JSONObject().put("voiceName", "Sulafat")))));
             try (OutputStream out = conn.getOutputStream()) { out.write(body.toString().getBytes(StandardCharsets.UTF_8)); }
             int code = conn.getResponseCode();
             BufferedReader br = new BufferedReader(new InputStreamReader(code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream(), StandardCharsets.UTF_8));
             StringBuilder raw = new StringBuilder(); String line;
             while ((line = br.readLine()) != null) raw.append(line); br.close();
             if (code < 200 || code >= 300) return null;
-            JSONObject root = new JSONObject(raw.toString());
-            JSONArray steps = root.optJSONArray("steps");
-            if (steps == null) return null;
-            for (int i = steps.length()-1; i >= 0; i--) {
-                JSONObject step = steps.optJSONObject(i); if (step == null) continue;
-                if (!"model_output".equals(step.optString("type", ""))) continue;
-                JSONArray content = step.optJSONArray("content"); if (content == null) continue;
-                for (int j = 0; j < content.length(); j++) {
-                    JSONObject item = content.optJSONObject(j); if (item == null) continue;
-                    if ("audio".equals(item.optString("type", ""))) {
-                        String b64 = item.optString("data", "");
-                        if (!b64.isEmpty()) {
-                            File f = File.createTempFile("rotam_gemini_", ".wav");
-                            try (FileOutputStream out = new FileOutputStream(f)) { out.write(android.util.Base64.decode(b64, android.util.Base64.DEFAULT)); }
-                            return f.getAbsolutePath();
-                        }
-                    }
-                }
+            JSONArray cands = new JSONObject(raw.toString()).optJSONArray("candidates");
+            if (cands == null || cands.length() == 0) return null;
+            JSONObject content = cands.optJSONObject(0).optJSONObject("content");
+            JSONArray parts = content == null ? null : content.optJSONArray("parts");
+            if (parts == null) return null;
+            for (int i = 0; i < parts.length(); i++) {
+                JSONObject inline = parts.optJSONObject(i) == null ? null : parts.optJSONObject(i).optJSONObject("inlineData");
+                if (inline == null) continue;
+                String b64 = inline.optString("data", "");
+                if (b64.isEmpty()) continue;
+                byte[] pcm = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                File f = File.createTempFile("rotam_gemini_", ".wav");
+                try (FileOutputStream out = new FileOutputStream(f)) { out.write(wavHeader(pcm.length, 24000, 1, 16)); out.write(pcm); }
+                return f.getAbsolutePath();
             }
         } catch (Exception ignored) {
         } finally { if (conn != null) conn.disconnect(); }
         return null;
+    }
+
+    private static byte[] wavHeader(int dataLen, int rate, int channels, int bits) {
+        java.nio.ByteBuffer b = java.nio.ByteBuffer.allocate(44).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        int byteRate = rate * channels * bits / 8;
+        b.put("RIFF".getBytes()).putInt(36 + dataLen).put("WAVE".getBytes())
+         .put("fmt ".getBytes()).putInt(16).putShort((short)1).putShort((short)channels)
+         .putInt(rate).putInt(byteRate).putShort((short)(channels * bits / 8)).putShort((short)bits)
+         .put("data".getBytes()).putInt(dataLen);
+        return b.array();
     }
 
     private static void playWav(Activity a, String path, MediaPlayer[] holder, TextView status, boolean[] closed) {
