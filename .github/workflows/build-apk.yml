@@ -76,8 +76,7 @@ jobs:
           script: |
             adb install legacy-apk/app-debug.apk
             python3 scripts/seed_upgrade_fixture.py
-            ./gradlew connectedDebugAndroidTest --stacktrace
-            adb pull /sdcard/Android/data/com.rota.app/files/screenshots device-screenshots
+            set +e; ./gradlew connectedDebugAndroidTest --stacktrace; test_result=$?; adb pull /sdcard/Android/data/com.rota.app/files/screenshots device-screenshots; exit "$test_result"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

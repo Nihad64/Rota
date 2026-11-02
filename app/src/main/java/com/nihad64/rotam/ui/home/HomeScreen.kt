@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,7 +25,7 @@ import com.nihad64.rotam.ui.theme.*
 import java.util.Locale
 @Composable fun HomeScreen(vm:HomeViewModel,onNewPlan:()->Unit,onEdit:(Long)->Unit,onFocus:(Long)->Unit,onSearch:()->Unit,onStats:()->Unit,onSettings:()->Unit){
  val s by vm.state.collectAsStateWithLifecycle();val hero=s.hero
- LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=24.dp,end=24.dp,top=18.dp,bottom=88.dp),verticalArrangement=Arrangement.spacedBy(24.dp)){
+ LazyColumn(Modifier.fillMaxSize().testTag("home-list"),contentPadding=PaddingValues(start=24.dp,end=24.dp,top=18.dp,bottom=88.dp),verticalArrangement=Arrangement.spacedBy(24.dp)){
   item{Row(verticalAlignment=Alignment.CenterVertically){Icon(painterResource(R.drawable.rotam_mark),"Rotam",Modifier.width(30.dp).height(34.dp),tint=Color.Unspecified);Text("rotam",fontSize=25.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(start=8.dp).weight(1f));IconButton(onClick=onSearch){Icon(Icons.Outlined.Search,"Planlarda ara",tint=SubtleText)};Box(Modifier.size(42.dp).clip(CircleShape).background(Surface).clickable(onClick=onSettings),contentAlignment=Alignment.Center){Text(s.userName.firstOrNull()?.uppercaseChar()?.toString()?:"R",style=MaterialTheme.typography.titleMedium)}}}
   item{Column(verticalArrangement=Arrangement.spacedBy(10.dp)){Text("${TrFormat.dayName(s.today)}, ${TrFormat.dayMonth(s.today)}".uppercase(Locale.forLanguageTag("tr")),color=SubtleText,letterSpacing=2.sp,style=MaterialTheme.typography.labelMedium);Text("Bugün,\nsenin ritmin.",fontSize=39.sp,lineHeight=43.sp,letterSpacing=(-1.2).sp,fontWeight=FontWeight.SemiBold);Row(Modifier.fillMaxWidth().clickable(onClick=onStats).padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){Text(if(s.total==0)"Gününe yer aç."else"${s.done} / ${s.total} tamamlandı",color=SubtleText,modifier=Modifier.weight(1f));Icon(Icons.Outlined.BarChart,"İstatistikler",tint=SubtleText,modifier=Modifier.size(20.dp))};Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){val count=s.total.coerceIn(1,10);repeat(count){i->Box(Modifier.weight(1f).height(5.dp).clip(CircleShape).background(if((i+1).toFloat()/count<=s.progress)Primary else Outline))}}}}
   item{if(hero!=null)HeroPlan(hero,s.label(hero),{onEdit(hero.id)},{onFocus(hero.id)})else RotamCard(Modifier.fillMaxWidth()){

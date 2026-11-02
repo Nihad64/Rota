@@ -35,6 +35,7 @@ class PlanFlowTest {
             c.planRepo.create(Plan(title="Almanca çalış",date=LocalDate.now().toString(),category="ogrenme"))
         }
         ui.waitUntil(10000){ui.onAllNodesWithText("Günün akışı").fetchSemanticsNodes().isNotEmpty()}
+        ui.waitUntil(10000){ui.onAllNodesWithText("Video düzenleme").fetchSemanticsNodes().isNotEmpty()}
         shot("01-home")
         ui.onAllNodesWithText("Plan ekle").onFirst().performClick()
         ui.onNodeWithText("Ne yapacaksın?").assertIsDisplayed()
@@ -52,8 +53,11 @@ class PlanFlowTest {
         ui.waitUntil(10000){runBlocking{RotamApp.container.db.planDao().all().any{it.title=="Saatsiz test planı"}}}
         val plan=runBlocking{RotamApp.container.db.planDao().all().first{it.title=="Saatsiz test planı"}}
         org.junit.Assert.assertNull(plan.startTime);org.junit.Assert.assertNull(plan.endTime)
+        ui.waitUntil(10000){ui.onAllNodesWithTag("home-list").fetchSemanticsNodes().isNotEmpty()}
+        ui.onNodeWithTag("home-list").performScrollToIndex(0)
         ui.onNodeWithContentDescription("Planlarda ara").performClick()
         ui.onNode(hasSetTextAction()).performTextInput("Saatsiz test planı")
+        ui.waitUntil(10000){ui.onAllNodes(hasText("Saatsiz test planı") and !hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()}
         ui.onNode(hasText("Saatsiz test planı") and !hasSetTextAction()).performScrollTo().performClick()
         ui.onNodeWithText("Planını düzenle").assertIsDisplayed()
         shot("04-edit")
