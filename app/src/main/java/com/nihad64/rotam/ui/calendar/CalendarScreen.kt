@@ -11,11 +11,15 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nihad64.rotam.data.model.Category
 import com.nihad64.rotam.ui.TrFormat
 import com.nihad64.rotam.ui.components.*
 import com.nihad64.rotam.ui.theme.*
 import java.time.LocalDate
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun CalendarScreen(vm:CalendarViewModel,onNewPlan:()->Unit,onEdit:(Long)->Unit){val s by vm.state.collectAsStateWithLifecycle()
+ var category by remember{mutableStateOf<String?>(null)};var status by remember{mutableIntStateOf(0)}
+ val visible=s.selectedPlans.filter{p->(category==null||p.category==category)&&when(status){1->!p.isCompleted&&!p.isSkipped;2->p.isCompleted;3->p.isSkipped;else->true}}
  LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp,24.dp,24.dp,88.dp),verticalArrangement=Arrangement.spacedBy(20.dp)){
  item{PageHeader("Takvim","Günlerine uzaktan bir bakış.",action={TextButton(onClick={vm.select(LocalDate.now());vm.setMode(CalendarMode.MONTH)}){Text("Bugün")}})}
  item{SegmentedToggle(CalendarMode.entries.map{it.label},s.mode.ordinal,{vm.setMode(CalendarMode.entries[it])})}
@@ -32,8 +36,11 @@ import java.time.LocalDate
  }
  if(s.mode==CalendarMode.YEAR)items((1..12).toList()){month->DetailRow(TrFormat.months[month-1],"${s.monthCounts[month]?:0} plan"){vm.openMonth(month)}}else{
  item{HorizontalDivider(color=Outline);Spacer(Modifier.height(20.dp));SectionTitle(TrFormat.dayMonth(s.selected),trailing={TextButton(onClick=onNewPlan){Text("Plan ekle")}})}
- if(s.selectedPlans.isEmpty())item{EmptyState("Bu gün henüz boş.","Saatli veya saatsiz bir plan ekleyebilirsin.","Plan ekle",onNewPlan)}
- items(s.selectedPlans,key={it.uid}){p->PlanCard(p,{vm.toggle(p)},{onEdit(p.id)})}
+ item{FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("Tümü","Bekleyen","Tamamlanan","Atlanan").forEachIndexed{i,label->SelectChip(label,status==i,{status=i})}}}
+ item{FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){SelectChip("Her kategori",category==null,{category=null});Category.entries.forEach{cat->SelectChip(cat.label,category==cat.key,{category=cat.key})}}}
+ if(s.mode==CalendarMode.DAY||s.mode==CalendarMode.WEEK)item{DayTimeline(visible,s.selected,onEdit)}
+ if(visible.isEmpty())item{EmptyState(if(s.selectedPlans.isEmpty())"Bu gün henüz boş."else"Bu filtrede plan yok.","Saatli veya saatsiz bir plan ekleyebilir ya da filtreyi değiştirebilirsin.","Plan ekle",onNewPlan)}
+ items(visible,key={it.uid}){p->PlanCard(p,{vm.toggle(p)},{onEdit(p.id)})}
  }
  }
 }

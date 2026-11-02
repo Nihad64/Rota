@@ -16,6 +16,14 @@ class PlanRulesTest {
   assertFalse(PlanTime.overlaps(a,p.copy(id=2,startTime="10:30")))
   assertFalse(PlanTime.overlaps(a,p.copy(id=2,endTime="10:30")))
  }
+ @Test fun calendarClipsOvernightBlocksAndSeparatesOverlaps() {
+  val day=LocalDate.parse("2026-11-03")
+  val night=p.copy(startTime="22:00",endTime="02:00",endDate=day.toString())
+  val overlap=p.copy(id=2,date=day.toString(),startTime="01:00",endTime="03:00")
+  val deadline=p.copy(id=3,date=day.toString(),endTime="18:00")
+  val blocks=com.nihad64.rotam.ui.calendar.TimelineLayout.blocks(listOf(night,overlap,deadline),day)
+  assertEquals(2,blocks.size);assertEquals(0,blocks[0].from);assertEquals(120,blocks[0].to);assertNotEquals(blocks[0].lane,blocks[1].lane)
+ }
  @Test fun fourIndependentTimeKinds() {
   assertEquals(TimeKind.UNTIMED,PlanTime.kind(p));assertNull(PlanTime.durationMinutes(p))
   val start=p.copy(startTime="10:00");assertEquals(TimeKind.START,PlanTime.kind(start));assertFalse(PlanTime.overdue(start,LocalDateTime.parse("2026-11-04T12:00")))

@@ -25,7 +25,12 @@ class PlanFlowTest {
     @Test fun createUntimedPlanAndEditInOnePage() {
         ui.waitUntil(20000){RotamApp.container.ready.value}
         runBlocking {
-            val c=RotamApp.container;c.planRepo.clear()
+            val c=RotamApp.container
+            val legacy=c.db.planDao().all().firstOrNull{it.title=="Önceki sürümden plan"}
+            org.junit.Assert.assertNotNull("The in-place upgrade must preserve the v2 fixture",legacy)
+            org.junit.Assert.assertTrue(legacy!!.extraData.contains("Korunan not"))
+            org.junit.Assert.assertEquals("10:00",legacy.startTime)
+            c.planRepo.clear()
             c.planRepo.create(Plan(title="Video düzenleme",date=LocalDate.now().toString(),startTime="10:00",endTime="11:00",category="video"))
             c.planRepo.create(Plan(title="Almanca çalış",date=LocalDate.now().toString(),category="ogrenme"))
         }

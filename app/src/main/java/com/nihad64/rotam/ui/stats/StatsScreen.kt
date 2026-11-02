@@ -35,21 +35,22 @@ fun StatsScreen(vm: StatsViewModel, onBack: () -> Unit) {
         PageHeader("İstatistikler", onBack=onBack)
         Text("İlerlemeni gör, ritmini koru.", style = MaterialTheme.typography.bodyMedium, color = SubtleText)
 
+        SegmentedToggle(listOf("Son 7 gün","Son 30 gün"),if(s.days==7)0 else 1,{vm.setPeriod(if(it==0)7 else 30)})
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             StatTile(Icons.Outlined.LocalFireDepartment, "${s.streak} gün", "Seri", Modifier.weight(1f))
             StatTile(Icons.Outlined.TaskAlt, "${s.totalDone}", "Tamamlanan", Modifier.weight(1f))
-            StatTile(Icons.Outlined.Percent, "%${(s.weekRatio * 100).toInt()}", "Bu hafta", Modifier.weight(1f))
+            StatTile(Icons.Outlined.Percent, "%${(s.weekRatio * 100).toInt()}", "Bu dönem", Modifier.weight(1f))
         }
 
         RotamCard(Modifier.fillMaxWidth()) {
-            Text("Son 7 gün", style = MaterialTheme.typography.titleMedium, color = OnBackground)
+            Text("Son ${s.days} gün", style = MaterialTheme.typography.titleMedium, color = OnBackground)
             Text("Günlük tamamlanma oranı", style = MaterialTheme.typography.bodySmall, color = SubtleText)
             Spacer(Modifier.height(16.dp))
             WeekChart(s.week,settings.animations)
         }
 
         RotamCard(Modifier.fillMaxWidth()) {
-            Text("Bu haftanın zamanı",style=MaterialTheme.typography.titleMedium)
+            Text("Bu dönemin zamanı",style=MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(12.dp))
             Text("Ölçülen odak: ${s.focusSeconds/3600} sa ${s.focusSeconds/60%60} dk",color=OnSurface)
             Text("Planlanan süre: ${s.plannedMinutes/60} sa ${s.plannedMinutes%60} dk",color=SubtleText)
@@ -117,9 +118,9 @@ private fun WeekChart(week: List<DayStat>, animations:Boolean) {
     }
     Spacer(Modifier.height(8.dp))
     Row(Modifier.fillMaxWidth()) {
-        week.forEach {
-            Text(TrFormat.short(it.date.dayOfWeek), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall,
-                color = if (it.date == java.time.LocalDate.now()) Primary else SubtleText, textAlign = TextAlign.Center)
+        week.forEachIndexed { index, day ->
+            Text(if(week.size<=7)TrFormat.short(day.date.dayOfWeek)else if(index%7==0||index==week.lastIndex)day.date.dayOfMonth.toString()else "", Modifier.weight(1f), style=MaterialTheme.typography.labelSmall,
+                color=if(day.date==java.time.LocalDate.now())Primary else SubtleText,textAlign=TextAlign.Center)
         }
     }
 }
