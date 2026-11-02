@@ -32,6 +32,11 @@ class PlanRulesTest {
   assertNotNull(PlanTime.validate(p.copy(reminderEnabled=true)))
   assertEquals("2026-11-02T17:30",PlanTime.reminder(p.copy(endTime="18:00",reminderEnabled=true,reminderMinutes=30)).toString())
  }
+ @Test fun removingEndTimeFallsBackToStartReminder() {
+  val start=p.copy(startTime="10:00",reminderEnabled=true,remindAtEnd=true,reminderMinutes=15)
+  assertNull(PlanTime.validate(start))
+  assertEquals("2026-11-02T09:45",PlanTime.reminder(start).toString())
+ }
  @Test fun recurrenceContinuesBeyondSixtyDaysAndHandlesShortMonths() {
   val anchor=LocalDate.parse(p.date);assertEquals(1,Recurrence.dates(p.copy(repeatType="daily"),anchor,anchor.plusDays(600),anchor.plusDays(600)).size)
   val january=LocalDate.parse("2027-01-31");val feb=LocalDate.parse("2027-02-28")

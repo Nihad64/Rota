@@ -10,7 +10,7 @@ object PlanTime {
  fun end(p:Plan):LocalDateTime?=p.endTime?.let{LocalDate.parse(p.endDate?:p.date).atTime(LocalTime.parse(it))}
  fun durationMinutes(p:Plan):Long?=if(start(p)!=null&&end(p)!=null) ChronoUnit.MINUTES.between(start(p),end(p)) else null
  fun overdue(p:Plan,now:LocalDateTime=LocalDateTime.now())=!p.isCompleted&&!p.isSkipped&&!p.isDeleted&&end(p)?.isBefore(now)==true
- fun reminder(p:Plan):LocalDateTime?=when{!p.reminderEnabled->null;p.reminderTime!=null->LocalDate.parse(p.date).atTime(LocalTime.parse(p.reminderTime));p.remindAtEnd||p.startTime==null->end(p)?.minusMinutes(p.reminderMinutes.toLong());else->start(p)?.minusMinutes(p.reminderMinutes.toLong())}
+ fun reminder(p:Plan):LocalDateTime?=when{!p.reminderEnabled->null;p.reminderTime!=null->LocalDate.parse(p.date).atTime(LocalTime.parse(p.reminderTime));(p.remindAtEnd&&p.endTime!=null)||p.startTime==null->end(p)?.minusMinutes(p.reminderMinutes.toLong());else->start(p)?.minusMinutes(p.reminderMinutes.toLong())}
  fun label(p:Plan):String {val next=if(p.endDate!=null&&p.endDate!=p.date) " · ${p.endDate}" else "";return when(kind(p)){
  TimeKind.UNTIMED->"Saat yok";TimeKind.START->"Başlangıç ${p.startTime}";TimeKind.DEADLINE->"${p.endTime} · Son teslim$next";TimeKind.INTERVAL->"${p.startTime} – ${p.endTime}$next"}}
  fun overlaps(a:Plan,b:Plan):Boolean {

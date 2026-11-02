@@ -54,4 +54,3 @@ class MovePlanToTomorrow(private val repo: PlanRepository, private val scheduler
         scheduler.schedule(moved)
     }
 }
-
