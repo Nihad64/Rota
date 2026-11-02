@@ -38,7 +38,7 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
  var aiOpen by remember{mutableStateOf(false)};val ai:AiViewModel=viewModel{AiViewModel(c)}
  val snackbar=remember{SnackbarHostState()};val showBar=route in tabs.map{it.route}
  val context=LocalContext.current
- LaunchedEffect(Unit){val id=(context as? android.app.Activity)?.intent?.getLongExtra("planId",-1)?:-1;if(id>0)nav.navigate("edit/$id")}
+ LaunchedEffect(Unit){val id=(context as? android.app.Activity)?.intent?.getLongExtra("planId",-1)?:-1;if(id>0)nav.navigate("edit/$id")else if((context as? android.app.Activity)?.intent?.getBooleanExtra("newPlan",false)==true)nav.navigate("new?date=&copy=-1")}
  LaunchedEffect(Unit){for(n in c.notices){val result=snackbar.showSnackbar(n.text,if(n.undo!=null)"Geri al"else null,duration=SnackbarDuration.Long);if(result==SnackbarResult.ActionPerformed)runCatching{n.undo?.invoke()}}}
  fun new(date:LocalDate?=null){nav.navigate("new?date=${date?:""}&copy=-1")}
  Scaffold(containerColor=Background,contentWindowInsets=WindowInsets.safeDrawing,

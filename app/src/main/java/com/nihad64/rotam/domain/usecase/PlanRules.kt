@@ -13,6 +13,12 @@ object PlanTime {
  fun reminder(p:Plan):LocalDateTime?=when{!p.reminderEnabled->null;p.reminderTime!=null->LocalDate.parse(p.date).atTime(LocalTime.parse(p.reminderTime));p.remindAtEnd||p.startTime==null->end(p)?.minusMinutes(p.reminderMinutes.toLong());else->start(p)?.minusMinutes(p.reminderMinutes.toLong())}
  fun label(p:Plan):String {val next=if(p.endDate!=null&&p.endDate!=p.date) " · ${p.endDate}" else "";return when(kind(p)){
  TimeKind.UNTIMED->"Saat yok";TimeKind.START->"Başlangıç ${p.startTime}";TimeKind.DEADLINE->"${p.endTime} · Son teslim$next";TimeKind.INTERVAL->"${p.startTime} – ${p.endTime}$next"}}
+ fun overlaps(a:Plan,b:Plan):Boolean {
+  if(a.id!=0L&&a.id==b.id || b.isDeleted || b.isCompleted || b.isSkipped)return false
+  val aStart=start(a)?:return false;val aEnd=end(a)?:return false
+  val bStart=start(b)?:return false;val bEnd=end(b)?:return false
+  return aStart<bEnd && bStart<aEnd
+ }
  fun moved(p:Plan,date:LocalDate):Plan {val d=ChronoUnit.DAYS.between(LocalDate.parse(p.date),date);return p.copy(date=date.toString(),endDate=p.endDate?.let{LocalDate.parse(it).plusDays(d).toString()})}
  fun validate(p:Plan):String? {
  if(p.title.isBlank())return "Planına bir ad ver.";if(p.title.length>300)return "Plan adı en fazla 300 karakter olabilir."

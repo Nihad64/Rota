@@ -15,13 +15,18 @@ import org.robolectric.annotation.Config
 import java.time.LocalDate
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk=[28])
+@Config(sdk=[28], application=android.app.Application::class)
 class RepositoryTest {
  private lateinit var db:AppDatabase
  private lateinit var repo:PlanRepository
  private val context:Context get()=ApplicationProvider.getApplicationContext()
  @Before fun setup(){db=Room.inMemoryDatabaseBuilder(context,AppDatabase::class.java).allowMainThreadQueries().build();repo=PlanRepository(db)}
  @After fun close(){db.close()}
+ @Test fun retryingARecurringSuggestionDoesNotCreateAnotherSeries()=runBlocking {
+  val p=Plan(title="Tek öneri",date="2026-11-02",repeatType="weekly")
+  val first=repo.create(p);val retry=repo.create(p)
+  assertEquals(first.map{it.id},retry.map{it.id});assertEquals(1,db.seriesDao().all().size)
+ }
  @Test fun generatedOccurrencesAreIdempotentAndDeletedDaysStayDeleted()=runBlocking {
   val p=Plan(title="Oku",date="2026-11-02",repeatType="daily")
   val created=repo.create(p);assertTrue(created.size>60)

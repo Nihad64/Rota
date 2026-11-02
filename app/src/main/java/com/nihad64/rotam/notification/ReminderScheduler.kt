@@ -17,7 +17,7 @@ class ReminderScheduler(private val context:Context,private val repo:PlanReposit
  fun canScheduleExact()=Build.VERSION.SDK_INT<31||alarms.canScheduleExactAlarms()
  private fun intent(id:Long,token:Long=0)=PendingIntent.getBroadcast(context,0,Intent(context,ReminderReceiver::class.java).setAction("show").setData(Uri.parse("rotam://reminder/$id")).putExtra("id",id).putExtra("token",token),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
  private fun remove(id:Long){alarms.cancel(intent(id));context.getSystemService(NotificationManager::class.java).cancel("plan:$id",0)}
- fun cancel(id:Long){remove(id);prefs.edit().remove("snooze_$id").remove("token_$id").apply()}
+ fun cancel(id:Long){remove(id);com.nihad64.rotam.widget.TodayWidget.refresh(context);prefs.edit().remove("snooze_$id").remove("token_$id").apply()}
  private fun quietAdjusted(time:LocalDateTime,s:Settings):LocalDateTime{
   if(!s.quietEnabled||s.quietStart==s.quietEnd)return time
   val m=time.hour*60+time.minute;val quiet=if(s.quietStart<s.quietEnd)m>=s.quietStart&&m<s.quietEnd else m>=s.quietStart||m<s.quietEnd
@@ -49,6 +49,7 @@ class ReminderScheduler(private val context:Context,private val repo:PlanReposit
   prefs.edit().clear().commit()
  }
  suspend fun rescheduleAll()=lock.withLock{
+  com.nihad64.rotam.widget.TodayWidget.refresh(context)
   val today=LocalDate.now();repo.ensure(today,today.plusDays(400));val s=settings.current()
   prefs.getStringSet("scheduled",emptySet()).orEmpty().mapNotNull{it.toLongOrNull()}.forEach{remove(it);prefs.edit().remove("token_$it").apply()}
   prefs.edit().putStringSet("scheduled",emptySet()).apply()

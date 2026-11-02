@@ -10,7 +10,7 @@ import org.json.*
 import java.time.LocalDate
 import java.util.UUID
 
-data class FormState(val plan:Plan=Plan(title="",date=LocalDate.now().toString()),val step:Int=0,val editing:Boolean=false,val busy:Boolean=false,val loading:Boolean=true,val error:String?=null,val restored:Boolean=false,val scope:EditScope=EditScope.THIS)
+data class FormState(val plan:Plan=Plan(title="",date=LocalDate.now().toString()),val step:Int=0,val editing:Boolean=false,val busy:Boolean=false,val loading:Boolean=true,val error:String?=null,val restored:Boolean=false,val scope:EditScope=EditScope.THIS,val conflicts:List<String> = emptyList())
 class NewPlanViewModel(private val c:AppContainer,date:LocalDate?=null,private val editId:Long?=null,copyId:Long?=null):ViewModel(){
  private val prefs=c.app.getSharedPreferences("rotam_drafts",0)
  private val _state=MutableStateFlow(FormState());val state=_state.asStateFlow()
@@ -34,8 +34,15 @@ class NewPlanViewModel(private val c:AppContainer,date:LocalDate?=null,private v
  fun next(){if(state.value.step==0&&state.value.plan.title.isBlank()){_state.update{it.copy(error="Planına bir ad ver.")};return};step(state.value.step+1)}
  fun persist(){if(!state.value.editing&&!state.value.loading)prefs.edit().putString("new",JSONObject().put("plan",PlanJson.encode(state.value.plan)).put("step",state.value.step).toString()).apply()}
  fun discard(){prefs.edit().remove("new").apply()}
- fun save(){val st=state.value;if(st.busy||st.loading)return;val error=PlanTime.validate(st.plan);if(error!=null){_state.update{it.copy(error=error)};return}
-  _state.update{it.copy(busy=true,error=null)};viewModelScope.launch{try{val old=original;if(old==null)c.createPlan(st.plan.copy(title=st.plan.title.trim()))else{c.focus.pauseIf(old.id);c.planRepo.edit(old,st.plan.copy(title=st.plan.title.trim()),st.scope);c.scheduler.rescheduleAll()};discard();events.send("saved")}catch(e:Exception){_state.update{it.copy(error=e.message?:"Kaydedilemedi. Bilgilerin korunuyor.")}}finally{_state.update{it.copy(busy=false)}}}}
+ fun dismissConflicts(){_state.update{it.copy(conflicts=emptyList())}}
+ fun save(allowConflict:Boolean=false){val st=state.value;if(st.busy||st.loading)return;val error=PlanTime.validate(st.plan);if(error!=null){_state.update{it.copy(error=error)};return}
+  _state.update{it.copy(busy=true,error=null,conflicts=emptyList())};viewModelScope.launch{try{
+  if(!allowConflict) {
+   val day=LocalDate.parse(st.plan.date)
+   val conflicts=c.planRepo.range(day,LocalDate.parse(st.plan.endDate?:st.plan.date)).filter{PlanTime.overlaps(st.plan,it)}
+   if(conflicts.isNotEmpty()){_state.update{it.copy(conflicts=conflicts.map{p->"${p.title} · ${PlanTime.label(p)}"})};return@launch}
+  }
+  val old=original;if(old==null)c.createPlan(st.plan.copy(title=st.plan.title.trim()))else{c.focus.pauseIf(old.id);c.planRepo.edit(old,st.plan.copy(title=st.plan.title.trim()),st.scope);c.scheduler.rescheduleAll()};discard();events.send("saved")}catch(e:Exception){_state.update{it.copy(error=e.message?:"Kaydedilemedi. Bilgilerin korunuyor.")}}finally{_state.update{it.copy(busy=false)}}}}
  fun action(name:String){val p=original?:return;if(state.value.busy)return;_state.update{it.copy(busy=true)};viewModelScope.launch{try{when(name){"done"->c.completePlan(p);"skip"->c.skipPlan(p);"tomorrow"->c.movePlanToTomorrow(p);"delete"->c.deletePlan(p)};c.offerUndo("Plan güncellendi",p);events.send("saved")}catch(_:Exception){_state.update{it.copy(error="İşlem tamamlanamadı.")}}finally{_state.update{it.copy(busy=false)}}}}
  fun dirty()=if(original!=null)state.value.plan!=original else state.value.plan.title.isNotBlank()
  private fun loadTemplates():List<Plan> = runCatching{val a=JSONArray(prefs.getString("templates","[]"));(0 until a.length()).map{PlanJson.decode(a.getJSONObject(it))}}.getOrDefault(emptyList())

@@ -9,6 +9,13 @@ import java.time.*
 
 class PlanRulesTest {
  private val p=Plan(id=1,title="Okuma",date="2026-11-02")
+ @Test fun conflictsRequireTwoKnownEndpointsAndExcludeTouchingEdges() {
+  val a=p.copy(startTime="10:00",endTime="11:00")
+  assertTrue(PlanTime.overlaps(a,p.copy(id=2,startTime="10:30",endTime="12:00")))
+  assertFalse(PlanTime.overlaps(a,p.copy(id=2,startTime="11:00",endTime="12:00")))
+  assertFalse(PlanTime.overlaps(a,p.copy(id=2,startTime="10:30")))
+  assertFalse(PlanTime.overlaps(a,p.copy(id=2,endTime="10:30")))
+ }
  @Test fun fourIndependentTimeKinds() {
   assertEquals(TimeKind.UNTIMED,PlanTime.kind(p));assertNull(PlanTime.durationMinutes(p))
   val start=p.copy(startTime="10:00");assertEquals(TimeKind.START,PlanTime.kind(start));assertFalse(PlanTime.overdue(start,LocalDateTime.parse("2026-11-04T12:00")))

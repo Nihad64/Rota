@@ -22,11 +22,11 @@ import java.time.*
  ModalBottomSheet(onDismissRequest=onDismiss,containerColor=Surface,contentColor=Primary){Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(bottom=28.dp),horizontalAlignment=Alignment.CenterHorizontally){
  Text(label,style=MaterialTheme.typography.headlineSmall);Text("24 saat biçimi",color=SubtleText,modifier=Modifier.padding(top=6.dp,bottom=20.dp))
  if(typing)TimeInput(input)else Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.Center){TimeWheel(24,hour,{hour=it});Text(":",style=MaterialTheme.typography.headlineMedium,modifier=Modifier.padding(horizontal=16.dp));TimeWheel(60,minute,{minute=it})}
- TextButton(onClick={typing=!typing}){Text(if(typing)"Kaydırarak seç"else"Klavyeyle gir")}
+ TextButton(onClick={if(typing){hour=input.hour;minute=input.minute}else{input.hour=hour;input.minute=minute};typing=!typing}){Text(if(typing)"Kaydırarak seç"else"Klavyeyle gir")}
  PrimaryButton("Saati seç",{val t=if(typing)LocalTime.of(input.hour,input.minute)else LocalTime.of(hour,minute);onSelect(t.toString());onDismiss()},Modifier.fillMaxWidth())
  TextButton(onClick={onSelect(null);onDismiss()}){Text("Saati kaldır")}
  }}
 }
-@Composable private fun TimeWheel(count:Int,value:Int,selected:(Int)->Unit){val list=rememberLazyListState(value);LaunchedEffect(list){snapshotFlow{list.isScrollInProgress to list.firstVisibleItemIndex}.collect{(scroll,i)->if(!scroll)selected(i.coerceIn(0,count-1))}}
+@Composable private fun TimeWheel(count:Int,value:Int,selected:(Int)->Unit){val list=rememberLazyListState(value);LaunchedEffect(list){snapshotFlow{val layout=list.layoutInfo;val center=(layout.viewportStartOffset+layout.viewportEndOffset)/2;list.isScrollInProgress to (layout.visibleItemsInfo.minByOrNull{kotlin.math.abs(it.offset+it.size/2-center)}?.index?:value)}.collect{(scroll,i)->if(!scroll)selected(i.coerceIn(0,count-1))}}
  Box(Modifier.width(90.dp).height(192.dp),contentAlignment=Alignment.Center){Box(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(14.dp)).background(SurfaceVariant));LazyColumn(state=list,flingBehavior=rememberSnapFlingBehavior(list),contentPadding=PaddingValues(vertical=72.dp),horizontalAlignment=Alignment.CenterHorizontally,modifier=Modifier.fillMaxSize()){items(count){i->Box(Modifier.fillMaxWidth().height(48.dp),contentAlignment=Alignment.Center){Text(i.toString().padStart(2,'0'),color=if(i==value)Primary else SubtleText,style=MaterialTheme.typography.headlineMedium,fontWeight=if(i==value)FontWeight.Bold else FontWeight.Normal)}}}}
 }
