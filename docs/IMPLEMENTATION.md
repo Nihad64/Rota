@@ -4,7 +4,7 @@ Work in progress on `feature/rotam-3-redesign`, draft PR #2. Do not merge or cal
 
 ## Verified checkpoint
 
-Commit `d0c3dc3065a8eacc75f78b6d7ff28566589d3192`: Kotlin compilation and debug APK generation succeeded. All 14 JVM/Robolectric tests passed (7 rules, 7 repository tests). Lint stopped at one Android 26 incompatibility in the legacy `Theme.Rota` resource; this is fixed in `3a4b7f49091c38e3afeb7a8f83c4dd69f0fa9aa3`. That commit also adds a regression for clearing an end time while a reminder is enabled. CI for the new commit is pending.
+Commit `d0c3dc3065a8eacc75f78b6d7ff28566589d3192`: Kotlin compilation and debug APK generation succeeded. All 14 JVM/Robolectric tests passed (7 rules, 7 repository tests). Lint stopped at one Android 26 incompatibility in the legacy `Theme.Rota` resource; this is fixed in `3a4b7f49091c38e3afeb7a8f83c4dd69f0fa9aa3`. That commit also adds a regression for clearing an end time while a reminder is enabled. Commit `3a4b7f49091c38e3afeb7a8f83c4dd69f0fa9aa3` passed all 15 tests, lint and APK generation. Emulator verification is in progress. Commit `f2f17cad049d19e3ab25fbeb12164f5e2a2dba1c` adds the timeline regression (16 tests total) and signed upgrade fixture; its CI is in progress.
 
 ## Implemented
 

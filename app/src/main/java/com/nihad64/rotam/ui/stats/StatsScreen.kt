@@ -117,10 +117,14 @@ private fun WeekChart(week: List<DayStat>, animations:Boolean) {
         }
     }
     Spacer(Modifier.height(8.dp))
-    Row(Modifier.fillMaxWidth()) {
-        week.forEachIndexed { index, day ->
-            Text(if(week.size<=7)TrFormat.short(day.date.dayOfWeek)else if(index%7==0||index==week.lastIndex)day.date.dayOfMonth.toString()else "", Modifier.weight(1f), style=MaterialTheme.typography.labelSmall,
+    if(week.size<=7) Row(Modifier.fillMaxWidth()) {
+        week.forEach { day ->
+            Text(TrFormat.short(day.date.dayOfWeek), Modifier.weight(1f), style=MaterialTheme.typography.labelSmall,
                 color=if(day.date==java.time.LocalDate.now())Primary else SubtleText,textAlign=TextAlign.Center)
+        }
+    } else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+        listOf(0,7,14,21,week.lastIndex).distinct().filter{it in week.indices}.forEach { index ->
+            Text(TrFormat.dayMonth(week[index].date),style=MaterialTheme.typography.labelSmall,color=SubtleText)
         }
     }
 }
