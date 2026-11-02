@@ -20,7 +20,7 @@ data class CalendarState(
     val rangePlans: List<Plan> = emptyList()
 ) {
     val plannedDays: Set<LocalDate> get() = rangePlans.map { LocalDate.parse(it.date) }.toSet()
-    val selectedPlans: List<Plan> get() = rangePlans.filter { it.date == selected.toString() }
+    val selectedPlans: List<Plan> get() = rangePlans.filter { it.date == selected.toString() || (it.date < selected.toString() && it.endDate?.let { end -> end >= selected.toString() } == true) }
     val monthCounts: Map<Int, Int> get() = rangePlans.groupingBy { LocalDate.parse(it.date).monthValue }.eachCount()
 }
 

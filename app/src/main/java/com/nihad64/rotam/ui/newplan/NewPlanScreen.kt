@@ -87,7 +87,7 @@ import java.time.LocalDate
  if(p.endTime!=null){FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){SelectChip("Aynı gün",p.endDate==null||p.endDate==p.date,{change{it.copy(endDate=null)}});SelectChip("Ertesi gün",p.endDate==LocalDate.parse(p.date).plusDays(1).toString(),{change{it.copy(endDate=LocalDate.parse(it.date).plusDays(1).toString())}})};DetailRow("Bitiş tarihi",p.endDate?:p.date){dateTarget="end"}}
  Text(PlanTime.label(p),color=Primary,style=MaterialTheme.typography.titleMedium)
  if(dateTarget!=null)DateChooser(if(dateTarget=="end")p.endDate?:p.date else p.date,{dateTarget=null}){value->if(dateTarget=="end")change{it.copy(endDate=value)}else change{PlanTime.moved(it,LocalDate.parse(value))}}
- if(timeTarget!=null)TimeChooser(if(timeTarget=="start")p.startTime else p.endTime,if(timeTarget=="start")"Başlangıç"else"Bitiş / son teslim",{timeTarget=null}){v->if(timeTarget=="start")change{it.copy(startTime=v)}else change{it.copy(endTime=v,endDate=if(v==null)null else it.endDate)}}
+ if(timeTarget!=null)TimeChooser(if(timeTarget=="start")p.startTime else p.endTime,if(timeTarget=="start")"Başlangıç"else"Bitiş / son teslim",{timeTarget=null}){v->if(timeTarget=="start")change{it.copy(startTime=v,reminderTime=null)}else change{it.copy(endTime=v,endDate=if(v==null)null else it.endDate,reminderTime=null)}}
 }
 @OptIn(ExperimentalLayoutApi::class)
 @Composable private fun RepeatFields(p:Plan,enabled:Boolean,change:((Plan)->Plan)->Unit){var until by remember{mutableStateOf(false)};Text("Tekrar",style=MaterialTheme.typography.headlineSmall)

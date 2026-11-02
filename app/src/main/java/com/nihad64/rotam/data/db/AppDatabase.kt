@@ -49,6 +49,7 @@ interface PlanDao {
 
 @Dao
 interface GoalDao {
+    @Query("SELECT * FROM goals WHERE id=:id") suspend fun byId(id:Long):Goal?
  @Query("SELECT * FROM goals") suspend fun all():List<Goal>
     @Query("SELECT * FROM goals ORDER BY isCompleted, dueDate")
     fun observeAll(): Flow<List<Goal>>

@@ -27,6 +27,7 @@ import com.nihad64.rotam.ui.theme.*
 @Composable
 fun StatsScreen(vm: StatsViewModel, onBack: () -> Unit) {
     val s by vm.state.collectAsStateWithLifecycle()
+    val settings by com.nihad64.rotam.RotamApp.container.settings.settings.collectAsStateWithLifecycle(initialValue=com.nihad64.rotam.data.prefs.Settings())
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -44,9 +45,16 @@ fun StatsScreen(vm: StatsViewModel, onBack: () -> Unit) {
             Text("Son 7 gün", style = MaterialTheme.typography.titleMedium, color = OnBackground)
             Text("Günlük tamamlanma oranı", style = MaterialTheme.typography.bodySmall, color = SubtleText)
             Spacer(Modifier.height(16.dp))
-            WeekChart(s.week)
+            WeekChart(s.week,settings.animations)
         }
 
+        RotamCard(Modifier.fillMaxWidth()) {
+            Text("Bu haftanın zamanı",style=MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(12.dp))
+            Text("Ölçülen odak: ${s.focusSeconds/3600} sa ${s.focusSeconds/60%60} dk",color=OnSurface)
+            Text("Planlanan süre: ${s.plannedMinutes/60} sa ${s.plannedMinutes%60} dk",color=SubtleText)
+            Text("${s.unknownDuration} planın süresi belirsiz · ${s.skipped} atlandı",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+        }
         RotamCard(Modifier.fillMaxWidth()) {
             Text("Kategori dağılımı", style = MaterialTheme.typography.titleMedium, color = OnBackground)
             s.topCategory?.let {
@@ -67,7 +75,7 @@ fun StatsScreen(vm: StatsViewModel, onBack: () -> Unit) {
                                 Text("$count", style = MaterialTheme.typography.labelLarge, color = OnBackground)
                             }
                             Spacer(Modifier.height(4.dp))
-                            val p by animateFloatAsState(count.toFloat() / max, tween(900), label = "cat")
+                            val p by animateFloatAsState(count.toFloat() / max, tween(if(settings.animations)900 else 0), label = "cat")
                             LinearProgressIndicator(
                                 progress = { p }, modifier = Modifier.fillMaxWidth().height(6.dp),
                                 color = cat.color(), trackColor = SurfaceVariant
@@ -91,8 +99,8 @@ private fun StatTile(icon: ImageVector, value: String, label: String, modifier: 
 }
 
 @Composable
-private fun WeekChart(week: List<DayStat>) {
-    val anim by animateFloatAsState(if (week.isEmpty()) 0f else 1f, tween(1000), label = "chart")
+private fun WeekChart(week: List<DayStat>, animations:Boolean) {
+    val anim by animateFloatAsState(if (week.isEmpty()) 0f else 1f, tween(if(animations)1000 else 0), label = "chart")
     Canvas(Modifier.fillMaxWidth().height(140.dp)) {
         if (week.isEmpty()) return@Canvas
         val slot = size.width / week.size

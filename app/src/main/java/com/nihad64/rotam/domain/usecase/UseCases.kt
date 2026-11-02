@@ -14,7 +14,7 @@ class GetPlansForDay(private val repo: PlanRepository) {
 class CreatePlan(private val repo: PlanRepository, private val scheduler: ReminderScheduler) {
     suspend operator fun invoke(plan: Plan): List<Plan> {
         val created = repo.create(plan)
-        created.forEach { scheduler.schedule(it) }
+        scheduler.rescheduleAll()
         return created
     }
 }

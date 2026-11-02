@@ -7,6 +7,7 @@ import com.nihad64.rotam.data.model.Category
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import com.nihad64.rotam.domain.usecase.PlanTime
 import java.time.LocalDate
 
 data class DayStat(val date: LocalDate, val total: Int, val done: Int) {
@@ -17,7 +18,8 @@ data class StatsState(
     val week: List<DayStat> = emptyList(),
     val byCategory: List<Pair<Category, Int>> = emptyList(),
     val streak: Int = 0,
-    val totalDone: Int = 0
+    val totalDone: Int = 0,
+    val focusSeconds:Long=0, val plannedMinutes:Long=0, val unknownDuration:Int=0, val skipped:Int=0
 ) {
     val topCategory get() = byCategory.maxByOrNull { it.second }?.first
     val weekRatio get() = week.sumOf { it.done }.toFloat() / week.sumOf { it.total }.coerceAtLeast(1)
@@ -37,7 +39,7 @@ class StatsViewModel(c: AppContainer) : ViewModel() {
         }
         val merged = cats.groupBy { Category.fromKey(it.category) }.mapValues { e -> e.value.sumOf { it.count } }
             .toList().sortedByDescending { it.second }
-        StatsState(week, merged, streak(days.map { LocalDate.parse(it) }.toSet()), merged.sumOf { it.second })
+        StatsState(week, merged, streak(days.map { LocalDate.parse(it) }.toSet()), merged.sumOf { it.second },weekPlans.sumOf{it.focusSeconds},weekPlans.mapNotNull{PlanTime.durationMinutes(it)}.sum(),weekPlans.count{PlanTime.durationMinutes(it)==null},weekPlans.count{it.isSkipped})
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StatsState())
 
     /** Bugünden (bugün henüz boşsa dünden) geriye doğru ardışık aktif gün sayısı. */

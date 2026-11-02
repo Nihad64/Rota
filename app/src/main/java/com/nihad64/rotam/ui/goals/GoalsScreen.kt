@@ -21,13 +21,16 @@ import com.nihad64.rotam.data.model.GoalPeriod
 import com.nihad64.rotam.ui.components.*
 import com.nihad64.rotam.ui.newplan.RotamField
 import com.nihad64.rotam.ui.theme.*
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 class GoalsViewModel(private val c: AppContainer) : ViewModel() {
-    val goals = c.goalRepo.observeAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val goals = combine(c.goalRepo.observeAll(),c.planRepo.observeAll()) { goals,plans ->
+        goals.map { g->val linked=plans.count{it.goalId==g.id && it.isCompleted};val count=g.currentCount+linked;g.copy(currentCount=count,isCompleted=count>=g.targetCount) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun add(title: String, period: GoalPeriod, target: Int, category: Category) = viewModelScope.launch {
         val due = when (period) {
@@ -39,10 +42,8 @@ class GoalsViewModel(private val c: AppContainer) : ViewModel() {
         c.goalRepo.create(Goal(title = title.trim(), period = period.key, targetCount = target, category = category.key, dueDate = due.toString()))
     }
 
-    fun increment(g: Goal) = viewModelScope.launch {
-        val n = (g.currentCount + 1).coerceAtMost(g.targetCount)
-        c.goalRepo.update(g.copy(currentCount = n, isCompleted = n >= g.targetCount))
-    }
+    fun increment(g: Goal) = viewModelScope.launch { c.goalRepo.adjust(g.id,1) }
+    fun decrement(g: Goal) = viewModelScope.launch { c.goalRepo.adjust(g.id,-1) }
 
     fun delete(g: Goal) = viewModelScope.launch { c.goalRepo.delete(g) }
 }
@@ -51,6 +52,7 @@ class GoalsViewModel(private val c: AppContainer) : ViewModel() {
 @Composable
 fun GoalsScreen(vm: GoalsViewModel, onBack: () -> Unit) {
     val goals by vm.goals.collectAsStateWithLifecycle()
+    var deleteTarget by remember { mutableStateOf<Goal?>(null) }
     var title by remember { mutableStateOf("") }
     var target by remember { mutableStateOf("5") }
     var period by remember { mutableStateOf(GoalPeriod.WEEKLY) }
@@ -70,6 +72,7 @@ fun GoalsScreen(vm: GoalsViewModel, onBack: () -> Unit) {
         item {
             RotamCard(Modifier.fillMaxWidth()) {
                 Text("Yeni hedef", style = MaterialTheme.typography.titleMedium, color = OnBackground)
+                Text("Bağlı bir plan tamamlanınca ilerleme otomatik artar; geri alındığında azalır.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(10.dp))
                 RotamField(title, { title = it }, "Örn. Haftada 3 kez spor", Modifier.fillMaxWidth())
                 Spacer(Modifier.height(10.dp))
@@ -107,11 +110,14 @@ fun GoalsScreen(vm: GoalsViewModel, onBack: () -> Unit) {
                         Icon(if (g.isCompleted) Icons.Outlined.EmojiEvents else Icons.Outlined.AddCircleOutline, "İlerle",
                             tint = if (g.isCompleted) CategoryIbadet else Primary)
                     }
-                    IconButton(onClick = { vm.delete(g) }) { Icon(Icons.Outlined.Delete, "Sil", tint = SubtleText) }
+                    IconButton(onClick = { vm.decrement(g) }, enabled=g.currentCount>0) { Icon(Icons.Outlined.RemoveCircleOutline,"Elle eklenen ilerlemeyi azalt",tint=SubtleText) }
+                    IconButton(onClick = { deleteTarget=g }) { Icon(Icons.Outlined.Delete, "Sil", tint = SubtleText) }
                 }
                 Spacer(Modifier.height(8.dp))
                 LinearBar(g.currentCount.toFloat() / g.targetCount.coerceAtLeast(1), Modifier.fillMaxWidth())
             }
         }
     }
+    deleteTarget?.let { g -> AlertDialog(onDismissRequest={deleteTarget=null},title={Text("Hedef silinsin mi?")},text={Text("Bağlı planların korunacak; yalnız hedef bağlantısı kaldırılacak.")},confirmButton={TextButton(onClick={vm.delete(g);deleteTarget=null}){Text("Sil",color=Danger)}},dismissButton={TextButton(onClick={deleteTarget=null}){Text("Vazgeç")}}) }
+
 }

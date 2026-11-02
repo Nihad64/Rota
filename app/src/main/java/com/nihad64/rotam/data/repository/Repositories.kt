@@ -27,6 +27,8 @@ class PlanRepository(private val db:AppDatabase){
  suspend fun create(p:Plan):List<Plan> = lock.withLock{db.withTransaction{
   require(PlanTime.validate(p)==null){PlanTime.validate(p).orEmpty()}
   val existing=dao.byUid(p.uid);if(existing!=null)return@withTransaction listOf(existing)
+  val existingSeries=db.seriesDao().all().firstOrNull{PlanJson.decode(JSONObject(it.template)).uid==p.uid}
+  if(existingSeries!=null)return@withTransaction dao.bySeries(existingSeries.id)
   if(p.repeatType=="none"){val id=dao.insert(p.copy(id=0));listOf(p.copy(id=id))}else{
    val id=db.seriesDao().insert(PlanSeries(template=PlanJson.encode(p).toString(),anchor=p.date,untilDate=p.repeatUntil))
    generate(db.seriesDao().byId(id)!!,LocalDate.parse(p.date),maxOf(LocalDate.now().plusDays(400),LocalDate.parse(p.date).plusDays(60)))
@@ -39,7 +41,9 @@ class PlanRepository(private val db:AppDatabase){
   val days=Recurrence.dates(p,LocalDate.parse(s.anchor),f,t)
   dao.insertAll(days.map{d->val key="${s.id}:$d";PlanTime.moved(p,d).copy(id=0,uid="series:$key",seriesId=s.id,occurrenceKey=key,originalDate=d.toString(),isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)})
  }
- suspend fun edit(old:Plan,p:Plan,scope:EditScope)=lock.withLock{db.withTransaction{
+ suspend fun edit(old:Plan,proposed:Plan,scope:EditScope)=lock.withLock{db.withTransaction{
+  val current=dao.byId(old.id) ?: error("Plan bulunamadı.")
+  val p=proposed.copy(focusSeconds=current.focusSeconds)
   require(PlanTime.validate(p)==null){PlanTime.validate(p).orEmpty()}
   val s=if(old.seriesId==0L)null else db.seriesDao().byId(old.seriesId)
   if(s==null){
@@ -68,4 +72,20 @@ class PlanRepository(private val db:AppDatabase){
   }
  }}
 }
-class GoalRepository(private val dao:GoalDao){fun observeAll()=dao.observeAll();suspend fun create(g:Goal)=dao.insert(g);suspend fun update(g:Goal)=dao.update(g);suspend fun delete(g:Goal)=dao.delete(g);suspend fun clear()=dao.clear()}
+class GoalRepository(private val db:AppDatabase) {
+ private val dao=db.goalDao()
+ fun observeAll()=dao.observeAll()
+ suspend fun create(g:Goal):Long { require(g.title.isNotBlank() && g.targetCount>0);return dao.insert(g) }
+ suspend fun adjust(id:Long,delta:Int)=db.withTransaction {
+  val g=dao.byId(id) ?: return@withTransaction
+  val count=(g.currentCount+delta).coerceIn(0,g.targetCount)
+  dao.update(g.copy(currentCount=count,isCompleted=count>=g.targetCount))
+ }
+ suspend fun update(g:Goal)=dao.update(g)
+ suspend fun delete(g:Goal)=db.withTransaction {
+  db.planDao().all().filter{it.goalId==g.id}.forEach{db.planDao().update(it.copy(goalId=null))}
+  db.seriesDao().all().forEach{s->val p=PlanJson.decode(JSONObject(s.template));if(p.goalId==g.id)db.seriesDao().update(s.copy(template=PlanJson.encode(p.copy(goalId=null)).toString()))}
+  dao.delete(g)
+ }
+ suspend fun clear()=dao.clear()
+}

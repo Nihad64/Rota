@@ -41,7 +41,7 @@ class AppContainer(val app: Application) {
     val db = AppDatabase.get(app)
     val settings = SettingsStore(app)
     val planRepo = PlanRepository(db)
-    val goalRepo = GoalRepository(db.goalDao())
+    val goalRepo = GoalRepository(db)
     val focus = FocusTracker(app, planRepo)
     val scheduler = ReminderScheduler(app, planRepo, settings)
     val gemini = GeminiService(settings)
