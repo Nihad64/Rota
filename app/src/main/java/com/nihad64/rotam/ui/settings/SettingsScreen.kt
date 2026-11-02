@@ -1,6 +1,10 @@
 package com.nihad64.rotam.ui.settings
 
 import android.content.Intent
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.time.LocalTime
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings as AndroidSettings
@@ -27,13 +31,22 @@ import com.nihad64.rotam.ui.theme.*
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(vm: SettingsViewModel) {
+fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     var name by remember(s.userName) { mutableStateOf(s.userName) }
     var key by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
     var confirmReset by remember { mutableStateOf(false) }
+    val pending by vm.pending.collectAsStateWithLifecycle()
+    val message by vm.message.collectAsStateWithLifecycle()
+    val busy by vm.busy.collectAsStateWithLifecycle()
+    var model by remember(s.geminiModel) { mutableStateOf(s.geminiModel) }
+    var quietTarget by remember { mutableStateOf<String?>(null) }
+    val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){it?.let(vm::export)}
+    val import=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){it?.let(vm::preview)}
+    val notificationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){}
+    fun clock(minutes:Int)="%02d:%02d".format(minutes/60,minutes%60)
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding()
@@ -54,6 +67,8 @@ fun SettingsScreen(vm: SettingsViewModel) {
             }
         }
 
+        ActionRow(Icons.Outlined.QueryStats,"İstatistikler","Tamamlanan işler ve ölçülen odak süresi.","Gör",onClick=onStats)
+        ActionRow(Icons.Outlined.Search,"Planlarında ara","Başlık, not ve geçmiş planlar.","Ara",onClick=onSearch)
         Section("Profil")
         RotamCard(Modifier.fillMaxWidth()) {
             Text("İsmin (selamlama için)", style = MaterialTheme.typography.bodyMedium, color = OnSurface)
@@ -66,9 +81,10 @@ fun SettingsScreen(vm: SettingsViewModel) {
         }
 
         Section("Bildirimler")
-        SwitchRow(Icons.Outlined.NotificationsActive, "Plan hatırlatmaları", "Saatli planlardan önce bildirim.", s.remindersEnabled, vm::setReminders)
+        SwitchRow(Icons.Outlined.NotificationsActive, "Plan hatırlatmaları", "Her planın kendi hatırlatma seçimi uygulanır.", s.remindersEnabled, vm::setReminders)
+        if(Build.VERSION.SDK_INT>=33) ActionRow(Icons.Outlined.Notifications,"Android bildirim izni","Hatırlatmalar için telefonun bildirim iznini aç.","Kontrol et") { notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }
         RotamCard(Modifier.fillMaxWidth()) {
-            Text("Hatırlatma zamanı", style = MaterialTheme.typography.titleSmall, color = OnBackground)
+            Text("Yeni planlarda varsayılan süre", style = MaterialTheme.typography.titleSmall, color = OnBackground)
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(5 to "5 dk", 15 to "15 dk", 30 to "30 dk", 60 to "1 saat").forEach { (m, l) ->
@@ -76,11 +92,15 @@ fun SettingsScreen(vm: SettingsViewModel) {
                 }
             }
         }
-        SwitchRow(Icons.Outlined.Bedtime, "Sessiz saatler", "%02d:00 – %02d:00 arası bildirimleri sustur.".format(s.quietStart, s.quietEnd), s.quietEnabled, vm::setQuiet)
+        SwitchRow(Icons.Outlined.Bedtime, "Sessiz saatler", "${clock(s.quietStart)} – ${clock(s.quietEnd)} arası hatırlatmaları sessiz saatlerin sonuna taşı.", s.quietEnabled, vm::setQuiet)
+        if(s.quietEnabled) {
+            DetailRow("Sessiz saat başlangıcı",clock(s.quietStart)){quietTarget="start"}
+            DetailRow("Sessiz saat bitişi",clock(s.quietEnd)){quietTarget="end"}
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val granted = vm.canScheduleExact()
             ActionRow(Icons.Outlined.AlarmOn, "Kesin bildirim zamanı",
-                if (granted) "İzin verildi. Bildirimler tam saatinde gelir." else "Bildirimlerin tam saatinde gelmesi için Android izni gerekli.",
+                if (granted) "Kesin alarm izni açık. Telefonun pil ve bildirim ayarları da uygulanır." else "Bildirimlerin tam saatinde gelmesi için Android izni gerekli.",
                 if (granted) "Açık" else "İzin ver") {
                 ctx.startActivity(Intent(AndroidSettings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${ctx.packageName}")))
             }
@@ -90,16 +110,7 @@ fun SettingsScreen(vm: SettingsViewModel) {
         SwitchRow(Icons.Outlined.VolumeUp, "UI sesleri", "Kısa mekanik tık sesi.", s.uiSounds, vm::setSounds)
         SwitchRow(Icons.Outlined.Vibration, "Titreşim", "Hafif dokunsal geri bildirim.", s.haptics, vm::setHaptics)
 
-        Section("Tema")
-        RotamCard(Modifier.fillMaxWidth()) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("dark" to "Koyu", "light" to "Açık", "system" to "Sistem").forEach { (k, l) ->
-                    SelectChip(l, s.theme == k, { vm.setTheme(k) })
-                }
-            }
-            Spacer(Modifier.height(6.dp))
-            Text("Şimdilik yalnızca koyu tema kullanılıyor; açık tema yakında.", style = MaterialTheme.typography.bodySmall, color = SubtleText)
-        }
+        SwitchRow(Icons.Outlined.Animation,"Animasyonlar","Kısa ekran ve grafik geçişleri.",s.animations,vm::setAnimations)
 
         Section("Rotam AI")
         RotamCard(Modifier.fillMaxWidth()) {
@@ -107,7 +118,6 @@ fun SettingsScreen(vm: SettingsViewModel) {
             Text(
                 when {
                     s.geminiKey.isNotBlank() -> "Kendi anahtarın kayıtlı (••••${s.geminiKey.takeLast(4)})."
-                    vm.hasBuildKey -> "Uygulamayla gelen anahtar kullanılıyor."
                     else -> "Anahtar yok. Rotam AI için bir anahtar ekle."
                 },
                 style = MaterialTheme.typography.bodySmall, color = SubtleText
@@ -131,17 +141,31 @@ fun SettingsScreen(vm: SettingsViewModel) {
             }
         }
 
+        SwitchRow(Icons.Outlined.PrivacyTip,"Planları AI ile paylaş","Açarsan son 1 gün ve gelecek 14 gün içindeki en fazla 150 planın adı ve zamanları Gemini'ye gönderilir. Yazdığın sohbet mesajları her istekte gönderilir.",s.sharePlans,vm::setSharePlans)
+        RotamField(model,{model=it},"Gemini model adı",Modifier.fillMaxWidth())
+        TextButton(onClick={vm.setModel(model)},enabled=model.matches(Regex("[a-zA-Z0-9._-]{1,100}")) && model!=s.geminiModel){Text("Modeli kaydet")}
+        Section("Yedekleme")
+        Text("Planlar, hedefler, tekrar kuralları ve odak süreleri korunur. API anahtarı yedeğe eklenmez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+        PrimaryButton("Yedeği dışa aktar",{export.launch("Rotam-${java.time.LocalDate.now()}.json")},Modifier.fillMaxWidth(),enabled=!busy)
+        OutlinedButton(onClick={import.launch(arrayOf("application/json","text/plain","application/octet-stream"))},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Yedekten geri yükle")}
+        TextButton(onClick={vm.previewRecovery()},enabled=!busy){Text("Son işlemden önceki kayıtlara dön")}
+        message?.let{Text(it,color=SubtleText)}
+        if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
         Section("Veri")
-        ActionRow(Icons.Outlined.DeleteForever, "Tüm planları sıfırla", "Bütün planlar ve hedefler kalıcı olarak silinir.", "Sıfırla", danger = true) {
+        ActionRow(Icons.Outlined.DeleteForever, "Tüm planları sıfırla", "Planlar ve hedefler temizlenir; önce geri dönüş yedeği alınır.", "Sıfırla", danger = true) {
             confirmReset = true
         }
     }
 
+    if(quietTarget!=null) TimeChooser(if(quietTarget=="start")clock(s.quietStart) else clock(s.quietEnd),"Sessiz saat",{quietTarget=null}) { value->
+        value?.let{val m=LocalTime.parse(it).toSecondOfDay()/60;if(quietTarget=="start")vm.setQuietTimes(m,s.quietEnd) else vm.setQuietTimes(s.quietStart,m)}
+    }
+    pending?.let { data-> AlertDialog(onDismissRequest={vm.dismissPreview()},title={Text("Yedeği geri yükle?")},text={Text("${data.visiblePlans} plan, ${data.goals.size} hedef ve ${data.series.size} tekrar kuralı bulundu. Mevcut kayıtlar bu yedekle değiştirilecek. İşlemden önce geri dönüş yedeği alınır.")},confirmButton={TextButton(onClick={vm.restore()},enabled=!busy){Text("Geri yükle")}},dismissButton={TextButton(onClick={vm.dismissPreview()},enabled=!busy){Text("Vazgeç")}}) }
     if (confirmReset) AlertDialog(
         onDismissRequest = { confirmReset = false },
         containerColor = Surface,
         title = { Text("Emin misin?", color = OnBackground) },
-        text = { Text("Tüm planlar ve hedefler silinecek. Bu işlem geri alınamaz.", color = OnSurface) },
+        text = { Text("Tüm planlar ve hedefler temizlenecek. Önce geri dönüş yedeği alınır.", color = OnSurface) },
         confirmButton = { TextButton(onClick = { vm.resetAll(); confirmReset = false }) { Text("Sil", color = Danger) } },
         dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Vazgeç", color = OnSurface) } }
     )

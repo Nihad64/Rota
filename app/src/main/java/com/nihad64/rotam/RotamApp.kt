@@ -24,7 +24,7 @@ class AppContainer(val app: Application) {
     suspend fun offerUndo(message:String, before:com.nihad64.rotam.data.model.Plan) {
         val expected=planRepo.byId(before.id)
         notices.send(Notice(message) {
-            if(planRepo.byId(before.id)==expected){planRepo.restore(before);scheduler.rescheduleAll()}
+            if(planRepo.byId(before.id)==expected){planRepo.restore(before.copy(focusSeconds=expected?.focusSeconds?:before.focusSeconds));scheduler.rescheduleAll()}
         })
     }
     val ready = MutableStateFlow(false)
@@ -42,15 +42,16 @@ class AppContainer(val app: Application) {
     val settings = SettingsStore(app)
     val planRepo = PlanRepository(db)
     val goalRepo = GoalRepository(db.goalDao())
+    val focus = FocusTracker(app, planRepo)
     val scheduler = ReminderScheduler(app, planRepo, settings)
     val gemini = GeminiService(settings)
 
     val getPlansForDay = GetPlansForDay(planRepo)
     val createPlan = CreatePlan(planRepo, scheduler)
-    val completePlan = CompletePlan(planRepo, scheduler)
-    val skipPlan = SkipPlan(planRepo, scheduler)
-    val deletePlan = DeletePlan(planRepo, scheduler)
-    val movePlanToTomorrow = MovePlanToTomorrow(planRepo, scheduler)
+    val completePlan = CompletePlan(planRepo, scheduler, focus)
+    val skipPlan = SkipPlan(planRepo, scheduler, focus)
+    val deletePlan = DeletePlan(planRepo, scheduler, focus)
+    val movePlanToTomorrow = MovePlanToTomorrow(planRepo, scheduler, focus)
 }
 
 class RotamApp : Application() {

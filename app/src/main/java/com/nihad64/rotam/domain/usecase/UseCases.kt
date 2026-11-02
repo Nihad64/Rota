@@ -19,31 +19,37 @@ class CreatePlan(private val repo: PlanRepository, private val scheduler: Remind
     }
 }
 
-class CompletePlan(private val repo: PlanRepository, private val scheduler: ReminderScheduler) {
+class CompletePlan(private val repo: PlanRepository, private val scheduler: ReminderScheduler, private val focus:FocusTracker) {
     suspend operator fun invoke(plan: Plan, completed: Boolean = !plan.isCompleted) {
-        repo.update(plan.copy(isCompleted = completed, isSkipped = false))
+        focus.pauseIf(plan.id)
+        val current=repo.byId(plan.id) ?: return
+        repo.update(current.copy(isCompleted = completed, isSkipped = false))
         if (completed) scheduler.cancel(plan.id) else scheduler.schedule(plan.copy(isCompleted = completed, isSkipped = false))
     }
 }
 
-class SkipPlan(private val repo: PlanRepository, private val scheduler: ReminderScheduler) {
+class SkipPlan(private val repo: PlanRepository, private val scheduler: ReminderScheduler, private val focus:FocusTracker) {
     suspend operator fun invoke(plan: Plan) {
-        repo.update(plan.copy(isSkipped = true, isCompleted = false))
+        focus.pauseIf(plan.id)
+        val current=repo.byId(plan.id) ?: return
+        repo.update(current.copy(isSkipped = true, isCompleted = false))
         scheduler.cancel(plan.id)
     }
 }
 
-class DeletePlan(private val repo: PlanRepository, private val scheduler: ReminderScheduler) {
+class DeletePlan(private val repo: PlanRepository, private val scheduler: ReminderScheduler, private val focus:FocusTracker) {
     suspend operator fun invoke(plan: Plan) {
+        focus.pauseIf(plan.id)
         scheduler.cancel(plan.id)
-        repo.delete(plan)
+        repo.delete(repo.byId(plan.id) ?: return)
     }
 }
 
 /** Kaçırılan planı yarına (aynı saatte) taşır. */
-class MovePlanToTomorrow(private val repo: PlanRepository, private val scheduler: ReminderScheduler) {
+class MovePlanToTomorrow(private val repo: PlanRepository, private val scheduler: ReminderScheduler, private val focus:FocusTracker) {
     suspend operator fun invoke(plan: Plan) {
-        val moved = PlanTime.moved(plan, LocalDate.now().plusDays(1)).copy(isSkipped=false,isCompleted=false)
+        focus.pauseIf(plan.id)
+        val moved = PlanTime.moved(repo.byId(plan.id) ?: return, LocalDate.now().plusDays(1)).copy(isSkipped=false,isCompleted=false)
         repo.update(moved)
         scheduler.schedule(moved)
     }

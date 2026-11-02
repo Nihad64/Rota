@@ -41,6 +41,7 @@ interface PlanDao {
 
     @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insert(plan: Plan): Long
     @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insertAll(plans: List<Plan>): List<Long>
+    @Query("UPDATE plans SET focusSeconds=:seconds WHERE id=:id") suspend fun setFocusSeconds(id:Long,seconds:Long)
     @Update suspend fun update(plan: Plan)
     @Delete suspend fun delete(plan: Plan)
     @Query("DELETE FROM plans") suspend fun clear()

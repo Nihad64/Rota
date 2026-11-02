@@ -25,13 +25,13 @@ import com.nihad64.rotam.ui.components.*
 import com.nihad64.rotam.ui.theme.*
 
 @Composable
-fun StatsScreen(vm: StatsViewModel) {
+fun StatsScreen(vm: StatsViewModel, onBack: () -> Unit) {
     val s by vm.state.collectAsStateWithLifecycle()
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("İstatistikler", style = MaterialTheme.typography.displaySmall, color = OnBackground)
+        PageHeader("İstatistikler", onBack=onBack)
         Text("İlerlemeni gör, ritmini koru.", style = MaterialTheme.typography.bodyMedium, color = SubtleText)
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

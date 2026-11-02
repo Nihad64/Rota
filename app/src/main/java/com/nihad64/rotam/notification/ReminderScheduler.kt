@@ -35,7 +35,7 @@ class ReminderScheduler(private val context:Context,private val repo:PlanReposit
   val at=millis(quietAdjusted(base,s));if(at<=System.currentTimeMillis())return null
   return at to token
  }
- suspend fun schedule(p:Plan)=lock.withLock{remove(p.id);target(p,settings.current())?.let{install(p.id,it.first,it.second)}}
+ suspend fun schedule(p:Plan)=lock.withLock{remove(p.id);prefs.edit().remove("token_${p.id}").apply();target(p,settings.current())?.let{install(p.id,it.first,it.second)}}
  private fun install(id:Long,at:Long,token:Long){
   val pi=intent(id,token);prefs.edit().putLong("token_$id",token).apply()
   try{if(canScheduleExact())alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,at,pi)else alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,at,pi)}catch(_:SecurityException){alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,at,pi)}
@@ -44,9 +44,13 @@ class ReminderScheduler(private val context:Context,private val repo:PlanReposit
  suspend fun snooze(id:Long,minutes:Int=30){val p=repo.byId(id)?:return;prefs.edit().putLong("snooze_$id",System.currentTimeMillis()+minutes*60000L).apply();schedule(p)}
  fun valid(id:Long,token:Long)=prefs.getLong("token_$id",-1)==token
  fun delivered(id:Long,token:Long){prefs.edit().putLong("delivered_$id",token).remove("snooze_$id").remove("token_$id").apply()}
+ suspend fun resetState()=lock.withLock{
+  prefs.getStringSet("scheduled",emptySet()).orEmpty().mapNotNull{it.toLongOrNull()}.forEach{remove(it)}
+  prefs.edit().clear().commit()
+ }
  suspend fun rescheduleAll()=lock.withLock{
   val today=LocalDate.now();repo.ensure(today,today.plusDays(400));val s=settings.current()
-  prefs.getStringSet("scheduled",emptySet()).orEmpty().mapNotNull{it.toLongOrNull()}.forEach{remove(it)}
+  prefs.getStringSet("scheduled",emptySet()).orEmpty().mapNotNull{it.toLongOrNull()}.forEach{remove(it);prefs.edit().remove("token_$it").apply()}
   prefs.edit().putStringSet("scheduled",emptySet()).apply()
   if(!s.remindersEnabled)return@withLock
   val until=System.currentTimeMillis()+14*86400000L

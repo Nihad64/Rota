@@ -20,6 +20,7 @@ class PlanRepository(private val db:AppDatabase){
  suspend fun upcoming(f:LocalDate)=dao.upcoming(f.toString())
  suspend fun pendingBetween(f:LocalDate,t:LocalDate)=dao.pendingBetween(f.toString(),t.toString())
  suspend fun update(p:Plan){require(PlanTime.validate(p)==null){PlanTime.validate(p).orEmpty()};dao.update(p)}
+ suspend fun setFocusSeconds(id:Long,seconds:Long)=dao.setFocusSeconds(id,seconds)
  suspend fun restore(p:Plan)=dao.update(p)
  suspend fun delete(p:Plan)=dao.update(p.copy(isDeleted=true))
  suspend fun clear()=db.withTransaction{dao.clear();db.seriesDao().clear()}
