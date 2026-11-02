@@ -49,7 +49,7 @@ class PlanFlowTest {
         org.junit.Assert.assertNull(plan.startTime);org.junit.Assert.assertNull(plan.endTime)
         ui.onNodeWithContentDescription("Planlarda ara").performClick()
         ui.onNode(hasSetTextAction()).performTextInput("Saatsiz test planı")
-        ui.onNodeWithText("Saatsiz test planı").performClick()
+        ui.onNode(hasText("Saatsiz test planı") and !hasSetTextAction()).performScrollTo().performClick()
         ui.onNodeWithText("Planını düzenle").assertIsDisplayed()
         shot("04-edit")
         ui.onNodeWithText("Ne zaman?").performScrollTo().assertIsDisplayed()

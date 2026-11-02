@@ -22,6 +22,31 @@ class RepositoryTest {
  private val context:Context get()=ApplicationProvider.getApplicationContext()
  @Before fun setup(){db=Room.inMemoryDatabaseBuilder(context,AppDatabase::class.java).allowMainThreadQueries().build();repo=PlanRepository(db)}
  @After fun close(){db.close()}
+ @Test fun focusSurvivesTrackerRecreationAndPreservesConcurrentPlanChanges()=runBlocking {
+  context.getSharedPreferences("rotam_focus",0).edit().clear().commit()
+  val p=repo.create(Plan(title="Odak",date="2026-11-02")).single()
+  val tracker=com.nihad64.rotam.domain.usecase.FocusTracker(context,repo)
+  tracker.start(p.id)
+  org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(65))
+  repo.update(p.copy(title="Yeni başlık"))
+  val reopened=com.nihad64.rotam.domain.usecase.FocusTracker(context,repo)
+  assertEquals(p.id,reopened.active.value)
+  reopened.pause()
+  assertTrue(repo.byId(p.id)!!.focusSeconds>=65)
+  assertEquals("Yeni başlık",repo.byId(p.id)!!.title)
+  assertNull(reopened.active.value)
+ }
+ @Test fun deletingGoalClearsLinksInOccurrencesAndFutureTemplates()=runBlocking {
+  val goals=GoalRepository(db)
+  val goal=Goal(title="Kitap",period="weekly",targetCount=3,dueDate="2026-11-09")
+  val id=goals.create(goal)
+  repo.create(Plan(title="Oku",date="2026-11-02",repeatType="daily",goalId=id))
+  goals.delete(goal.copy(id=id))
+  repo.ensure(LocalDate.parse("2028-01-01"),LocalDate.parse("2028-01-02"))
+  assertTrue(db.planDao().all().all{it.goalId==null})
+  BackupCodec.decode(BackupStore(context,db).export())
+  Unit
+ }
  @Test fun retryingARecurringSuggestionDoesNotCreateAnotherSeries()=runBlocking {
   val p=Plan(title="Tek öneri",date="2026-11-02",repeatType="weekly")
   val first=repo.create(p);val retry=repo.create(p)

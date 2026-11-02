@@ -38,7 +38,7 @@ class GeminiService(private val settings:SettingsStore){
     title=o.getString("title"),date=LocalDate.parse(o.getString("date")).toString(),category=Category.fromKey(o.optString("category")).key,
     startTime=optionalTime("startTime"),endTime=optionalTime("endTime"),endDate=o.nullString("endDate")?.let{LocalDate.parse(it).toString()},
     repeatType=if(before?.seriesId!=null&&before.seriesId!=0L)before.repeatType else o.optString("repeatType","none"),repeatDays=o.optString("repeatDays"),repeatEvery=o.optInt("repeatEvery",1),repeatUntil=o.nullString("repeatUntil"),
-    reminderEnabled=false,reminderTime=null)
+    reminderEnabled=before?.reminderEnabled?:false,reminderTime=before?.reminderTime)
    require(PlanTime.validate(p)==null);result.add(PlanSuggestion(p,before))
   }catch(_:Exception){invalid++}
   if(items.length()>20)invalid+=items.length()-20

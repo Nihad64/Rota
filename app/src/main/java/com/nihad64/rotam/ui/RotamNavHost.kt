@@ -32,6 +32,11 @@ private data class Tab(val route:String,val label:String,val icon:ImageVector)
 private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar","Takvim",Icons.Outlined.CalendarMonth),Tab("goals","Hedefler",Icons.Outlined.Adjust),Tab("settings","Ayarlar",Icons.Outlined.Settings))
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun RotamRoot(){
+ val settings by RotamApp.container.settings.settings.collectAsStateWithLifecycle(initialValue=com.nihad64.rotam.data.prefs.Settings())
+ CompositionLocalProvider(LocalRotamSettings provides settings){RotamContent()}
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun RotamContent(){
  val c=RotamApp.container;val ready by c.ready.collectAsStateWithLifecycle();val error by c.startupError.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
  if(!ready){Box(Modifier.fillMaxSize().background(Background).safeDrawingPadding().padding(28.dp),contentAlignment=Alignment.Center){if(error==null)CircularProgressIndicator()else Column(verticalArrangement=Arrangement.spacedBy(20.dp)){Text(error!!);PrimaryButton("Yeniden dene",{scope.launch{runCatching{c.initialize()}}})}};return}
  val nav=rememberNavController();val entry by nav.currentBackStackEntryAsState();val route=entry?.destination?.route

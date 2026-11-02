@@ -49,7 +49,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = '17' }
-    testOptions { unitTests.includeAndroidResources = true }
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all { testLogging { exceptionFormat = 'full' } }
+    }
     buildFeatures {
         compose true
         buildConfig true

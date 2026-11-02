@@ -23,7 +23,7 @@ class AiViewModel(private val c:AppContainer):ViewModel(){
  fun addAll(messageId:Long){val m=state.value.messages.firstOrNull{it.id==messageId}?:return;apply(messageId,m.suggestions.indices.toSet())}
  private fun apply(mid:Long,indices:Set<Int>){if(state.value.applying)return;_state.update{it.copy(applying=true,applyError=null)}
   viewModelScope.launch{try{for(index in indices){val m=state.value.messages.firstOrNull{it.id==mid}?:break;if(index in m.added)continue;val s=m.suggestions.getOrNull(index)?:continue
-   if(s.before!=null){if(c.planRepo.byId(s.before.id)!=s.before)throw GeminiException("Bu plan öneriden sonra değişmiş. Güncel haliyle yeni bir öneri iste.");c.planRepo.edit(s.before,s.plan,EditScope.THIS)}else c.planRepo.create(s.plan)
+   if(s.before!=null){if(c.planRepo.byId(s.before.id)!=s.before)throw GeminiException("Bu plan öneriden sonra değişmiş. Güncel haliyle yeni bir öneri iste.");c.focus.pauseIf(s.before.id);c.planRepo.edit(s.before,s.plan,EditScope.THIS)}else c.planRepo.create(s.plan)
    _state.update{st->st.copy(messages=st.messages.map{if(it.id==mid)it.copy(added=it.added+index)else it})}
   };c.scheduler.rescheduleAll()
   }catch(e:Exception){_state.update{it.copy(applyError=e.message?:"Öneri kaydedilemedi. Kaydedilenler işaretli; kalanları yeniden deneyebilirsin.")}}finally{_state.update{it.copy(applying=false)}}}

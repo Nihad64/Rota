@@ -16,7 +16,7 @@ data class HomeState(val userName:String="",val today:LocalDate=LocalDate.now(),
 class HomeViewModel(private val c:AppContainer):ViewModel(){
  private val clock=flow{while(true){emit(LocalDateTime.now());delay(30000)}}
  private val today=clock.map{it.toLocalDate()}.distinctUntilChanged()
- val state=combine(c.settings.settings,today.flatMapLatest{c.planRepo.observeDay(it)},c.planRepo.observeAll(),clock,c.focus.active){s,p,all,now,active->HomeState(s.userName,now.toLocalDate(),now,p,all.filter{!it.isCompleted&&!it.isSkipped&&(it.date<now.toLocalDate().toString()||PlanTime.overdue(it,now))},active)}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),HomeState())
+ val state=combine(c.settings.settings,today.flatMapLatest{c.planRepo.observeDay(it)},c.planRepo.observeAll(),clock,c.focus.active){s,p,all,now,active->HomeState(s.userName,now.toLocalDate(),now,p,all.filter{!it.isCompleted&&!it.isSkipped&&((it.date<now.toLocalDate().toString()&&(PlanTime.end(it)?.let{end->end>now}!=true))||PlanTime.overdue(it,now))},active)}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),HomeState())
  fun toggle(p:Plan)=viewModelScope.launch{c.completePlan(p);c.offerUndo(if(p.isCompleted)"Plan yeniden açıldı"else"Plan tamamlandı",p)}
  fun moveMissed()=viewModelScope.launch{state.value.missed.forEach{c.movePlanToTomorrow(it)}}
 }
