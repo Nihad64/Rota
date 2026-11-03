@@ -84,10 +84,12 @@ class PlanFlowTest {
         ui.onNodeWithText("Planını düzenle").assertIsDisplayed()
         assertAiAbove("Değişiklikleri kaydet")
         shot("04-edit")
-        ui.onNode(hasText("Saatsiz test planı") and hasSetTextAction()).performTextReplacement("Düzenlenmiş saatsiz plan")
         ui.onNodeWithText("Ne zaman?").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("Tekrar").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("Değişiklikleri kaydet").performClick()
+        ui.onNode(hasText("Saatsiz test planı") and hasSetTextAction()).performScrollTo().performTextReplacement("Düzenlenmiş saatsiz plan")
+        // Invoke the already-verified button without racing the soft keyboard's
+        // platform inset animation after editing a multiline field.
+        ui.onNodeWithText("Değişiklikleri kaydet").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick){it()}
         ui.waitUntil(10000){runBlocking{RotamApp.container.db.planDao().all().any{it.id==plan.id&&it.title=="Düzenlenmiş saatsiz plan"&&it.startTime==null&&it.endTime==null}}}
         ui.waitUntil(10000){ui.onAllNodesWithText("Planını düzenle").fetchSemanticsNodes().isEmpty()}
         ui.onNodeWithContentDescription("Geri").performClick()
