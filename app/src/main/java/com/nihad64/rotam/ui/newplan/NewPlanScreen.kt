@@ -22,7 +22,7 @@ import org.json.JSONObject
 import java.time.LocalDate
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun NewPlanScreen(vm:NewPlanViewModel,onClose:()->Unit,onDuplicate:(Long)->Unit={}){
+@Composable fun NewPlanScreen(vm:NewPlanViewModel,onClose:()->Unit,onDuplicate:(Long)->Unit={},aiAction:(@Composable ()->Unit)?=null){
  val s by vm.state.collectAsStateWithLifecycle();val goals by vm.goals.collectAsStateWithLifecycle();val templates by vm.templates.collectAsStateWithLifecycle()
  var exit by remember{mutableStateOf(false)};var deleting by remember{mutableStateOf(false)}
  val close={if(vm.dirty())exit=true else onClose()}
@@ -61,6 +61,7 @@ import java.time.LocalDate
    }}
   }
   Column(Modifier.fillMaxWidth().background(Background).padding(horizontal=24.dp,vertical=12.dp)){
+   if(aiAction!=null)Box(Modifier.fillMaxWidth().padding(bottom=12.dp),contentAlignment=Alignment.CenterEnd){aiAction()}
    PrimaryButton(if(s.busy)"Kaydediliyor…"else if(s.editing)"Değişiklikleri kaydet"else if(s.step==4)"Planı oluştur"else"Devam et",{if(s.editing||s.step==4)vm.save()else vm.next()},Modifier.fillMaxWidth(),enabled=!s.busy)
    if(!s.editing&&s.step==0&&s.plan.title.isNotBlank())TextButton(onClick={vm.save()},modifier=Modifier.align(Alignment.CenterHorizontally),enabled=!s.busy){Text("Bu bilgilerle kaydet")}
   }

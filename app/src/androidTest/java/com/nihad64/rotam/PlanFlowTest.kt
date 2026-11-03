@@ -14,14 +14,25 @@ import java.time.LocalDate
 @RunWith(AndroidJUnit4::class)
 class PlanFlowTest {
     @get:Rule val ui=createAndroidComposeRule<MainActivity>()
+    private fun shell(command:String) {
+        val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use{it.readBytes()}
+    }
     private fun shot(name:String) {
+        // The Google APIs emulator can leave an unrelated Pixel Launcher ANR above
+        // the test app. Stop only that launcher; never suppress Rotam errors.
+        shell("am force-stop com.google.android.apps.nexuslauncher")
         ui.waitForIdle()
         // UTP uninstalls the app after testing, removing its external-files directory.
         // Keep review screenshots in a shell-owned directory that survives cleanup.
-        val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
         for(command in listOf("mkdir -p /sdcard/Download/rotam-test-screenshots", "screencap -p /sdcard/Download/rotam-test-screenshots/$name.png")) {
-            android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use{it.readBytes()}
+            shell(command)
         }
+    }
+    private fun assertAiAbove(action:String) {
+        val ai=ui.onNode(hasText("Rotam AI") and hasClickAction()).getUnclippedBoundsInRoot()
+        val primary=ui.onNode(hasText(action) and hasClickAction()).getUnclippedBoundsInRoot()
+        org.junit.Assert.assertTrue("AI must not cover the primary action",ai.bottom<=primary.top)
     }
     @Test fun createUntimedPlanAndEditInOnePage() {
         ui.waitUntil(20000){RotamApp.container.ready.value}
@@ -40,6 +51,7 @@ class PlanFlowTest {
         shot("01-home")
         ui.onAllNodesWithText("Plan ekle").onFirst().performClick()
         ui.onNodeWithText("Ne yapacaksın?").assertIsDisplayed()
+        assertAiAbove("Devam et")
         shot("02-create")
         ui.onNode(hasSetTextAction()).performTextInput("Saatsiz test planı")
         ui.onNodeWithText("Devam et").performClick()
@@ -61,10 +73,14 @@ class PlanFlowTest {
         ui.waitUntil(10000){ui.onAllNodes(hasText("Saatsiz test planı") and !hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()}
         ui.onNode(hasText("Saatsiz test planı") and !hasSetTextAction()).performScrollTo().performClick()
         ui.onNodeWithText("Planını düzenle").assertIsDisplayed()
+        assertAiAbove("Değişiklikleri kaydet")
         shot("04-edit")
+        ui.onNode(hasText("Saatsiz test planı") and hasSetTextAction()).performTextReplacement("Düzenlenmiş saatsiz plan")
         ui.onNodeWithText("Ne zaman?").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("Tekrar").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithContentDescription("Geri").performScrollTo().performClick()
+        ui.onNodeWithText("Değişiklikleri kaydet").performClick()
+        ui.waitUntil(10000){runBlocking{RotamApp.container.db.planDao().all().any{it.id==plan.id&&it.title=="Düzenlenmiş saatsiz plan"&&it.startTime==null&&it.endTime==null}}}
+        ui.waitUntil(10000){ui.onAllNodesWithText("Planını düzenle").fetchSemanticsNodes().isEmpty()}
         ui.onNodeWithContentDescription("Geri").performClick()
         ui.onNodeWithContentDescription("Takvim").performClick()
         ui.onNodeWithText("Gün").performClick()
@@ -73,5 +89,8 @@ class PlanFlowTest {
         shot("06-goals")
         ui.onNodeWithContentDescription("Ayarlar").performClick()
         shot("07-settings")
+        ui.onNodeWithText("Gör").performClick()
+        ui.onNodeWithText("Son 30 gün").performClick()
+        shot("08-statistics")
     }
 }
