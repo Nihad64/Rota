@@ -9,7 +9,6 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 import java.time.LocalDate
 
 @RunWith(AndroidJUnit4::class)
@@ -17,10 +16,12 @@ class PlanFlowTest {
     @get:Rule val ui=createAndroidComposeRule<MainActivity>()
     private fun shot(name:String) {
         ui.waitForIdle()
-        val bitmap=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-        val dir=File(ui.activity.getExternalFilesDir(null),"screenshots").apply{mkdirs()}
-        File(dir,"$name.png").outputStream().use{bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
-        bitmap.recycle()
+        // UTP uninstalls the app after testing, removing its external-files directory.
+        // Keep review screenshots in a shell-owned directory that survives cleanup.
+        val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
+        for(command in listOf("mkdir -p /sdcard/Download/rotam-test-screenshots", "screencap -p /sdcard/Download/rotam-test-screenshots/$name.png")) {
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use{it.readBytes()}
+        }
     }
     @Test fun createUntimedPlanAndEditInOnePage() {
         ui.waitUntil(20000){RotamApp.container.ready.value}
@@ -63,5 +64,14 @@ class PlanFlowTest {
         shot("04-edit")
         ui.onNodeWithText("Ne zaman?").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("Tekrar").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithContentDescription("Geri").performScrollTo().performClick()
+        ui.onNodeWithContentDescription("Geri").performClick()
+        ui.onNodeWithContentDescription("Takvim").performClick()
+        ui.onNodeWithText("Gün").performClick()
+        shot("05-calendar-day")
+        ui.onNodeWithContentDescription("Hedefler").performClick()
+        shot("06-goals")
+        ui.onNodeWithContentDescription("Ayarlar").performClick()
+        shot("07-settings")
     }
 }

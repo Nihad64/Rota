@@ -76,7 +76,7 @@ jobs:
           script: |
             adb install legacy-apk/app-debug.apk
             python3 scripts/seed_upgrade_fixture.py
-            set +e; ./gradlew connectedDebugAndroidTest --stacktrace; test_result=$?; adb pull /sdcard/Android/data/com.rota.app/files/screenshots device-screenshots; exit "$test_result"
+            set +e; ./gradlew connectedDebugAndroidTest --stacktrace; test_result=$?; adb pull /sdcard/Download/rotam-test-screenshots device-screenshots; screenshot_result=$?; if [ "$test_result" -ne 0 ]; then exit "$test_result"; else exit "$screenshot_result"; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
