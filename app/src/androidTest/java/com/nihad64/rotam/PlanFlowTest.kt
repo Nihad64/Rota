@@ -57,6 +57,7 @@ class PlanFlowTest {
         ui.onNodeWithContentDescription("Odak oturumunu başlat").assertIsDisplayed()
         shot("01-home")
         ui.onAllNodesWithText("Plan ekle").onFirst().performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("Ne yapacaksın?").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithText("Ne yapacaksın?").assertIsDisplayed()
         assertAiAbove("Devam et")
         shot("02-create")
@@ -79,6 +80,7 @@ class PlanFlowTest {
         ui.onNode(hasSetTextAction()).performTextInput("Saatsiz test planı")
         ui.waitUntil(10000){ui.onAllNodes(hasText("Saatsiz test planı") and !hasSetTextAction()).fetchSemanticsNodes().isNotEmpty()}
         ui.onNode(hasText("Saatsiz test planı") and !hasSetTextAction()).performScrollTo().performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("Planını düzenle").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithText("Planını düzenle").assertIsDisplayed()
         assertAiAbove("Değişiklikleri kaydet")
         shot("04-edit")
@@ -89,14 +91,19 @@ class PlanFlowTest {
         ui.waitUntil(10000){runBlocking{RotamApp.container.db.planDao().all().any{it.id==plan.id&&it.title=="Düzenlenmiş saatsiz plan"&&it.startTime==null&&it.endTime==null}}}
         ui.waitUntil(10000){ui.onAllNodesWithText("Planını düzenle").fetchSemanticsNodes().isEmpty()}
         ui.onNodeWithContentDescription("Geri").performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithContentDescription("Takvim").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithContentDescription("Takvim").performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("Günlerine uzaktan bir bakış.").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithText("Gün").performClick()
         shot("05-calendar-day")
         ui.onNodeWithContentDescription("Hedefler").performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("Yeni hedef").fetchSemanticsNodes().isNotEmpty()}
         shot("06-goals")
         ui.onNodeWithContentDescription("Ayarlar").performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("İsmin (selamlama için)").fetchSemanticsNodes().isNotEmpty()}
         shot("07-settings")
         ui.onNodeWithText("Gör").performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("İlerlemeni gör, ritmini koru.").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithText("Son 30 gün").performClick()
         shot("08-statistics")
     }
