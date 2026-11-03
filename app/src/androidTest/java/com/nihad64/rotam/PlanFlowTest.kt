@@ -2,6 +2,7 @@ package com.nihad64.rotam
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.nihad64.rotam.data.model.Plan
@@ -10,6 +11,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.LocalDate
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class PlanFlowTest {
@@ -19,15 +21,16 @@ class PlanFlowTest {
         android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use{it.readBytes()}
     }
     private fun shot(name:String) {
-        // The Google APIs emulator can leave an unrelated Pixel Launcher ANR above
-        // the test app. Stop only that launcher; never suppress Rotam errors.
-        shell("am force-stop com.google.android.apps.nexuslauncher")
+        ui.mainClock.advanceTimeByFrame()
         ui.waitForIdle()
-        // UTP uninstalls the app after testing, removing its external-files directory.
-        // Keep review screenshots in a shell-owned directory that survives cleanup.
-        for(command in listOf("mkdir -p /sdcard/Download/rotam-test-screenshots", "screencap -p /sdcard/Download/rotam-test-screenshots/$name.png")) {
-            shell(command)
-        }
+        // PixelCopy waits for this Compose root to draw, unlike shell screencap
+        // which can return a stale compositor frame during navigation.
+        val bitmap=ui.onRoot().captureToImage().asAndroidBitmap()
+        val file=File(ui.activity.getExternalFilesDir(null),"$name.png")
+        file.outputStream().use{bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
+        // Copy before UTP uninstalls the target app and removes its files.
+        shell("mkdir -p /sdcard/Download/rotam-test-screenshots")
+        shell("cp ${file.absolutePath} /sdcard/Download/rotam-test-screenshots/$name.png")
     }
     private fun assertAiAbove(action:String) {
         val ai=ui.onNode(hasText("Rotam AI") and hasClickAction()).getUnclippedBoundsInRoot()
@@ -36,6 +39,8 @@ class PlanFlowTest {
     }
     @Test fun createUntimedPlanAndEditInOnePage() {
         ui.waitUntil(20000){RotamApp.container.ready.value}
+        // Close only the unrelated launcher ANR on Google APIs emulator images.
+        shell("am force-stop com.google.android.apps.nexuslauncher")
         runBlocking {
             val c=RotamApp.container
             val legacy=c.db.planDao().all().firstOrNull{it.title=="Önceki sürümden plan"}
@@ -48,6 +53,8 @@ class PlanFlowTest {
         }
         ui.waitUntil(10000){ui.onAllNodesWithText("Günün akışı").fetchSemanticsNodes().isNotEmpty()}
         ui.waitUntil(10000){ui.onAllNodesWithText("Video düzenleme").fetchSemanticsNodes().isNotEmpty()}
+        ui.waitUntil(10000){ui.onAllNodesWithText("0 / 2 tamamlandı").fetchSemanticsNodes().isNotEmpty()}
+        ui.onNodeWithContentDescription("Odak oturumunu başlat").assertIsDisplayed()
         shot("01-home")
         ui.onAllNodesWithText("Plan ekle").onFirst().performClick()
         ui.onNodeWithText("Ne yapacaksın?").assertIsDisplayed()
