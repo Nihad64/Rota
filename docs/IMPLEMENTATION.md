@@ -4,7 +4,11 @@ Work in progress on `feature/rotam-3-redesign`, draft PR #2. Do not merge or cal
 
 ## Verified checkpoint
 
-Commit `d0c3dc3065a8eacc75f78b6d7ff28566589d3192`: Kotlin compilation and debug APK generation succeeded. All 14 JVM/Robolectric tests passed (7 rules, 7 repository tests). Lint stopped at one Android 26 incompatibility in the legacy `Theme.Rota` resource; this is fixed in `3a4b7f49091c38e3afeb7a8f83c4dd69f0fa9aa3`. That commit also adds a regression for clearing an end time while a reminder is enabled. Commit `3a4b7f49091c38e3afeb7a8f83c4dd69f0fa9aa3` passed all 15 tests, lint and APK generation. Emulator verification is in progress. Commit `f2f17cad049d19e3ab25fbeb12164f5e2a2dba1c` adds the timeline regression (16 tests total) and signed upgrade fixture; its CI is in progress.
+Commit `56427ec51d9b0419333aa08aedc8cb2ae26cd5f1` passed [CI run 41563154425](https://github.com/Nihad64/Rota/actions/runs/41563154425): all 16 JVM/Robolectric tests, Android lint, debug APK build and Android 35 emulator instrumentation. The emulator installed the actual signed 2.5.6 APK, seeded a synthetic legacy plan, installed 3.0 over it, and verified the old title, note and start time survived. It then created a plan without either time, opened its single-page editor, changed the title, saved, and checked the persisted title and null times.
+
+The previous and review APK signing certificates match; application ID remains `com.rota.app`, version code increases from 32 to 33. This confirms the tested upgrade path, not every physical device or every existing user dataset. Lint has warnings but no blocking errors.
+
+Visual review found the global AI action covering the plan editor footer. The editor now owns a separate AI row above its primary action; the device test asserts their bounds do not overlap. Home, initial creation, optional-time creation, editing, day calendar, goals, settings and 30-day statistics have been inspected at default font scale. Compose PixelCopy synchronizes captures with rendering instead of taking an intermediate system-compositor frame. Screenshots are copied out before test cleanup, and CI fails if they cannot be retrieved.
 
 ## Implemented
 
@@ -20,9 +24,11 @@ Commit `d0c3dc3065a8eacc75f78b6d7ff28566589d3192`: Kotlin compilation and debug 
 
 ## Still needs verification or completion
 
-- Complete current CI, inspect emulator screenshots, fix any UI flow failures. Test actual permission/reboot/quiet-hour delivery on device; Gemini network requests require the user's own API key.
-- In-place signed upgrade from installed 2.5.6 (package com.rota.app, versionCode 32). New code is 33; the historical signing identity was found embedded in the legacy workflow. CI restores it ephemerally for an install-over fixture test. The key exposure in repository history remains an actual security issue; do not rotate it silently or rewrite history without an explicit migration plan. The CI APK is not a verified user-device update until the upgrade test passes. Never instruct uninstalling the user's existing app.
-- Day/selected-week timeline blocks and 7/30-day statistics are now implemented; inspect their rendering with long titles and larger fonts.
+- User device feedback (3 November 2026): the installed review APK has many visual and hardware/behavior problems. Exact symptoms, device details and installed build are not yet supplied. Reproduce those reports before release; a green emulator run is not user-device acceptance.
+
+- Test actual permission/reboot/quiet-hour delivery on a physical device; Gemini network requests require the user's own API key.
+- The historical signing identity is embedded in old repository history. CI restores it ephemerally to preserve install compatibility. This existing key exposure needs an explicit migration plan; do not rotate silently or rewrite history. Never instruct uninstalling the user's existing app.
+- Day/selected-week timeline blocks and 7/30-day statistics are implemented. Larger fonts, narrow devices, long titles and dense overlapping schedules still need broader visual coverage.
 - Secondary proposals still pending: custom categories, undated Later list, count-limited recurrence, multiple reminders, custom snooze interval, arbitrary multiselect move, richer goal quantities/substeps, and cloud sync (separate scope). Do not claim these are complete.
 - Export/restore currently covers plan data, goals and series; settings, drafts and templates are device-local.
 
