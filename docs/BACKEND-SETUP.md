@@ -1,3 +1,5 @@
+> Güncel durum: Kullanıcı ücretli planı açmadı ve Gemini 2.5 modelinin korunmasını istedi. Android artık Firebase AI Logic yönetilen geçidini kullanır. Aşağıdaki özel Functions kurulumu etkin değildir; ayrı bir gelecekteki seçenek olarak tutulur. Güncel kurulum: [Firebase raporu](FIREBASE-PROVISIONING-2026-11-09.md).
+
 # Güvenli Rotam AI / hesap kurulumu
 
 Bu dosya çalışan canlı hizmet iddiası değildir. Kaynak uygulandı; canlı proje yapılandırması ve E2E doğrulama gereklidir.

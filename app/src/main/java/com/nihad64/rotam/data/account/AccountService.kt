@@ -21,11 +21,13 @@ data class Account(val uid: String, val name: String?, val email: String?)
 /** Authentication never imports, clears, or reassigns local plans implicitly. */
 class AccountService(private val context: Context) {
     val configured = FirebaseApp.getApps(context).isNotEmpty()
+    init {
+        if (configured) FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
+    }
     private val auth = if (configured) FirebaseAuth.getInstance() else null
     private val _account = MutableStateFlow(auth?.currentUser?.let { Account(it.uid, it.displayName, it.email) })
     val account = _account.asStateFlow()
     init {
-        if (configured) FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
         auth?.addAuthStateListener { a -> _account.value = a.currentUser?.let { Account(it.uid, it.displayName, it.email) } }
     }
     suspend fun signIn(activity: Activity) {

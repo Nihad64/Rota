@@ -1,0 +1,16 @@
+{
+  "project": "rotam-nihad64",
+  "firebaseAuthRequired": true,
+  "appCheckEnforcement": "ENFORCED",
+  "providers": {
+    "gemini-developer-api": true,
+    "gemini-agent-platform-api": false
+  },
+  "monitoring": {
+    "state": false,
+    "sample-rate-percentage": 100
+  },
+  "billingEnabled": false,
+  "model": "gemini-2.5-flash",
+  "automaticModelFallback": false
+}

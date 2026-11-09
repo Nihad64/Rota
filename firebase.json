@@ -1,1 +1,13 @@
-{"functions":[{"source":"backend","codebase":"rotam"}],"firestore":{"rules":"firestore.rules"}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Rotam",
+        "supportEmail": "mehdiyevnihad02@gmail.com"
+      }
+    }
+  }
+}
