@@ -1,3 +1,5 @@
+> 9 Kasım 2026: Aşağıdaki metin tarihsel kontrol noktasıdır. Güncel kararlar için [gereksinimler ve EK A](REQUIREMENTS-2026-11-09.md), uygulama/test durumu için [9 Kasım raporu](UPDATE-2026-11-09.md) esas alınmalıdır. Eski kullanıcı API anahtarı, global AI, Hedefler ve ayrı kapsam notları güncel ürün kararı değildir.
+
 # Rotam 3.0 implementation checkpoint
 
 Work in progress on `feature/rotam-3-redesign`, draft PR #2. Do not merge or call this a production update yet.

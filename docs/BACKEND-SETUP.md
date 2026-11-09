@@ -28,3 +28,18 @@ Resmi kaynaklar (9 Kasım 2026):
 - https://firebase.google.com/docs/app-check/cloud-functions
 - https://firebase.google.com/docs/projects/api-keys
 - https://ai.google.dev/gemini-api/docs/rate-limits
+
+## Model erişimi — canlı proje testi zorunlu
+
+9 Kasım tarihindeki resmi model sayfaları Gemini 2.5 erişiminin önceki aktif kullanıma
+bağlı olabildiğini ve model yaşam döngüsü/geçiş uyarılarını gösteriyor. Arama indeksiyle
+canlı sayfanın tarihleri farklı olabildiğinden, eski bir model adının doğru yazılması
+tek başına erişim kanıtı değildir. `gemini-2.5-flash` son onaylı karar olarak kaynakta
+korundu; otomatik ücretli/güçlü model fallback'i eklenmedi. Gerçek sunucu projesinde
+model listesi ve küçük bir generateContent isteği denenmeden canlı AI kabulü yapılamaz.
+Bu, eski telefondaki hatanın olası bir nedenidir; cihaz/sunucu hata kaydı olmadan kesin
+kök neden olarak sunulmaz.
+
+- https://ai.google.dev/gemini-api/docs/models
+- https://ai.google.dev/gemini-api/docs/deprecations
+- https://firebase.google.com/docs/ai-logic/models
