@@ -60,6 +60,7 @@ interface GoalDao {
 }
 
 @Dao interface SeriesDao {
+ @Query("SELECT * FROM series ORDER BY id DESC") fun observeAll():Flow<List<PlanSeries>>
  @Query("SELECT * FROM series") suspend fun all():List<PlanSeries>
  @Query("SELECT * FROM series WHERE id=:id") suspend fun byId(id:Long):PlanSeries?
  @Insert suspend fun insert(s:PlanSeries):Long

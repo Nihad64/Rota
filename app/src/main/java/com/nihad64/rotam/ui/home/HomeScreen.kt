@@ -27,9 +27,25 @@ import java.util.Locale
  val s by vm.state.collectAsStateWithLifecycle();val hero=s.hero
  LazyColumn(Modifier.fillMaxSize().testTag("home-list"),contentPadding=PaddingValues(start=24.dp,end=24.dp,top=18.dp,bottom=88.dp),verticalArrangement=Arrangement.spacedBy(24.dp)){
   item{Row(verticalAlignment=Alignment.CenterVertically){Icon(painterResource(R.drawable.rotam_mark),"Rotam",Modifier.width(30.dp).height(34.dp),tint=Color.Unspecified);Text("rotam",fontSize=25.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(start=8.dp).weight(1f));IconButton(onClick=onSearch){Icon(Icons.Outlined.Search,"Planlarda ara",tint=SubtleText)}}}
-  item{Column(verticalArrangement=Arrangement.spacedBy(10.dp)){Text("${TrFormat.dayName(s.today)}, ${TrFormat.dayMonth(s.today)}".uppercase(Locale.forLanguageTag("tr")),color=SubtleText,letterSpacing=2.sp,style=MaterialTheme.typography.labelMedium);Text("Bugün,\nsenin ritmin.",fontSize=39.sp,lineHeight=43.sp,letterSpacing=(-1.2).sp,fontWeight=FontWeight.SemiBold);Row(Modifier.fillMaxWidth().clickable(onClick=onStats).padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){Text(if(s.total==0)"Gününe yer aç."else"${s.done} / ${s.total} tamamlandı",color=SubtleText,modifier=Modifier.weight(1f));Icon(Icons.Outlined.BarChart,"İstatistikler",tint=SubtleText,modifier=Modifier.size(20.dp))};Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){val count=s.total.coerceIn(1,10);repeat(count){i->Box(Modifier.weight(1f).height(5.dp).clip(CircleShape).background(if((i+1).toFloat()/count<=s.progress)Primary else Outline))}}}}
-  item{if(hero!=null)HeroPlan(hero,s.label(hero),{onEdit(hero.id)},{onFocus(hero.id)})else RotamCard(Modifier.fillMaxWidth()){
-   Diamond();Spacer(Modifier.height(16.dp));Text(if(s.total>0)"Bugün için bu kadar."else"İlk adım sana ait.",style=MaterialTheme.typography.headlineMedium);Spacer(Modifier.height(8.dp));Text(if(s.total>0)"Tamamladıkların burada kalır. Yeni bir plan ekleyebilirsin."else"Bir isim yeter. Tarihi ve saatleri sonra da seçebilirsin.",color=SubtleText);Spacer(Modifier.height(16.dp));PrimaryButton("Plan ekle",onNewPlan)}}
+  item {
+   Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
+    Text("${TrFormat.dayName(s.today)}, ${TrFormat.dayMonth(s.today)}".uppercase(Locale.forLanguageTag("tr")),color=SubtleText,letterSpacing=2.sp,style=MaterialTheme.typography.labelMedium)
+    Text(if(s.userName.isBlank())"Bugün sana ait."else"Merhaba, ${s.userName}.",fontSize=34.sp,lineHeight=40.sp,letterSpacing=(-1.2).sp,fontWeight=FontWeight.SemiBold)
+    if(s.total>0) {
+     Row(Modifier.fillMaxWidth().clickable(onClick=onStats).padding(top=8.dp),verticalAlignment=Alignment.CenterVertically) {
+      Text("${s.done} / ${s.total} tamamlandı",color=SubtleText,modifier=Modifier.weight(1f))
+      Icon(Icons.Outlined.BarChart,"İstatistikler",tint=SubtleText,modifier=Modifier.size(20.dp))
+     }
+     LinearBar(s.progress)
+    }
+   }
+  }
+  item{if(hero!=null)HeroPlan(hero,s.label(hero),{onEdit(hero.id)},{onFocus(hero.id)})else Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp,bottomStart=32.dp,bottomEnd=70.dp)).background(Primary).padding(26.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
+   Row(verticalAlignment=Alignment.CenterVertically){Diamond();Spacer(Modifier.width(10.dp));Text("ROTAM İLE BİRLİKTE",color=Background,style=MaterialTheme.typography.labelMedium)}
+   Text(if(s.total>0)"Yeni bir şeye yer aç." else "Aklındakini anlat.\nGününe birlikte yer açalım.",color=Background,style=MaterialTheme.typography.headlineMedium)
+   Text("Anlat → Birlikte netleştir → Onayla ve ekle",color=Surface,style=MaterialTheme.typography.bodyMedium)
+   PrimaryButton("Plan ekle",onNewPlan,icon=Icons.Outlined.ArrowForward)
+  }}
   if(s.missed.isNotEmpty())item{PendingPlanDeck(s.missed,vm)}
   item{SectionTitle("Günün akışı",trailing={TextButton(onClick=onNewPlan){Icon(Icons.Outlined.AddCircleOutline,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("Plan ekle",color=SubtleText)}})}
   val timed=s.todayPlans.filter{it.startTime!=null||it.endTime!=null}

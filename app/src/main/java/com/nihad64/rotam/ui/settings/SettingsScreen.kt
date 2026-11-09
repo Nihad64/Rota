@@ -2,6 +2,8 @@ package com.nihad64.rotam.ui.settings
 
 import android.content.Intent
 import android.Manifest
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import java.time.LocalTime
@@ -32,6 +34,8 @@ import com.nihad64.rotam.ui.theme.*
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit) {
+    var page by rememberSaveable { mutableStateOf<String?>(null) }
+    BackHandler(page!=null){page=null}
     val s by vm.settings.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     var name by remember(s.userName) { mutableStateOf(s.userName) }
@@ -41,6 +45,8 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
     val pending by vm.pending.collectAsStateWithLifecycle()
     val message by vm.message.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
+    val authBusy by vm.authBusy.collectAsStateWithLifecycle()
+    val authMessage by vm.authMessage.collectAsStateWithLifecycle()
     var model by remember(s.geminiModel) { mutableStateOf(s.geminiModel) }
     var quietTarget by remember { mutableStateOf<String?>(null) }
     val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){it?.let(vm::export)}
@@ -53,10 +59,10 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
             .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Ayarlar", style = MaterialTheme.typography.displaySmall, color = OnBackground)
+        PageHeader(page ?: "Ayarlar",onBack=if(page!=null)({page=null})else null)
         Text("Rotam'ı kendi çalışma biçimine göre ayarla.", style = MaterialTheme.typography.bodyMedium, color = SubtleText)
 
-        RotamCard(Modifier.fillMaxWidth()) {
+        if(page==null || page=="Rotam hakkında") RotamCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RotamLogo(52.dp)
                 Spacer(Modifier.width(14.dp))
@@ -67,13 +73,25 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
             }
         }
 
-        ActionRow(Icons.Outlined.Search,"Planlarında ara","Başlık, not ve geçmiş planlar.","Ara",onClick=onSearch)
+        if(page==null) {
+            listOf("Hesabım" to "Google hesabı ve profil", "Hatırlatmalar" to "Bildirim zamanı ve tercihler", "Rotam AI" to "Birlikte planlama ve paylaşım", "Verilerim" to "Yedekleme ve kayıtların", "Gizlilik" to "Verilerin üzerinde kontrol", "Rotam hakkında" to "Sürüm bilgisi", "Sorun bildir" to "Bir sorunla karşılaştığında").forEach { (title,subtitle) ->
+                RotamCard(Modifier.fillMaxWidth(),onClick={page=title}) {
+                    Row(verticalAlignment=Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.titleMedium);Text(subtitle,color=SubtleText,style=MaterialTheme.typography.bodySmall)}
+                        Icon(Icons.Outlined.ChevronRight,null,tint=Accent)
+                    }
+                }
+            }
+        }
+        if(page=="Hesabım") {
         Section("Hesabım")
         val account by vm.account.collectAsStateWithLifecycle()
         Text(account?.email ?: "Planların bu cihazda saklanıyor.", color=SubtleText)
         Text("Google girişi tek başına senkronizasyon değildir. Bulut veri aktarımı henüz etkin değil; cihazındaki kayıtlar korunur.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
-        if(account==null) OutlinedButton(onClick={ (ctx as? android.app.Activity)?.let(vm::signIn) },enabled=!busy&&vm.accountConfigured) { Text("Google ile giriş yap") }
+        if(account==null) OutlinedButton(onClick={ vm.signIn(ctx) },enabled=!authBusy&&vm.accountConfigured) { Text(if(authBusy) "Google hesabı bekleniyor…" else "Google ile giriş yap") }
         else TextButton(onClick=vm::signOut,enabled=!busy) { Text("Çıkış yap") }
+        if(authBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        authMessage?.let { Text(it, color=OnSurface, style=MaterialTheme.typography.bodyMedium) }
         if(!vm.accountConfigured) Text("Hesap hizmeti bu geliştirme derlemesinde henüz yapılandırılmadı.",color=SubtleText)
 
         RotamCard(Modifier.fillMaxWidth()) {
@@ -86,6 +104,8 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
             }
         }
 
+        }
+        if(page=="Hatırlatmalar") {
         Section("Bildirimler")
         SwitchRow(Icons.Outlined.NotificationsActive, "Plan hatırlatmaları", "Her planın kendi hatırlatma seçimi uygulanır.", s.remindersEnabled, vm::setReminders)
         if(Build.VERSION.SDK_INT>=33) ActionRow(Icons.Outlined.Notifications,"Android bildirim izni","Hatırlatmalar için telefonun bildirim iznini aç.","Kontrol et") { notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }
@@ -118,9 +138,15 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
 
         SwitchRow(Icons.Outlined.Animation,"Animasyonlar","Kısa ekran ve grafik geçişleri.",s.animations,vm::setAnimations)
 
+        }
+        if(page=="Rotam AI" || page=="Gizlilik") {
         Section("Rotam AI")
         Text("Rotam AI için API anahtarı gerekmez. Google hesabınla güvenli hizmete bağlanır. Öneriler yalnız onayından sonra kaydedilir.", color=SubtleText)
         SwitchRow(Icons.Outlined.PrivacyTip,"Planları AI ile paylaş","İzin verirsen son 1 gün ve gelecek 14 gün içindeki en fazla 150 planın özeti AI hizmetine gönderilir. Yazdığın mesajlar her istekte gönderilir.",s.sharePlans,vm::setSharePlans)
+        }
+        if(page=="Verilerim") {
+        ActionRow(Icons.Outlined.Search,"Planlarında ara","Başlık, not ve geçmiş planlar.","Ara",onClick=onSearch)
+        Text("Kayıtların bu cihazda saklanıyor. Cihazlar arası senkronizasyon henüz etkin değil.",color=SubtleText)
         Section("Yedekleme")
         Text("Planlar, hedefler, tekrar kuralları ve odak süreleri korunur. API anahtarı yedeğe eklenmez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
         PrimaryButton("Yedeği dışa aktar",{export.launch("Rotam-${java.time.LocalDate.now()}.json")},Modifier.fillMaxWidth(),enabled=!busy)
@@ -128,7 +154,14 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         TextButton(onClick={vm.previewRecovery()},enabled=!busy){Text("Son işlemden önceki kayıtlara dön")}
         message?.let{Text(it,color=SubtleText)}
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
-
+        }
+        if(page=="Sorun bildir") {
+            Text("Sorunu anlatırken ne yaptığını, ne beklediğini ve gördüğün hata mesajını ekle. Hesap şifreni veya giriş kodunu paylaşma.",color=SubtleText)
+            PrimaryButton("Sorun metnini paylaş",{
+                val intent=Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,"Rotam ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\nAndroid ${Build.VERSION.RELEASE}\n\nYaptığım işlem:\nBeklediğim sonuç:\nGördüğüm sorun:")
+                ctx.startActivity(Intent.createChooser(intent,"Sorunu paylaş"))
+            })
+        }
     }
 
     if(quietTarget!=null) TimeChooser(if(quietTarget=="start")clock(s.quietStart) else clock(s.quietEnd),"Sessiz saat",{quietTarget=null}) { value->

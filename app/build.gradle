@@ -21,8 +21,8 @@ android {
         applicationId 'com.rota.app' // mevcut kurulumun üzerine güncelleme yapılabilsin
         minSdk 26
         targetSdk 35
-        versionCode 35
-        versionName '3.0.2-dev'
+        versionCode 36
+        versionName '3.0.3-dev'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 

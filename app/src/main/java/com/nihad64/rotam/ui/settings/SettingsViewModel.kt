@@ -10,10 +10,29 @@ import com.nihad64.rotam.data.prefs.Settings
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-class SettingsViewModel(private val c:AppContainer):ViewModel() {
+class SettingsViewModel(private val c:AppContainer, private val authenticate:suspend (android.app.Activity)->Unit = {c.account.signIn(it)}):ViewModel() {
     val account=c.account.account
     val accountConfigured=c.account.configured
-    fun signIn(activity:android.app.Activity)=run { c.account.signIn(activity); c.settings.setSharePlans(false); if(c.settings.current().userName.isBlank()) c.account.account.value?.name?.let { c.settings.setName(it) } }
+    val authMessage=MutableStateFlow<String?>(null)
+    val authBusy=MutableStateFlow(false)
+    fun signIn(context:android.content.Context) {
+        val activity=generateSequence(context) { (it as? android.content.ContextWrapper)?.baseContext }
+            .filterIsInstance<android.app.Activity>().firstOrNull()
+        if(activity==null) { authMessage.value="Google girişi açılamadı. Uygulamayı kapatıp yeniden aç."; return }
+        if(authBusy.value)return
+        authBusy.value=true;authMessage.value="Google hesabı seçimi açılıyor…"
+        viewModelScope.launch {
+            try {
+                completeSignIn(activity)
+                authMessage.value="Google hesabınla giriş yapıldı."
+            } catch(e:CancellationException){throw e}
+            catch(e:androidx.credentials.exceptions.GetCredentialCancellationException){authMessage.value="Hesap seçimi iptal edildi. Yeniden deneyebilirsin."}
+            catch(e:androidx.credentials.exceptions.NoCredentialException){authMessage.value="Google hesabı bulunamadı. Telefonunun hesap ayarlarını ve Google Play Hizmetleri’ni kontrol et."}
+            catch(e:Exception){authMessage.value="Google girişi tamamlanamadı (${e.javaClass.simpleName}). ${e.localizedMessage ?: "Yeniden deneyebilirsin."}"}
+            finally{authBusy.value=false}
+        }
+    }
+    private suspend fun completeSignIn(activity:android.app.Activity) { authenticate(activity); c.settings.setSharePlans(false); if(c.settings.current().userName.isBlank()) c.account.account.value?.name?.let { c.settings.setName(it) } }
     fun signOut()=run { c.settings.setSharePlans(false); c.account.signOut() }
     val settings=c.settings.settings.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),Settings())
     private val backup=BackupStore(c.app,c.db)

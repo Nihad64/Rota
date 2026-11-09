@@ -25,7 +25,7 @@ class PlanFlowTest {
         ui.waitForIdle()
         // PixelCopy waits for this Compose root to draw, unlike shell screencap
         // which can return a stale compositor frame during navigation.
-        val bitmap=ui.onRoot().captureToImage().asAndroidBitmap()
+        val bitmap=ui.onAllNodes(isRoot()).onLast().captureToImage().asAndroidBitmap()
         val file=File(ui.activity.getExternalFilesDir(null),"$name.png")
         file.outputStream().use{bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
         // Copy before UTP uninstalls the target app and removes its files.
@@ -59,6 +59,9 @@ class PlanFlowTest {
         shot("01-home")
         ui.onNodeWithTag("home-list").performScrollToNode(hasText("Plan ekle"))
         ui.onAllNodesWithText("Plan ekle").onFirst().performClick()
+        ui.onNodeWithText("Birlikte planlayalım").assertIsDisplayed()
+        shot("02-ai-first")
+        ui.onNodeWithText("Elle ekle").performClick()
         ui.waitUntil(10000){ui.onAllNodesWithText("Ne yapacaksın?").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithText("Ne yapacaksın?").assertIsDisplayed()
         assertAiAbove("Devam et")
@@ -104,11 +107,11 @@ class PlanFlowTest {
         ui.waitUntil(10000){ui.onAllNodesWithText("Günlerine uzaktan bir bakış.").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithText("Gün").performClick()
         shot("05-calendar-day")
-        ui.onNodeWithContentDescription("Hedefler").performClick()
-        ui.waitUntil(10000){ui.onAllNodesWithText("Yeni hedef").fetchSemanticsNodes().isNotEmpty()}
-        shot("06-goals")
+        ui.onNodeWithContentDescription("Rutinler").performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("Yeni rutin oluştur").fetchSemanticsNodes().isNotEmpty()}
+        shot("06-routines")
         ui.onNodeWithContentDescription("Ayarlar").performClick()
-        ui.waitUntil(10000){ui.onAllNodesWithText("İsmin (selamlama için)").fetchSemanticsNodes().isNotEmpty()}
+        ui.waitUntil(10000){ui.onAllNodesWithText("Hesabım").fetchSemanticsNodes().isNotEmpty()}
         shot("07-settings")
         ui.onNodeWithContentDescription("Takvim").performClick()
         ui.onNodeWithText("İlerlemem").performClick()

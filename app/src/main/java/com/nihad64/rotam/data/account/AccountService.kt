@@ -6,7 +6,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.CustomCredential
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -34,8 +34,7 @@ class AccountService(private val context: Context) {
         check(configured) { "Hesap hizmeti bu derlemede henüz yapılandırılmadı. Yerel planların korunuyor." }
         val id = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
         check(id != 0) { "Google giriş yapılandırması eksik." }
-        val option = GetGoogleIdOption.Builder().setServerClientId(context.getString(id))
-            .setFilterByAuthorizedAccounts(false).setAutoSelectEnabled(false).build()
+        val option = GetSignInWithGoogleOption.Builder(context.getString(id)).build()
         val result = CredentialManager.create(activity).getCredential(activity,
             GetCredentialRequest.Builder().addCredentialOption(option).build()).credential
         check(result is CustomCredential && result.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) { "Google hesabı doğrulanamadı." }

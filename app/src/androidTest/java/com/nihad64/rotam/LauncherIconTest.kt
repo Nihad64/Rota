@@ -10,7 +10,12 @@ import org.junit.runner.RunWith
 class LauncherIconTest {
  @Test fun packageManagerResolvesApprovedBitmapAndThemedMask(){
   val context=InstrumentationRegistry.getInstrumentation().targetContext
-  val icon=context.packageManager.getApplicationIcon(context.packageName)
+  val component=android.content.ComponentName(context.packageName,"com.rota.app.MainActivity")
+  val launcher=context.packageManager.getActivityInfo(component,0)
+  assertEquals("com.nihad64.rotam.MainActivity",launcher.targetActivity)
+  val resolved=context.packageManager.resolveActivity(android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER).setPackage(context.packageName),0)
+  assertEquals(component.className,resolved?.activityInfo?.name)
+  val icon=context.packageManager.getActivityIcon(component)
   assertTrue(icon is AdaptiveIconDrawable)
   val foreground=(icon as AdaptiveIconDrawable).foreground
   assertTrue(foreground is BitmapDrawable)

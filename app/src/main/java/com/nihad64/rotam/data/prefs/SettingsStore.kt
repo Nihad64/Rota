@@ -7,11 +7,11 @@ import java.time.LocalTime
 private val Context.dataStore by preferencesDataStore(name="rotam_settings")
 data class Settings(val userName:String="",val remindersEnabled:Boolean=true,val reminderMinutes:Int=15,
  val quietEnabled:Boolean=true,val quietStart:Int=1380,val quietEnd:Int=480,val uiSounds:Boolean=false,val haptics:Boolean=true,
- val theme:String="dark",val geminiKey:String="",val animations:Boolean=true,val sharePlans:Boolean=false,val geminiModel:String="gemini-2.5-flash")
+ val theme:String="dark",val geminiKey:String="",val animations:Boolean=true,val sharePlans:Boolean=false,val geminiModel:String="gemini-3.5-flash-lite")
 class SettingsStore(private val context:Context){
  private val vault=KeyVault(context)
  private fun s(k:String)=stringPreferencesKey(k);private fun b(k:String)=booleanPreferencesKey(k);private fun i(k:String)=intPreferencesKey(k)
- val settings:Flow<Settings> = context.dataStore.data.map{p->Settings(p[s("user_name")]?:"",p[b("reminders")]?:true,p[i("reminder_minutes")]?:15,p[b("quiet")]?:true,p[i("quiet_start_minutes")]?:1380,p[i("quiet_end_minutes")]?:480,p[b("ui_sounds")]?:false,p[b("haptics")]?:true,"dark",vault.read(),p[b("animations")]?:true,p[b("share_plans")]?:false,p[s("gemini_model")]?:"gemini-2.5-flash")}
+ val settings:Flow<Settings> = context.dataStore.data.map{p->Settings(p[s("user_name")]?:"",p[b("reminders")]?:true,p[i("reminder_minutes")]?:15,p[b("quiet")]?:true,p[i("quiet_start_minutes")]?:1380,p[i("quiet_end_minutes")]?:480,p[b("ui_sounds")]?:false,p[b("haptics")]?:true,"dark",vault.read(),p[b("animations")]?:true,p[b("share_plans")]?:false,p[s("gemini_model")]?:"gemini-3.5-flash-lite")}
  suspend fun current()=settings.first()
  suspend fun setName(v:String)=context.dataStore.edit{it[s("user_name")]=v.trim().take(50)}
  suspend fun setReminders(v:Boolean)=context.dataStore.edit{it[b("reminders")]=v}

@@ -11,7 +11,7 @@ Kullanıcı ayrı proje oluşturulmasını onayladı. Google oturumu Firebase ar
 - AI Logic App Check `ENFORCED` doğrulandı.
 - Play Integrity: yan yüklenen APK için resmî öneri olan Device Integrity, lisans şartı yok, tanınmayan sürüm kabulü; sertifika kaydı yapıldı. Bu ayarlar doğrulamanın kaldırılması değildir. Gerçek telefondaki attestation hâlâ test edilmelidir.
 - Ücretli Blaze/faturalandırma açılmadı. Önceki özel Functions kodu bu planda canlıya alınmadı. Yeni aktif istemci yönetilen AI geçidini kullanır; eski özel günlük kota kodunun etkin olduğu iddia edilmez. Sağlayıcının ve Firebase AI Logic'in sunucu kotaları geçerlidir.
-- Kullanıcı güncel modele geçişi **reddetti**: `gemini-2.5-flash` korunur, otomatik fallback yok. Yeni proje için bu modelin erişilebilirliği canlı yanıtla henüz doğrulanmadı. Google erişim engellerse sonuç açık model hatasıdır; sahte başarı/alternatif modele sessiz geçiş değildir.
+- Kullanıcı önceki seçiminin yanlışlıkla yapıldığını düzeltti ve önerilen güncel modele geçişi onayladı: `gemini-3.5-flash-lite`. Canlı hesapla model yanıtı henüz doğrulanmadı; otomatik fallback yok. Model erişim hataları kullanıcıya gösterilir.
 - `google-services.json` normal Firebase istemci proje yapılandırmasıdır; içindeki Firebase API anahtarı proje tanımlayıcısıdır. Gemini sağlayıcı anahtarı, OAuth istemci sırrı veya App Check debug sırrı içermez. Bu dosya tek başına yetki vermez; yetki Auth/App Check/Firestore kurallarıyla korunur.
 - Yerel derleyiciyle uyumsuz Kotlin 2.4 metadata kullanan Firebase Auth 25 nedeniyle en yeni BoM 35.1 doğrudan kullanılamadı. Metadata kontrolü kapatılmadı. Google Maven'dan doğrulanan uyumlu BoM 34.11 (Auth 24.0.1 / AI 17.10.1) ile derleme ve testler geçti.
 

@@ -22,7 +22,7 @@ import java.time.LocalDate
  var category by remember{mutableStateOf<String?>(null)};var status by remember{mutableIntStateOf(0)}
  val visible=s.selectedPlans.filter{p->(category==null||p.category==category)&&when(status){1->!p.isCompleted&&!p.isSkipped;2->p.isCompleted;3->p.isSkipped;else->true}}
  LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp,24.dp,24.dp,88.dp),verticalArrangement=Arrangement.spacedBy(20.dp)){
- item{PageHeader("Takvim","Günlerine uzaktan bir bakış.",action={Column{TextButton(onClick=onProgress){Text("İlerlemem")};TextButton(onClick={vm.select(LocalDate.now());vm.setMode(CalendarMode.MONTH)}){Text("Bugün")}}})}
+ item{PageHeader("Takvim","Günlerine uzaktan bir bakış.",action={TextButton(onClick=onProgress){Text("İlerlemem",color=Accent)}})}
  item{SegmentedToggle(CalendarMode.entries.map{it.label},s.mode.ordinal,{vm.setMode(CalendarMode.entries[it])})}
  item{Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick={vm.shift(-1)}){Icon(Icons.Outlined.ChevronLeft,"Önceki dönem")};Text(if(s.mode==CalendarMode.YEAR)s.anchor.year.toString()else TrFormat.monthYear(s.anchor),style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));IconButton(onClick={vm.shift(1)}){Icon(Icons.Outlined.ChevronRight,"Sonraki dönem")}}}
  if(s.mode==CalendarMode.MONTH||s.mode==CalendarMode.WEEK)item{
@@ -31,7 +31,7 @@ import java.time.LocalDate
   Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
    Row{TrFormat.dayShort.forEach{Text(it,style=MaterialTheme.typography.labelSmall,color=SubtleText,modifier=Modifier.weight(1f),textAlign=androidx.compose.ui.text.style.TextAlign.Center)}}
    repeat(count/7){week->Row{repeat(7){off->val d=start.plusDays((week*7+off).toLong());val selected=d==s.selected
-    Column(Modifier.weight(1f).heightIn(min=48.dp).clip(RoundedCornerShape(16.dp)).background(if(selected)Primary else if(d==LocalDate.now())Surface else Background).clickable{vm.select(d)}.padding(vertical=9.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(d.dayOfMonth.toString(),color=if(selected)Background else if(d.month!=s.anchor.month)SubtleText else Primary,style=MaterialTheme.typography.bodyMedium);Spacer(Modifier.height(4.dp));Box(Modifier.size(3.dp).clip(CircleShape).background(if(d in s.plannedDays)Accent else androidx.compose.ui.graphics.Color.Transparent))}
+    Column(Modifier.weight(1f).heightIn(min=48.dp).clip(RoundedCornerShape(16.dp)).background(if(selected)Accent else if(d==LocalDate.now())Surface else Background).clickable{vm.select(d)}.padding(vertical=9.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(d.dayOfMonth.toString(),color=if(selected)Background else if(d.month!=s.anchor.month)SubtleText else Primary,style=MaterialTheme.typography.bodyMedium);Spacer(Modifier.height(4.dp));Box(Modifier.size(3.dp).clip(CircleShape).background(if(d in s.plannedDays)Accent else androidx.compose.ui.graphics.Color.Transparent))}
    }}}
   }
  }

@@ -34,3 +34,14 @@ for (name, mono) in [("rotam_launcher_art", false), ("rotam_launcher_mask", true
 let ios = root.appendingPathComponent("ios/Brand.xcassets/AppIcon.appiconset")
 try FileManager.default.createDirectory(at: ios, withIntermediateDirectories: true)
 try render(false).representation(using: .png, properties: [:])!.write(to: ios.appendingPathComponent("Rotam-1024.png"))
+
+// Tight, transparent crop of the same supplied artwork for in-app headers and widgets.
+let mark = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 485, pixelsHigh: 520,
+ bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+ colorSpaceName: .deviceRGB, bytesPerRow: 485 * 4, bitsPerPixel: 32)!
+for y in 0..<520 { for x in 0..<485 {
+ let c = input.colorAt(x: x + 280, y: y + 250)!.usingColorSpace(.deviceRGB)!
+ let alpha = min(1, max(0, (max(c.redComponent, c.greenComponent, c.blueComponent) - 0.1) / 0.65))
+ mark.setColor(NSColor(deviceRed: c.redComponent, green: c.greenComponent, blue: c.blueComponent, alpha: alpha), atX: x, y: y)
+}}
+try mark.representation(using: .png, properties: [:])!.write(to: root.appendingPathComponent("app/src/main/res/drawable-nodpi/rotam_mark.png"))
