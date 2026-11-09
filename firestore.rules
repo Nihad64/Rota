@@ -1,0 +1,8 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Server-side quotas are never client writable/readable.
+    // Sync is intentionally closed until its migration and conflict contract is implemented.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

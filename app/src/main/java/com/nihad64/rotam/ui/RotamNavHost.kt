@@ -10,10 +10,13 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.*
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.nihad64.rotam.*
 import com.nihad64.rotam.ui.ai.*
@@ -43,17 +46,19 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
  var aiOpen by remember{mutableStateOf(false)};val ai:AiViewModel=viewModel{AiViewModel(c)}
  val snackbar=remember{SnackbarHostState()};val showBar=route in tabs.map{it.route}
  val planEditor=route.orEmpty().startsWith("new?")||route.orEmpty().startsWith("edit/")
+ val focusManager=LocalFocusManager.current;val keyboard=LocalSoftwareKeyboardController.current
+ LaunchedEffect(route){focusManager.clearFocus();keyboard?.hide()}
  val context=LocalContext.current
  LaunchedEffect(Unit){val id=(context as? android.app.Activity)?.intent?.getLongExtra("planId",-1)?:-1;if(id>0)nav.navigate("edit/$id")else if((context as? android.app.Activity)?.intent?.getBooleanExtra("newPlan",false)==true)nav.navigate("new?date=&copy=-1")}
  LaunchedEffect(Unit){for(n in c.notices){val result=snackbar.showSnackbar(n.text,if(n.undo!=null)"Geri al"else null,duration=SnackbarDuration.Long);if(result==SnackbarResult.ActionPerformed)runCatching{n.undo?.invoke()}}}
  fun new(date:LocalDate?=null){nav.navigate("new?date=${date?:""}&copy=-1")}
  Scaffold(containerColor=Background,contentWindowInsets=WindowInsets.safeDrawing,
-  snackbarHost={SnackbarHost(snackbar)},bottomBar={if(showBar)Row(Modifier.fillMaxWidth().background(Background).navigationBarsPadding().padding(vertical=10.dp)){
-   tabs.forEach{t->val selected=t.route==route;Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable{nav.navigate(t.route){popUpTo("home"){saveState=true};launchSingleTop=true;restoreState=true}}.padding(vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(t.icon,t.label,tint=if(selected)Primary else SubtleText,modifier=Modifier.size(25.dp));Text(t.label,style=MaterialTheme.typography.labelSmall,color=if(selected)Primary else SubtleText,modifier=Modifier.padding(top=5.dp));Spacer(Modifier.height(7.dp));Box(Modifier.size(4.dp).clip(CircleShape).background(if(selected)Accent else Background))}}
-  }},floatingActionButton={if(!planEditor&&!route.orEmpty().startsWith("focus"))SmallAiButton{aiOpen=true}}){padding->
-  NavHost(nav,startDestination="home",modifier=Modifier.padding(padding),enterTransition={androidx.compose.animation.EnterTransition.None},exitTransition={androidx.compose.animation.ExitTransition.None}){
+  snackbarHost={SnackbarHost(snackbar,modifier=Modifier.padding(bottom=if(planEditor)160.dp else 0.dp))},bottomBar={if(showBar)Row(Modifier.fillMaxWidth().background(Background).navigationBarsPadding().padding(vertical=10.dp)){
+   tabs.forEach{t->val selected=t.route==route;Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable{nav.navigate(t.route){popUpTo(nav.graph.findStartDestination().id){saveState=true};launchSingleTop=true;restoreState=true}}.padding(vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(t.icon,t.label,tint=if(selected)Primary else SubtleText,modifier=Modifier.size(25.dp));Text(t.label,style=MaterialTheme.typography.labelSmall,color=if(selected)Primary else SubtleText,modifier=Modifier.padding(top=5.dp));Spacer(Modifier.height(7.dp));Box(Modifier.size(4.dp).clip(CircleShape).background(if(selected)Accent else Background))}}
+  }}){padding->
+  NavHost(nav,startDestination="home",modifier=Modifier.padding(padding).consumeWindowInsets(padding),enterTransition={androidx.compose.animation.EnterTransition.None},exitTransition={androidx.compose.animation.ExitTransition.None}){
    composable("home"){HomeScreen(viewModel{HomeViewModel(c)},{new()},{nav.navigate("edit/$it")},{nav.navigate("focus/$it")},{nav.navigate("search")},{nav.navigate("stats")},{nav.navigate("settings")})}
-   composable("calendar"){val vm:CalendarViewModel=viewModel{CalendarViewModel(c)};CalendarScreen(vm,{new(vm.state.value.selected)},{nav.navigate("edit/$it")})}
+   composable("calendar"){val vm:CalendarViewModel=viewModel{CalendarViewModel(c)};CalendarScreen(vm,{new(vm.state.value.selected)},{nav.navigate("edit/$it")},onProgress={nav.navigate("stats")})}
    composable("goals"){GoalsScreen(viewModel{GoalsViewModel(c)},onBack={nav.navigate("home")})}
    composable("settings"){SettingsScreen(viewModel{SettingsViewModel(c)},onStats={nav.navigate("stats")},onSearch={nav.navigate("search")})}
    composable("stats"){StatsScreen(viewModel{StatsViewModel(c)},onBack={nav.popBackStack()})}
@@ -63,6 +68,6 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
    composable("focus/{id}",arguments=listOf(navArgument("id"){type=NavType.LongType})){e->FocusScreen(viewModel{FocusViewModel(c,e.arguments!!.getLong("id"))},{nav.popBackStack()})}
   }
  }
- if(aiOpen)ModalBottomSheet(onDismissRequest={aiOpen=false},sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),containerColor=Background,contentColor=Primary){Box(Modifier.fillMaxHeight(.9f)){AiScreen(ai)}}
+ if(aiOpen)ModalBottomSheet(onDismissRequest={aiOpen=false},sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),containerColor=Background,contentColor=Primary){Box(Modifier.fillMaxHeight(.9f)){AiScreen(ai,onManual={aiOpen=false;new()})}}
 }
 @Composable private fun SmallAiButton(onClick:()->Unit){Surface(onClick=onClick,shape=CircleShape,color=Surface,contentColor=Primary,shadowElevation=0.dp){Row(Modifier.padding(horizontal=18.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){Diamond();Spacer(Modifier.width(10.dp));Text("Rotam AI",style=MaterialTheme.typography.labelLarge)}}}

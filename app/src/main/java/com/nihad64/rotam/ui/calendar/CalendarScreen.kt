@@ -17,12 +17,12 @@ import com.nihad64.rotam.ui.components.*
 import com.nihad64.rotam.ui.theme.*
 import java.time.LocalDate
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun CalendarScreen(vm:CalendarViewModel,onNewPlan:()->Unit,onEdit:(Long)->Unit){val s by vm.state.collectAsStateWithLifecycle()
+@Composable fun CalendarScreen(vm:CalendarViewModel,onNewPlan:()->Unit,onEdit:(Long)->Unit,onProgress:()->Unit={}){val s by vm.state.collectAsStateWithLifecycle()
  var showFilters by remember{mutableStateOf(false)}
  var category by remember{mutableStateOf<String?>(null)};var status by remember{mutableIntStateOf(0)}
  val visible=s.selectedPlans.filter{p->(category==null||p.category==category)&&when(status){1->!p.isCompleted&&!p.isSkipped;2->p.isCompleted;3->p.isSkipped;else->true}}
  LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp,24.dp,24.dp,88.dp),verticalArrangement=Arrangement.spacedBy(20.dp)){
- item{PageHeader("Takvim","Günlerine uzaktan bir bakış.",action={TextButton(onClick={vm.select(LocalDate.now());vm.setMode(CalendarMode.MONTH)}){Text("Bugün")}})}
+ item{PageHeader("Takvim","Günlerine uzaktan bir bakış.",action={Column{TextButton(onClick=onProgress){Text("İlerlemem")};TextButton(onClick={vm.select(LocalDate.now());vm.setMode(CalendarMode.MONTH)}){Text("Bugün")}}})}
  item{SegmentedToggle(CalendarMode.entries.map{it.label},s.mode.ordinal,{vm.setMode(CalendarMode.entries[it])})}
  item{Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick={vm.shift(-1)}){Icon(Icons.Outlined.ChevronLeft,"Önceki dönem")};Text(if(s.mode==CalendarMode.YEAR)s.anchor.year.toString()else TrFormat.monthYear(s.anchor),style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));IconButton(onClick={vm.shift(1)}){Icon(Icons.Outlined.ChevronRight,"Sonraki dönem")}}}
  if(s.mode==CalendarMode.MONTH||s.mode==CalendarMode.WEEK)item{

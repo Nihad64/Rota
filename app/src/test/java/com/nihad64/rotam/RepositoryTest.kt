@@ -47,6 +47,17 @@ class RepositoryTest {
   BackupCodec.decode(BackupStore(context,db).export())
   Unit
  }
+ @Test fun oneDaysPartialHistoryDoesNotLeakIntoFutureOccurrences()=runBlocking {
+  val list=repo.create(Plan(title="Oku",date="2026-11-02",repeatType="daily"))
+  val old=list.first();val partial=com.nihad64.rotam.domain.usecase.PlanOutcome.record(old,com.nihad64.rotam.domain.usecase.PlanOutcome.Status.PARTIAL,10.0,20.0)
+  repo.update(partial)
+  repo.edit(partial,partial.copy(title="Yeni rutin"),EditScope.FUTURE)
+  val future=repo.range(LocalDate.parse("2026-11-03"),LocalDate.parse("2026-11-03")).single()
+  assertEquals(com.nihad64.rotam.domain.usecase.PlanOutcome.Status.UNKNOWN,com.nihad64.rotam.domain.usecase.PlanOutcome.status(future))
+  assertFalse(future.extraData.contains("outcomeHistory"))
+  assertFalse(repo.byId(old.id)!!.isDeleted)
+  assertEquals(com.nihad64.rotam.domain.usecase.PlanOutcome.Status.PARTIAL,com.nihad64.rotam.domain.usecase.PlanOutcome.status(repo.byId(old.id)!!))
+ }
  @Test fun retryingARecurringSuggestionDoesNotCreateAnotherSeries()=runBlocking {
   val p=Plan(title="Tek öneri",date="2026-11-02",repeatType="weekly")
   val first=repo.create(p);val retry=repo.create(p)

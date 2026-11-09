@@ -37,7 +37,7 @@ class PlanRepository(private val db:AppDatabase){
  }}
  suspend fun ensure(f:LocalDate,t:LocalDate)=lock.withLock{db.withTransaction{db.seriesDao().all().forEach{generate(it,f,t)}}}
  private suspend fun generate(s:PlanSeries,f:LocalDate,t:LocalDate){
-  val p=PlanJson.decode(JSONObject(s.template)).copy(repeatUntil=s.untilDate)
+  val p=PlanOutcome.fresh(PlanJson.decode(JSONObject(s.template))).copy(repeatUntil=s.untilDate)
   val days=Recurrence.dates(p,LocalDate.parse(s.anchor),f,t)
   dao.insertAll(days.map{d->val key="${s.id}:$d";PlanTime.moved(p,d).copy(id=0,uid="series:$key",seriesId=s.id,occurrenceKey=key,originalDate=d.toString(),isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)})
  }
@@ -57,13 +57,13 @@ class PlanRepository(private val db:AppDatabase){
    val from=if(scope==EditScope.ALL)LocalDate.parse(s.anchor)else LocalDate.parse(old.originalDate?:old.date)
    val shift=java.time.temporal.ChronoUnit.DAYS.between(LocalDate.parse(old.date),LocalDate.parse(p.date))
    val all=dao.bySeries(s.id);db.seriesDao().update(s.copy(untilDate=from.minusDays(1).toString()))
-   all.filter{LocalDate.parse(it.originalDate?:it.date)>=from&&!it.isCompleted&&!it.isSkipped}.forEach{dao.update(it.copy(isDeleted=true))}
+   all.filter{LocalDate.parse(it.originalDate?:it.date)>=from&&!it.isCompleted&&!it.isSkipped&&PlanOutcome.status(it)!=PlanOutcome.Status.PARTIAL}.forEach{dao.update(it.copy(isDeleted=true))}
    val anchor=from.plusDays(shift)
-   val fresh=PlanTime.moved(p,anchor).copy(id=0,uid=UUID.randomUUID().toString(),seriesId=0,occurrenceKey=null,originalDate=null,isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)
+   val fresh=PlanOutcome.fresh(PlanTime.moved(p,anchor)).copy(id=0,uid=UUID.randomUUID().toString(),seriesId=0,occurrenceKey=null,originalDate=null,isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)
    if(fresh.repeatType=="none")dao.insert(fresh)else{
     val id=db.seriesDao().insert(PlanSeries(template=PlanJson.encode(fresh).toString(),anchor=anchor.toString(),untilDate=fresh.repeatUntil))
     // Completed/skipped history and deleted exceptions remain single occurrences.
-    all.filter{LocalDate.parse(it.originalDate?:it.date)>=from&&(it.isCompleted||it.isSkipped||it.isDeleted)}.forEach{
+    all.filter{LocalDate.parse(it.originalDate?:it.date)>=from&&(it.isCompleted||it.isSkipped||it.isDeleted||PlanOutcome.status(it)==PlanOutcome.Status.PARTIAL)}.forEach{
      val d=LocalDate.parse(it.originalDate?:it.date).plusDays(shift);val key="$id:$d"
      dao.insert(PlanTime.moved(fresh,d).copy(uid="series:$key",seriesId=id,occurrenceKey=key,originalDate=d.toString(),isDeleted=true))
     }

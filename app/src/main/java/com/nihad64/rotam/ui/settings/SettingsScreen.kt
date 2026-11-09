@@ -67,9 +67,15 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
             }
         }
 
-        ActionRow(Icons.Outlined.QueryStats,"İstatistikler","Tamamlanan işler ve ölçülen odak süresi.","Gör",onClick=onStats)
         ActionRow(Icons.Outlined.Search,"Planlarında ara","Başlık, not ve geçmiş planlar.","Ara",onClick=onSearch)
-        Section("Profil")
+        Section("Hesabım")
+        val account by vm.account.collectAsStateWithLifecycle()
+        Text(account?.email ?: "Planların bu cihazda saklanıyor.", color=SubtleText)
+        Text("Google girişi tek başına senkronizasyon değildir. Bulut veri aktarımı henüz etkin değil; cihazındaki kayıtlar korunur.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+        if(account==null) OutlinedButton(onClick={ (ctx as? android.app.Activity)?.let(vm::signIn) },enabled=!busy&&vm.accountConfigured) { Text("Google ile giriş yap") }
+        else TextButton(onClick=vm::signOut,enabled=!busy) { Text("Çıkış yap") }
+        if(!vm.accountConfigured) Text("Hesap hizmeti bu geliştirme derlemesinde henüz yapılandırılmadı.",color=SubtleText)
+
         RotamCard(Modifier.fillMaxWidth()) {
             Text("İsmin (selamlama için)", style = MaterialTheme.typography.bodyMedium, color = OnSurface)
             Spacer(Modifier.height(8.dp))
@@ -113,37 +119,8 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         SwitchRow(Icons.Outlined.Animation,"Animasyonlar","Kısa ekran ve grafik geçişleri.",s.animations,vm::setAnimations)
 
         Section("Rotam AI")
-        RotamCard(Modifier.fillMaxWidth()) {
-            Text("Gemini API anahtarı", style = MaterialTheme.typography.titleSmall, color = OnBackground)
-            Text(
-                when {
-                    s.geminiKey.isNotBlank() -> "Kendi anahtarın kayıtlı (••••${s.geminiKey.takeLast(4)})."
-                    else -> "Anahtar yok. Rotam AI için bir anahtar ekle."
-                },
-                style = MaterialTheme.typography.bodySmall, color = SubtleText
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = key, onValueChange = { key = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                placeholder = { Text("AIza...", color = SubtleText) },
-                visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { showKey = !showKey }) {
-                        Icon(if (showKey) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, "Göster", tint = SubtleText)
-                    }
-                },
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Primary, unfocusedBorderColor = Outline,
-                    focusedTextColor = OnBackground, unfocusedTextColor = OnBackground)
-            )
-            Row {
-                TextButton(onClick = { vm.setGeminiKey(key); key = "" }, enabled = key.isNotBlank()) { Text("Kaydet", color = Primary) }
-                if (s.geminiKey.isNotBlank()) TextButton(onClick = { vm.setGeminiKey("") }) { Text("Kaldır", color = SubtleText) }
-            }
-        }
-
-        SwitchRow(Icons.Outlined.PrivacyTip,"Planları AI ile paylaş","Açarsan son 1 gün ve gelecek 14 gün içindeki en fazla 150 planın adı ve zamanları Gemini'ye gönderilir. Yazdığın sohbet mesajları her istekte gönderilir.",s.sharePlans,vm::setSharePlans)
-        RotamField(model,{model=it},"Gemini model adı",Modifier.fillMaxWidth())
-        TextButton(onClick={vm.setModel(model)},enabled=model.matches(Regex("[a-zA-Z0-9._-]{1,100}")) && model!=s.geminiModel){Text("Modeli kaydet")}
+        Text("Rotam AI için API anahtarı gerekmez. Google hesabınla güvenli hizmete bağlanır. Öneriler yalnız onayından sonra kaydedilir.", color=SubtleText)
+        SwitchRow(Icons.Outlined.PrivacyTip,"Planları AI ile paylaş","İzin verirsen son 1 gün ve gelecek 14 gün içindeki en fazla 150 planın özeti AI hizmetine gönderilir. Yazdığın mesajlar her istekte gönderilir.",s.sharePlans,vm::setSharePlans)
         Section("Yedekleme")
         Text("Planlar, hedefler, tekrar kuralları ve odak süreleri korunur. API anahtarı yedeğe eklenmez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
         PrimaryButton("Yedeği dışa aktar",{export.launch("Rotam-${java.time.LocalDate.now()}.json")},Modifier.fillMaxWidth(),enabled=!busy)
@@ -151,24 +128,14 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         TextButton(onClick={vm.previewRecovery()},enabled=!busy){Text("Son işlemden önceki kayıtlara dön")}
         message?.let{Text(it,color=SubtleText)}
         if(busy)LinearProgressIndicator(Modifier.fillMaxWidth())
-        Section("Veri")
-        ActionRow(Icons.Outlined.DeleteForever, "Tüm planları sıfırla", "Planlar ve hedefler temizlenir; önce geri dönüş yedeği alınır.", "Sıfırla", danger = true) {
-            confirmReset = true
-        }
+
     }
 
     if(quietTarget!=null) TimeChooser(if(quietTarget=="start")clock(s.quietStart) else clock(s.quietEnd),"Sessiz saat",{quietTarget=null}) { value->
         value?.let{val m=LocalTime.parse(it).toSecondOfDay()/60;if(quietTarget=="start")vm.setQuietTimes(m,s.quietEnd) else vm.setQuietTimes(s.quietStart,m)}
     }
     pending?.let { data-> AlertDialog(onDismissRequest={vm.dismissPreview()},title={Text("Yedeği geri yükle?")},text={Text("${data.visiblePlans} plan, ${data.goals.size} hedef ve ${data.series.size} tekrar kuralı bulundu. Mevcut kayıtlar bu yedekle değiştirilecek. İşlemden önce geri dönüş yedeği alınır.")},confirmButton={TextButton(onClick={vm.restore()},enabled=!busy){Text("Geri yükle")}},dismissButton={TextButton(onClick={vm.dismissPreview()},enabled=!busy){Text("Vazgeç")}}) }
-    if (confirmReset) AlertDialog(
-        onDismissRequest = { confirmReset = false },
-        containerColor = Surface,
-        title = { Text("Emin misin?", color = OnBackground) },
-        text = { Text("Tüm planlar ve hedefler temizlenecek. Önce geri dönüş yedeği alınır.", color = OnSurface) },
-        confirmButton = { TextButton(onClick = { vm.resetAll(); confirmReset = false }) { Text("Sil", color = Danger) } },
-        dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Vazgeç", color = OnSurface) } }
-    )
+
 }
 
 @Composable

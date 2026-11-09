@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
 import com.nihad64.rotam.data.model.*
 import com.nihad64.rotam.domain.usecase.PlanTime
+import com.nihad64.rotam.domain.usecase.PlanOutcome
 import com.nihad64.rotam.ui.theme.*
 fun Category.icon():ImageVector=when(this){Category.KITAP->Icons.AutoMirrored.Outlined.MenuBook;Category.IS->Icons.Outlined.WorkOutline;Category.VIDEO->Icons.Outlined.Movie;Category.SPOR->Icons.Outlined.FitnessCenter;Category.IBADET->Icons.Outlined.NightsStay;Category.RANDEVU->Icons.Outlined.Place;Category.YEMEK->Icons.Outlined.Restaurant;Category.OGRENME->Icons.Outlined.School;Category.KISISEL->Icons.Outlined.PersonOutline}
 @Composable fun CategoryIcon(category:Category,size:Dp=40.dp,modifier:Modifier=Modifier){Box(modifier.size(size),contentAlignment=Alignment.Center){Icon(category.icon(),category.label,tint=SubtleText,modifier=Modifier.size(size*.55f))}}
@@ -29,7 +30,7 @@ fun Category.icon():ImageVector=when(this){Category.KITAP->Icons.AutoMirrored.Ou
   Column(Modifier.width(65.dp)){Text(plan.startTime?:plan.endTime?:"Gün içi",style=MaterialTheme.typography.titleMedium,color=if(plan.isCompleted)SubtleText else Primary);if(plan.startTime==null&&plan.endTime!=null)Text("son teslim",style=MaterialTheme.typography.labelSmall,color=SubtleText)}
   Box(Modifier.width(2.dp).height(42.dp).background(Outline));Spacer(Modifier.width(16.dp))
   Column(Modifier.weight(1f)){Text(plan.title,style=MaterialTheme.typography.titleMedium,color=if(plan.isCompleted||plan.isSkipped)SubtleText else Primary,maxLines=2,overflow=TextOverflow.Ellipsis,textDecoration=if(plan.isCompleted)TextDecoration.LineThrough else TextDecoration.None)
-  Text(when{plan.isCompleted->"Tamamlandı";plan.isSkipped->"Atlandı";PlanTime.overdue(plan)->"Son teslim geçti";else->if(plan.startTime!=null&&plan.endTime!=null)PlanTime.label(plan)else plan.categoryEnum.label},style=MaterialTheme.typography.bodySmall,color=SubtleText)}
+  Text(when{plan.isCompleted->"Tamamlandı";plan.isSkipped->"Yapılmadı";PlanOutcome.status(plan)==PlanOutcome.Status.PARTIAL->"Kısmen yapıldı · %${((PlanOutcome.fraction(plan)?:0.0)*100).toInt()}";PlanOutcome.status(plan)==PlanOutcome.Status.POSTPONED->"Ertelendi";PlanTime.overdue(plan)->"Son teslim geçti";else->if(plan.startTime!=null&&plan.endTime!=null)PlanTime.label(plan)else plan.categoryEnum.label},style=MaterialTheme.typography.bodySmall,color=SubtleText)}
   IconButton(onClick=onToggle){Icon(if(plan.isCompleted)Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,if(plan.isCompleted)"Tamamlamayı geri al"else"Planı tamamla",tint=if(plan.isCompleted)Primary else SubtleText,modifier=Modifier.size(23.dp))}
  }
 }

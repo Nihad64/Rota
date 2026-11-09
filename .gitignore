@@ -3,3 +3,11 @@ local.properties
 build/
 app/build/
 *.jks
+app/google-services.json
+node_modules/
+.firebase/
+*.log
+
+dist/
+
+.kotlin/

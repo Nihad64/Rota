@@ -17,8 +17,11 @@ class AiViewModel(private val c:AppContainer):ViewModel(){
   _state.update{it.copy(messages=it.messages+ChatMessage(id++,true,text.trim()),input="",loading=true,applyError=null)}
   viewModelScope.launch{try{val cfg=c.settings.current();val ctx=if(cfg.sharePlans)c.planRepo.range(LocalDate.now().minusDays(1),LocalDate.now().plusDays(14)).take(150)else emptyList()
    val r=c.gemini.ask(state.value.messages.filter{!it.isError}.map{it.isUser to it.text},ctx);_state.update{it.copy(messages=it.messages+ChatMessage(id++,false,r.text,r.suggestions))}
-  }catch(e:Exception){_state.update{it.copy(messages=it.messages+ChatMessage(id++,false,if(e is GeminiException)e.message.orEmpty()else"Bağlantı kurulamadı. İnternetini kontrol edip yeniden dene.",isError=true))}}finally{_state.update{it.copy(loading=false)}}}
+  }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){_state.update{it.copy(input=if(it.input.isBlank())text else it.input,messages=it.messages+ChatMessage(id++,false,if(e is GeminiException)e.message.orEmpty()else"Bağlantı kurulamadı. İnternetini kontrol edip yeniden dene.",isError=true))}}finally{_state.update{it.copy(loading=false)}}}
  }
+ fun retry(){if(state.value.loading||state.value.messages.lastOrNull()?.isError!=true)return
+  val last=state.value.messages.lastOrNull{it.isUser}?:return
+  _state.update{it.copy(messages=it.messages.takeWhile{m->m.id<last.id})};send(last.text)}
  fun addSuggestion(messageId:Long,index:Int)=apply(messageId,setOf(index))
  fun addAll(messageId:Long){val m=state.value.messages.firstOrNull{it.id==messageId}?:return;apply(messageId,m.suggestions.indices.toSet())}
  private fun apply(mid:Long,indices:Set<Int>){if(state.value.applying)return;_state.update{it.copy(applying=true,applyError=null)}

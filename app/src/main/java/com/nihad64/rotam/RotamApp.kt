@@ -44,7 +44,8 @@ class AppContainer(val app: Application) {
     val goalRepo = GoalRepository(db)
     val focus = FocusTracker(app, planRepo)
     val scheduler = ReminderScheduler(app, planRepo, settings)
-    val gemini = GeminiService(settings)
+    val account = com.nihad64.rotam.data.account.AccountService(app)
+    val gemini = GeminiService(settings, account)
 
     val getPlansForDay = GetPlansForDay(planRepo)
     val createPlan = CreatePlan(planRepo, scheduler)

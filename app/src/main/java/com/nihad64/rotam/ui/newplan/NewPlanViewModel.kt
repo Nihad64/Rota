@@ -3,6 +3,7 @@ import androidx.lifecycle.*
 import com.nihad64.rotam.AppContainer
 import com.nihad64.rotam.data.model.*
 import com.nihad64.rotam.domain.usecase.PlanTime
+import com.nihad64.rotam.domain.usecase.PlanOutcome
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
@@ -23,7 +24,7 @@ class NewPlanViewModel(private val c:AppContainer,date:LocalDate?=null,private v
    if(editId!=null&&old==null){_state.value=FormState(loading=false,error="Plan bulunamadı.");return@launch}
    val copy=copyId?.let{c.planRepo.byId(it)}
    val draft=if(editId==null&&copyId==null)runCatching{prefs.getString("new",null)?.let{JSONObject(it)}}.getOrNull()else null
-   val plan=old?:copy?.copy(id=0,uid=UUID.randomUUID().toString(),seriesId=0,occurrenceKey=null,originalDate=null,isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)?:draft?.getJSONObject("plan")?.let{PlanJson.decode(it)}?:Plan(title="",date=(date?:LocalDate.now()).toString(),reminderMinutes=c.settings.current().reminderMinutes)
+   val plan=old?:copy?.let{PlanOutcome.fresh(it)}?.copy(id=0,uid=UUID.randomUUID().toString(),seriesId=0,occurrenceKey=null,originalDate=null,isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)?:draft?.getJSONObject("plan")?.let{PlanJson.decode(it)}?:Plan(title="",date=(date?:LocalDate.now()).toString(),reminderMinutes=c.settings.current().reminderMinutes)
    _state.value=FormState(plan=plan,step=draft?.optInt("step",0)?.coerceIn(0,4)?:0,editing=old!=null,loading=false,restored=draft!=null)
   }catch(_:Exception){_state.update{it.copy(loading=false,error="Plan yüklenemedi. Geri dönüp yeniden dene.")}}
  }}
@@ -47,5 +48,5 @@ class NewPlanViewModel(private val c:AppContainer,date:LocalDate?=null,private v
  fun dirty()=if(original!=null)state.value.plan!=original else state.value.plan.title.isNotBlank()
  private fun loadTemplates():List<Plan> = runCatching{val a=JSONArray(prefs.getString("templates","[]"));(0 until a.length()).map{PlanJson.decode(a.getJSONObject(it))}}.getOrDefault(emptyList())
  fun saveTemplate(){val p=state.value.plan;if(p.title.isBlank())return;val list=(loadTemplates().filter{it.title!=p.title}+p).takeLast(20);prefs.edit().putString("templates",JSONArray(list.map{PlanJson.encode(it)}).toString()).apply();templates.value=list;_state.update{it.copy(error="Şablon kaydedildi.")}}
- fun useTemplate(t:Plan){change{PlanTime.moved(t,LocalDate.parse(it.date)).copy(id=0,uid=UUID.randomUUID().toString(),seriesId=0,occurrenceKey=null,originalDate=null,isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)};step(1)}
+ fun useTemplate(t:Plan){change{PlanOutcome.fresh(PlanTime.moved(t,LocalDate.parse(it.date))).copy(id=0,uid=UUID.randomUUID().toString(),seriesId=0,occurrenceKey=null,originalDate=null,isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)};step(1)}
 }

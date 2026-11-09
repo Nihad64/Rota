@@ -23,7 +23,7 @@ class CompletePlan(private val repo: PlanRepository, private val scheduler: Remi
     suspend operator fun invoke(plan: Plan, completed: Boolean = !plan.isCompleted) {
         focus.pauseIf(plan.id)
         val current=repo.byId(plan.id) ?: return
-        repo.update(current.copy(isCompleted = completed, isSkipped = false))
+        repo.update(PlanOutcome.record(current,if(completed)PlanOutcome.Status.COMPLETED else PlanOutcome.Status.UNKNOWN))
         if (completed) scheduler.cancel(plan.id) else scheduler.schedule(plan.copy(isCompleted = completed, isSkipped = false))
     }
 }
@@ -32,7 +32,7 @@ class SkipPlan(private val repo: PlanRepository, private val scheduler: Reminder
     suspend operator fun invoke(plan: Plan) {
         focus.pauseIf(plan.id)
         val current=repo.byId(plan.id) ?: return
-        repo.update(current.copy(isSkipped = true, isCompleted = false))
+        repo.update(PlanOutcome.record(current,PlanOutcome.Status.NOT_DONE))
         scheduler.cancel(plan.id)
     }
 }
@@ -49,7 +49,8 @@ class DeletePlan(private val repo: PlanRepository, private val scheduler: Remind
 class MovePlanToTomorrow(private val repo: PlanRepository, private val scheduler: ReminderScheduler, private val focus:FocusTracker) {
     suspend operator fun invoke(plan: Plan) {
         focus.pauseIf(plan.id)
-        val moved = PlanTime.moved(repo.byId(plan.id) ?: return, LocalDate.now().plusDays(1)).copy(isSkipped=false,isCompleted=false)
+        val current=repo.byId(plan.id) ?: return
+        val moved = PlanTime.moved(PlanOutcome.record(current,PlanOutcome.Status.POSTPONED), LocalDate.now().plusDays(1))
         repo.update(moved)
         scheduler.schedule(moved)
     }

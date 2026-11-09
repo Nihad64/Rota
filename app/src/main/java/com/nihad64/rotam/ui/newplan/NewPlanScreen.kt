@@ -1,6 +1,10 @@
 package com.nihad64.rotam.ui.newplan
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -10,6 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -23,6 +29,7 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun NewPlanScreen(vm:NewPlanViewModel,onClose:()->Unit,onDuplicate:(Long)->Unit={},aiAction:(@Composable ()->Unit)?=null){
+ val focus=LocalFocusManager.current;val keyboard=LocalSoftwareKeyboardController.current
  val s by vm.state.collectAsStateWithLifecycle();val goals by vm.goals.collectAsStateWithLifecycle();val templates by vm.templates.collectAsStateWithLifecycle()
  var exit by remember{mutableStateOf(false)};var deleting by remember{mutableStateOf(false)}
  val close={if(vm.dirty())exit=true else onClose()}
@@ -61,8 +68,8 @@ import java.time.LocalDate
    }}
   }
   Column(Modifier.fillMaxWidth().background(Background).padding(horizontal=24.dp,vertical=12.dp)){
-   if(aiAction!=null)Box(Modifier.fillMaxWidth().padding(bottom=12.dp),contentAlignment=Alignment.CenterEnd){aiAction()}
-   PrimaryButton(if(s.busy)"Kaydediliyor…"else if(s.editing)"Değişiklikleri kaydet"else if(s.step==4)"Planı oluştur"else"Devam et",{if(s.editing||s.step==4)vm.save()else vm.next()},Modifier.fillMaxWidth(),enabled=!s.busy)
+   if(aiAction!=null&&!WindowInsets.isImeVisible)Box(Modifier.fillMaxWidth().padding(bottom=12.dp),contentAlignment=Alignment.CenterEnd){aiAction()}
+   PrimaryButton(if(s.busy)"Kaydediliyor…"else if(s.editing)"Değişiklikleri kaydet"else if(s.step==4)"Planı oluştur"else"Devam et",{focus.clearFocus();keyboard?.hide();if(s.editing||s.step==4)vm.save()else vm.next()},Modifier.fillMaxWidth(),enabled=!s.busy)
    if(!s.editing&&s.step==0&&s.plan.title.isNotBlank())TextButton(onClick={vm.save()},modifier=Modifier.align(Alignment.CenterHorizontally),enabled=!s.busy){Text("Bu bilgilerle kaydet")}
   }
  }
@@ -70,7 +77,12 @@ import java.time.LocalDate
  if(s.conflicts.isNotEmpty())AlertDialog(onDismissRequest={vm.dismissConflicts()},title={Text("Bu aralıkta başka planların var")},text={Text(s.conflicts.take(5).joinToString("\n"))},confirmButton={TextButton(onClick={vm.save(true)},enabled=!s.busy){Text("Yine de kaydet")}},dismissButton={TextButton(onClick={vm.dismissConflicts();if(!s.editing)vm.step(2)}){Text("Saati değiştir")}})
  if(deleting)AlertDialog(onDismissRequest={deleting=false},title={Text("Bu plan silinsin mi?")},text={Text("Tekrarlıysa yalnız bu örnek silinir. İşlemden sonra geri alabilirsin.")},confirmButton={TextButton(onClick={deleting=false;vm.action("delete")}){Text("Sil",color=Danger)}},dismissButton={TextButton(onClick={deleting=false}){Text("Vazgeç")}})
 }
-@Composable fun RotamField(value:String,onChange:(String)->Unit,placeholder:String,modifier:Modifier=Modifier,singleLine:Boolean=true,number:Boolean=false,isError:Boolean=false){OutlinedTextField(value,onChange,modifier=modifier,label={Text(placeholder)},singleLine=singleLine,minLines=if(singleLine)1 else 2,isError=isError,shape=RoundedCornerShape(20.dp),keyboardOptions=KeyboardOptions(keyboardType=if(number)KeyboardType.Number else KeyboardType.Text),colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=Primary,unfocusedBorderColor=Outline,focusedContainerColor=Surface,unfocusedContainerColor=Surface))}
+@OptIn(ExperimentalFoundationApi::class)
+@Composable fun RotamField(value:String,onChange:(String)->Unit,placeholder:String,modifier:Modifier=Modifier,singleLine:Boolean=true,number:Boolean=false,isError:Boolean=false){
+ val requester=remember{BringIntoViewRequester()};var focused by remember{mutableStateOf(false)}
+ val imeBottom=WindowInsets.ime.getBottom(LocalDensity.current)
+ LaunchedEffect(focused,imeBottom){if(focused)requester.bringIntoView()}
+ OutlinedTextField(value,onChange,modifier=modifier.bringIntoViewRequester(requester).onFocusChanged{focused=it.isFocused},label={Text(placeholder)},singleLine=singleLine,minLines=if(singleLine)1 else 2,isError=isError,shape=RoundedCornerShape(20.dp),keyboardOptions=KeyboardOptions(keyboardType=if(number)KeyboardType.Number else KeyboardType.Text),colors=OutlinedTextFieldDefaults.colors(focusedBorderColor=Primary,unfocusedBorderColor=Outline,focusedContainerColor=Surface,unfocusedContainerColor=Surface))}
 @Composable private fun CategoryFields(p:Plan,set:(String,String)->Unit){val e=JSONObject(p.extraData);val fields=when(p.categoryEnum){
  Category.KITAP->listOf("book" to "Kitap / kaynak","pageGoal" to "Sayfa hedefi")
  Category.IS->listOf("workplace" to "İş yeri / proje","shift" to "Vardiya / mola notu")

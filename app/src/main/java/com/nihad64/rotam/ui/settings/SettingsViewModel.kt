@@ -11,6 +11,10 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 class SettingsViewModel(private val c:AppContainer):ViewModel() {
+    val account=c.account.account
+    val accountConfigured=c.account.configured
+    fun signIn(activity:android.app.Activity)=run { c.account.signIn(activity); c.settings.setSharePlans(false); if(c.settings.current().userName.isBlank()) c.account.account.value?.name?.let { c.settings.setName(it) } }
+    fun signOut()=run { c.settings.setSharePlans(false); c.account.signOut() }
     val settings=c.settings.settings.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),Settings())
     private val backup=BackupStore(c.app,c.db)
     val pending=MutableStateFlow<BackupData?>(null)
@@ -57,6 +61,6 @@ class SettingsViewModel(private val c:AppContainer):ViewModel() {
     private fun run(action:suspend ()->Unit) {
         if(busy.value)return
         busy.value=true;message.value=null
-        viewModelScope.launch { try{action()}catch(_:Exception){message.value="İşlem tamamlanamadı. Dosyayı ve bilgilerini kontrol edip yeniden dene."}finally{busy.value=false} }
+        viewModelScope.launch { try{action()}catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){message.value=if(e is IllegalStateException)e.message else "İşlem tamamlanamadı. Bilgilerin korunuyor; yeniden deneyebilirsin."}finally{busy.value=false} }
     }
 }
