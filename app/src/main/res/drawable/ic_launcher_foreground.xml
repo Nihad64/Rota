@@ -1,4 +1,2 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="1000" android:viewportHeight="1000">
-<group android:translateX="180" android:translateY="160"><path android:fillColor="#F3EEE4" android:pathData="M112,30 C52,30 24,67 24,130 L24,568 C24,618 42,640 88,640 L178,640 C218,640 232,622 232,583 L232,549 C232,496 192,459 170,414 C147,365 179,341 229,321 C273,303 305,288 303,269 C300,246 254,240 207,240 C154,240 111,226 110,183 C108,142 150,118 206,118 C320,112 427,148 428,231 C429,295 374,318 317,340 C275,355 256,365 272,391 L452,617 C465,633 473,637 500,637 L564,637 C595,637 600,621 580,590 L451,425 C430,400 433,397 464,382 C544,343 569,283 569,221 C569,90 484,30 350,30 Z"/>
-<path android:fillColor="#FF803F" android:pathData="M163,153 Q169,147 175,153 L195,173 Q201,179 195,185 L175,205 Q169,211 163,205 L143,185 Q137,179 143,173 Z"/>
-</group></vector>
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/rotam_launcher_art" android:gravity="fill" />
