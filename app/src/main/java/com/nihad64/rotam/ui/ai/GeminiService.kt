@@ -41,7 +41,7 @@ class GeminiService(private val settings:SettingsStore, private val account:com.
    Değişiklikte yalnız listede gerçekten bulunan planId kullan, değişen planın tüm tarih/saat alanlarını döndür. Yeni planda planId null. Tekrarlı mevcut plan değişiklikleri yalnız seçili örneğe uygulanır. Silme yapma. En çok 20 öneri. Kullanıcıya kayıt yapıldığını söyleme; önce önizlemeyi onaylayacak. Mevcut iki uçlu aralıklarla çakışmayı açıkça bildir; belirsiz sürelerden sahte doluluk üretme.
   """.trimIndent()
  }
- companion object{const val MODEL="gemini-2.5-flash"}
+ companion object{const val MODEL="gemini-3.5-flash-lite"}
 }
 
 internal object AiResponseParser {
@@ -88,7 +88,7 @@ internal object AiFailure {
   return when {
    "app check" in m||"attestation" in m->"Uygulamanın güvenli AI erişimi doğrulanamadı. Planların değişmedi; elle ekleyebilirsin."
    "unauthenticated" in m||"authentication" in m->"Google oturumunu yeniden açıp tekrar dene. Planların korunuyor."
-   "not found" in m||"not supported" in m||"no access" in m->"Gemini 2.5 Flash bu proje için kullanılamıyor. Başka modele geçilmedi; elle plan ekleyebilirsin."
+   "not found" in m||"not supported" in m||"no access" in m->"Gemini 3.5 Flash-Lite bu proje için kullanılamıyor. Başka modele geçilmedi; elle plan ekleyebilirsin."
    "permission" in m||"forbidden" in m->"AI hizmeti erişime izin vermedi. Planların değişmedi; elle ekleyebilirsin."
    else->"AI hizmeti isteği tamamlayamadı. Yazdıkların korunuyor; yeniden dene veya elle ekle."
   }

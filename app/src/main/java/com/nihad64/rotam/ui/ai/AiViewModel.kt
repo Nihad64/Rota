@@ -18,22 +18,21 @@ class AiViewModel(private val c:AppContainer):ViewModel(){
  fun send(text:String=state.value.input){if(text.isBlank()||state.value.loading)return
   _state.update{it.copy(messages=it.messages+ChatMessage(id++,true,text.trim()),input="",loading=true,applyError=null)}
   viewModelScope.launch{try{val cfg=c.settings.current();val ctx=if(cfg.sharePlans)c.planRepo.range(LocalDate.now().minusDays(1),LocalDate.now().plusDays(14)).take(150)else emptyList()
-   val history=state.value.messages.filter{!it.isErro…2510 tokens truncated…
-  is PromptBlockedException,is ContentBlockedException,is ResponseStoppedException->"AI bu istek için kullanılabilir bir yanıt üretemedi. Hiçbir plan kaydedilmedi; elle ekleyebilirsin."
-  is SerializationException->"AI yanıtının biçimi doğrulanamadı. Hiçbir plan kaydedilmedi."
-  is UnsupportedUserLocationException->"AI hizmeti bulunduğun bölgede erişime izin vermedi. Elle plan ekleyebilirsin."
-  is ServerException->serverMessage(error.message.orEmpty())
-  else->"AI hizmetine ulaşılamadı. Yazdıkların korunuyor; yeniden dene veya elle ekle."
+   val history=state.value.messages.filter{!it.isError}.map{it.isUser to it.text}
+   val r=c.gemini.ask(if(planningDate==null)history else listOf(true to "Takvimde seçili planlama tarihi: $planningDate. Kullanıcı başka tarih belirtirse onu esas al.")+history,ctx);_state.update{it.copy(messages=it.messages+ChatMessage(id++,false,r.text,r.suggestions))}
+  }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){_state.update{it.copy(input=if(it.input.isBlank())text else it.input,messages=it.messages+ChatMessage(id++,false,if(e is GeminiException)e.message.orEmpty()else"Bağlantı kurulamadı. İnternetini kontrol edip yeniden dene.",isError=true))}}finally{_state.update{it.copy(loading=false)}}}
  }
- // The SDK currently exposes server failures as text rather than a structured HTTP code.
- internal fun serverMessage(message:String):String {
-  val m=message.lowercase(java.util.Locale.ROOT)
-  return when {
-   "app check" in m||"attestation" in m->"Uygulamanın güvenli AI erişimi doğrulanamadı. Planların değişmedi; elle ekleyebilirsin."
-   "unauthenticated" in m||"authentication" in m->"Google oturumunu yeniden açıp tekrar dene. Planların korunuyor."
-   "not found" in m||"not supported" in m||"no access" in m->"Gemini 3.5 Flash-Lite bu proje için kullanılamıyor. Başka modele geçilmedi; elle plan ekleyebilirsin."
-   "permission" in m||"forbidden" in m->"AI hizmeti erişime izin vermedi. Planların değişmedi; elle ekleyebilirsin."
-   else->"AI hizmeti isteği tamamlayamadı. Yazdıkların korunuyor; yeniden dene veya elle ekle."
-  }
+ fun retry(){if(state.value.loading||state.value.messages.lastOrNull()?.isError!=true)return
+  val last=state.value.messages.lastOrNull{it.isUser}?:return
+  _state.update{it.copy(messages=it.messages.takeWhile{m->m.id<last.id})};send(last.text)}
+ fun addSuggestion(messageId:Long,index:Int)=apply(messageId,setOf(index))
+ fun addAll(messageId:Long){val m=state.value.messages.firstOrNull{it.id==messageId}?:return;apply(messageId,m.suggestions.indices.toSet())}
+ private fun apply(mid:Long,indices:Set<Int>){if(state.value.applying)return;_state.update{it.copy(applying=true,applyError=null)}
+  viewModelScope.launch{try{for(index in indices){val m=state.value.messages.firstOrNull{it.id==mid}?:break;if(index in m.added)continue;val s=m.suggestions.getOrNull(index)?:continue
+   if(s.before!=null){if(c.planRepo.byId(s.before.id)!=s.before)throw GeminiException("Bu plan öneriden sonra değişmiş. Güncel haliyle yeni bir öneri iste.");c.focus.pauseIf(s.before.id);c.planRepo.edit(s.before,s.plan,EditScope.THIS)}else c.planRepo.create(s.plan)
+   _state.update{st->st.copy(messages=st.messages.map{if(it.id==mid)it.copy(added=it.added+index)else it})}
+  };c.scheduler.rescheduleAll()
+  }catch(e:Exception){_state.update{it.copy(applyError=e.message?:"Öneri kaydedilemedi. Kaydedilenler işaretli; kalanları yeniden deneyebilirsin.")}}finally{_state.update{it.copy(applying=false)}}}
  }
+ fun clear(){if(!state.value.loading&&!state.value.applying)_state.value=AiState()}
 }
