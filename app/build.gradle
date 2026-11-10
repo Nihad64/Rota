@@ -16,6 +16,7 @@ def secret = { String key -> localProps.getProperty(key) ?: System.getenv(key) ?
 android {
     namespace 'com.nihad64.rotam'
     compileSdk 35
+    buildToolsVersion "35.0.0"
 
     defaultConfig {
         applicationId 'com.rota.app' // mevcut kurulumun üzerine güncelleme yapılabilsin

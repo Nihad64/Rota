@@ -21,6 +21,19 @@ class LauncherIconTest {
   assertTrue(foreground is BitmapDrawable)
   val bitmap=(foreground as BitmapDrawable).bitmap
   assertEquals(1024,bitmap.width);assertEquals(1024,bitmap.height)
+  val round=context.getDrawable(R.mipmap.ic_launcher_round)
+  assertTrue(round is AdaptiveIconDrawable)
+  val roundForeground=(round as AdaptiveIconDrawable).foreground
+  assertTrue(roundForeground is BitmapDrawable)
+  assertTrue(bitmap.sameAs((roundForeground as BitmapDrawable).bitmap))
+  if(android.os.Build.VERSION.SDK_INT>=33){
+   val expected=android.graphics.BitmapFactory.decodeResource(context.resources,R.drawable.rotam_launcher_mask)
+   for(candidate in listOf(icon,round)){
+    val mask=candidate.monochrome
+    assertTrue("Themed icon must use the supplied R mask",mask is BitmapDrawable)
+    assertTrue(expected.sameAs((mask as BitmapDrawable).bitmap))
+   }
+  }
   // The original ivory R and orange diamond occupy these known source coordinates.
   val ivory=bitmap.getPixel(330,400);val orange=bitmap.getPixel(410,388)
   assertTrue(android.graphics.Color.red(ivory)>200)

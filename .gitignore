@@ -12,3 +12,7 @@ dist/
 .kotlin/
 
 .codex-attachments/
+
+.toolchain/
+
+__pycache__/

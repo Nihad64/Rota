@@ -31,6 +31,8 @@ jobs:
       - run: ./gradlew testDebugUnitTest lintDebug assembleDebug --stacktrace
       - name: Verify packaged launcher artwork
         run: python3 scripts/verify_apk_brand.py
+      - name: Verify compiled launcher references
+        run: python3 scripts/audit_launcher.py app/build/outputs/apk/debug/app-debug.apk > launcher-audit.json
       - name: Prepare single installable APK
         run: |
           mkdir -p dist
@@ -46,6 +48,7 @@ jobs:
           path: |
             app/build/reports/tests/
             app/build/reports/lint-results-debug.html
+            launcher-audit.json
 
   device:
     needs: verify
