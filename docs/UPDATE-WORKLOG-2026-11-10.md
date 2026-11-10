@@ -12,3 +12,11 @@
 - Tasarım rehberi design-system/rotam/MASTER.md içinde. Skill'in web landing-page sonucu native ürüne uygun olmadığı için kullanılmadı; üretkenlik ve Compose hareket önerileri seçildi.
 
 Yerel derleme/lint/28 JVM testi ilk değişikliklerde geçti. Karşılama UI testi eklendi ve cihaz test paketi derlendi. Veri temizleyen cihaz testleri kişisel telefonda çalıştırılmaz; emülatör CI'ında çalıştırılacaktır. Yeni tam ürün APK'sı henüz teslim edilmedi.
+
+## Sonraki doğrulamalar
+
+- 3.1.0-dev (37), aynı imzayla gerçek S25 Ultra'daki 3.0.3 üzerine kuruldu. Yerel kullanıcı kayıtları korunarak tam ekran planlama ve yeni App Check SDK'sıyla canlı Gemini taslağı tekrar doğrulandı. Taslak kişisel cihazda kaydedilmedi. Karşılama mevcut kullanıcıyı zorla engellemiyor.
+- Yerel geçmiş soruları için dar kapsamlı, deterministik LocalPlanQuestion eklendi: geçen/bu ay ve hafta için açıkça tamamlanma sayısı sorulan spor/okuma/iş soruları. Sınır tarihler, gelecekteki ve silinen kayıtlar, yinelenen UID ve belirsiz niyet testleri geçti. Genel AI geçmiş sorgulamasının tamamlandığı anlamına gelmez.
+- Kullanıcı Frankfurt konumunu açıkça onayladı. rotam-nihad64 projesinde `(default)` Firestore veritabanı Standard/Native, europe-west3, freeTier=true ve silme koruması açık olarak oluşturuldu. Billing açılmadı. Henüz kişisel plan yüklenmedi, uygulama senkronizasyonu etkinleştirilmedi. Erişim kuralları kapalı durumda korunuyor; cihazlar arası kimlik/çakışma sözleşmesi tamamlanmadan veri aktarımı yapılmayacak.
+
+Kalan kapsam: güvenli senkronizasyon ve hesap ayrımı, AI hafızası, tüm ekranların görsel tamamlanması, rutin duraklatma, üç widget, hatırlatma iyileştirmeleri, kapsamlı geçmiş arama/AI sorguları, ikonun saf beyaz varyantı ve iOS. Bunlar bitmiş olarak sunulmaz.
