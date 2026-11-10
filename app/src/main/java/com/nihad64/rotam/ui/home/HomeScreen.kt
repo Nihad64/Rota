@@ -30,7 +30,7 @@ import java.util.Locale
   item {
    Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
     Text("${TrFormat.dayName(s.today)}, ${TrFormat.dayMonth(s.today)}".uppercase(Locale.forLanguageTag("tr")),color=SubtleText,letterSpacing=2.sp,style=MaterialTheme.typography.labelMedium)
-    Text(if(s.userName.isBlank())"Bugün sana ait."else"Merhaba, ${s.userName}.",fontSize=34.sp,lineHeight=40.sp,letterSpacing=(-1.2).sp,fontWeight=FontWeight.SemiBold)
+    Text("Bugün,\nsenin ritmin.",fontSize=36.sp,lineHeight=40.sp,letterSpacing=(-1.2).sp,fontWeight=FontWeight.SemiBold)
     if(s.total>0) {
      Row(Modifier.fillMaxWidth().clickable(onClick=onStats).padding(top=8.dp),verticalAlignment=Alignment.CenterVertically) {
       Text("${s.done} / ${s.total} tamamlandı",color=SubtleText,modifier=Modifier.weight(1f))
@@ -40,10 +40,10 @@ import java.util.Locale
     }
    }
   }
-  item{if(hero!=null)HeroPlan(hero,s.label(hero),{onEdit(hero.id)},{onFocus(hero.id)})else Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp,bottomStart=32.dp,bottomEnd=70.dp)).background(Primary).padding(26.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
-   Row(verticalAlignment=Alignment.CenterVertically){Diamond();Spacer(Modifier.width(10.dp));Text("ROTAM İLE BİRLİKTE",color=Background,style=MaterialTheme.typography.labelMedium)}
-   Text(if(s.total>0)"Yeni bir şeye yer aç." else "Aklındakini anlat.\nGününe birlikte yer açalım.",color=Background,style=MaterialTheme.typography.headlineMedium)
-   Text("Anlat → Birlikte netleştir → Onayla ve ekle",color=Surface,style=MaterialTheme.typography.bodyMedium)
+  item{if(hero!=null)HeroPlan(hero,s.label(hero),{onEdit(hero.id)},{onFocus(hero.id)})else Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp,bottomStart=32.dp,bottomEnd=70.dp)).background(Brush.linearGradient(listOf(HeroSurface,Surface))).padding(26.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
+   Row(verticalAlignment=Alignment.CenterVertically){Diamond();Spacer(Modifier.width(10.dp));Text("BİRLİKTE PLANLAYALIM",color=SubtleText,style=MaterialTheme.typography.labelMedium)}
+   Text(if(s.total>0)"Yeni bir şeye yer aç." else "İlk planını birlikte oluşturalım.",color=Primary,style=MaterialTheme.typography.headlineMedium)
+   Text("Yaz veya söyle. Eklenmeden önce sen onayla.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)
    PrimaryButton("Plan ekle",onNewPlan,icon=Icons.Outlined.ArrowForward)
   }}
   if(s.missed.isNotEmpty())item{PendingPlanDeck(s.missed,vm)}

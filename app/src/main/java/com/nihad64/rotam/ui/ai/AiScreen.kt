@@ -20,13 +20,17 @@ import com.nihad64.rotam.ui.components.*
 import com.nihad64.rotam.ui.newplan.RotamField
 import com.nihad64.rotam.ui.theme.*
 import java.util.Locale
-@Composable fun AiScreen(vm:AiViewModel,onManual:()->Unit={}){val s by vm.state.collectAsStateWithLifecycle();val settings by vm.settings.collectAsStateWithLifecycle();val context=LocalContext.current;var tts by remember{mutableStateOf<TextToSpeech?>(null)};var ttsReady by remember{mutableStateOf(false)};var speechError by remember{mutableStateOf<String?>(null)}
+@Composable fun AiScreen(vm:AiViewModel,onManual:()->Unit={},onBack:(()->Unit)?=null){val s by vm.state.collectAsStateWithLifecycle();val settings by vm.settings.collectAsStateWithLifecycle();val context=LocalContext.current;var tts by remember{mutableStateOf<TextToSpeech?>(null)};var ttsReady by remember{mutableStateOf(false)};var speechError by remember{mutableStateOf<String?>(null)}
+ val completionFeedback=rememberCompletionFeedback()
+ val added=s.messages.sumOf{it.added.size}
+ var previouslyAdded by remember(vm){mutableIntStateOf(added)}
+ LaunchedEffect(added){if(added>previouslyAdded)completionFeedback();previouslyAdded=added}
  val dictate=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
   if(result.resultCode==Activity.RESULT_OK)result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let{vm.setInput(listOf(s.input,it).filter{v->v.isNotBlank()}.joinToString(" "))}
  }
  DisposableEffect(context){var engine:TextToSpeech?=null;engine=TextToSpeech(context){status->if(status==TextToSpeech.SUCCESS){val result=engine?.setLanguage(Locale.forLanguageTag("tr-TR"));ttsReady=result!=TextToSpeech.LANG_MISSING_DATA&&result!=TextToSpeech.LANG_NOT_SUPPORTED}};tts=engine;onDispose{engine?.stop();engine?.shutdown()}}
  Column(Modifier.fillMaxSize().imePadding().padding(horizontal=24.dp)){
-  PageHeader("Birlikte planlayalım",action={TextButton(onClick=onManual){Text("Elle ekle")}})
+  PageHeader("Birlikte planlayalım",onBack=onBack,action={TextButton(onClick=onManual){Text("Elle ekle")}})
   Text(if(settings.sharePlans)"Mesajların ve önümüzdeki 14 günün plan özetleri yanıt için Google Gemini'ye gönderilir."else"Yazdıkların yanıt için Google Gemini'ye gönderilir. Mevcut planların paylaşımı kapalı.",style=MaterialTheme.typography.bodySmall,color=SubtleText)
   val list=rememberLazyListState();LaunchedEffect(s.messages.size,s.loading){if(s.messages.isNotEmpty())list.animateScrollToItem(s.messages.lastIndex)}
   LazyColumn(state=list,modifier=Modifier.weight(1f),contentPadding=PaddingValues(vertical=20.dp),verticalArrangement=Arrangement.spacedBy(22.dp)){

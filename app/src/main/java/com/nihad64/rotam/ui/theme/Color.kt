@@ -6,6 +6,7 @@ val PrimaryVariant=Color(0xFFE3D9C9)
 val Accent=Color(0xFFFF803F)
 val Background=Color(0xFF101214)
 val Surface=Color(0xFF24272B)
+val HeroSurface=Color(0xFF3D3029)
 val SurfaceVariant=Color(0xFF2D3034)
 val Outline=Color(0xFF373B40)
 val OnBackground=Primary

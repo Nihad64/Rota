@@ -94,16 +94,6 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         authMessage?.let { Text(it, color=OnSurface, style=MaterialTheme.typography.bodyMedium) }
         if(!vm.accountConfigured) Text("Hesap hizmeti bu geliştirme derlemesinde henüz yapılandırılmadı.",color=SubtleText)
 
-        RotamCard(Modifier.fillMaxWidth()) {
-            Text("İsmin (selamlama için)", style = MaterialTheme.typography.bodyMedium, color = OnSurface)
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RotamField(name, { name = it }, "Örn. Nihad", Modifier.weight(1f))
-                Spacer(Modifier.width(8.dp))
-                TextButton(onClick = { vm.setName(name) }, enabled = name != s.userName) { Text("Kaydet", color = Primary) }
-            }
-        }
-
         }
         if(page=="Hatırlatmalar") {
         Section("Bildirimler")
@@ -133,7 +123,7 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         }
 
         Section("Ses · Hareket")
-        SwitchRow(Icons.Outlined.VolumeUp, "UI sesleri", "Kısa mekanik tık sesi.", s.uiSounds, vm::setSounds)
+        SwitchRow(Icons.Outlined.VolumeUp, "Onay sesleri", "Başarılı kayıtta kısa ses; telefonun sessiz modu korunur.", s.uiSounds, vm::setSounds)
         SwitchRow(Icons.Outlined.Vibration, "Titreşim", "Hafif dokunsal geri bildirim.", s.haptics, vm::setHaptics)
 
         SwitchRow(Icons.Outlined.Animation,"Animasyonlar","Kısa ekran ve grafik geçişleri.",s.animations,vm::setAnimations)

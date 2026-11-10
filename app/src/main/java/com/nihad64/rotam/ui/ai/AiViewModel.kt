@@ -19,7 +19,7 @@ class AiViewModel(private val c:AppContainer):ViewModel(){
   _state.update{it.copy(messages=it.messages+ChatMessage(id++,true,text.trim()),input="",loading=true,applyError=null)}
   viewModelScope.launch{try{val cfg=c.settings.current();val ctx=if(cfg.sharePlans)c.planRepo.range(LocalDate.now().minusDays(1),LocalDate.now().plusDays(14)).take(150)else emptyList()
    val history=state.value.messages.filter{!it.isError}.map{it.isUser to it.text}
-   val r=c.gemini.ask(if(planningDate==null)history else listOf(true to "Takvimde seçili planlama tarihi: $planningDate. Kullanıcı başka tarih belirtirse onu esas al.")+history,ctx);_state.update{it.copy(messages=it.messages+ChatMessage(id++,false,r.text,r.suggestions))}
+   val r=c.gemini.ask(history,ctx,planningDate);_state.update{it.copy(messages=it.messages+ChatMessage(id++,false,r.text,r.suggestions))}
   }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){_state.update{it.copy(input=if(it.input.isBlank())text else it.input,messages=it.messages+ChatMessage(id++,false,if(e is GeminiException)e.message.orEmpty()else"Bağlantı kurulamadı. İnternetini kontrol edip yeniden dene.",isError=true))}}finally{_state.update{it.copy(loading=false)}}}
  }
  fun retry(){if(state.value.loading||state.value.messages.lastOrNull()?.isError!=true)return

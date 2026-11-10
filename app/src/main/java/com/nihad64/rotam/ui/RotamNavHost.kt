@@ -1,5 +1,7 @@
 package com.nihad64.rotam.ui
 import androidx.compose.foundation.*
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
@@ -42,6 +44,18 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
 @Composable private fun RotamContent(){
  val c=RotamApp.container;val ready by c.ready.collectAsStateWithLifecycle();val error by c.startupError.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
  if(!ready){Box(Modifier.fillMaxSize().background(Background).safeDrawingPadding().padding(28.dp),contentAlignment=Alignment.Center){if(error==null)CircularProgressIndicator()else Column(verticalArrangement=Arrangement.spacedBy(20.dp)){Text(error!!);PrimaryButton("Yeniden dene",{scope.launch{runCatching{c.initialize()}}})}};return}
+ var welcome by remember{mutableStateOf<Boolean?>(null)}
+ var privacy by remember{mutableStateOf(false)}
+ LaunchedEffect(Unit){welcome=!c.settings.current().welcomeCompleted&&c.account.account.value==null&&c.db.planDao().all().isEmpty()}
+ if(welcome==null){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()};return}
+ if(welcome==true){
+  Box(Modifier.fillMaxSize().background(Background).safeDrawingPadding()){
+   com.nihad64.rotam.ui.welcome.WelcomeScreen(viewModel{SettingsViewModel(c)},onContinue={scope.launch{c.settings.completeWelcome();welcome=false}},onPrivacy={privacy=true})
+  }
+  if(privacy)AlertDialog(onDismissRequest={privacy=false},title={Text("Verilerin senin kontrolünde")},text={Text("Planların cihazında saklanır. Rotam AI’ya gönderdiğin mesajlar yanıt üretmek için Google Gemini tarafından işlenir. Mevcut planlarını paylaşmak ayrıca senin tercihine bağlıdır. Bulut senkronizasyonu bu sürümde henüz etkin değildir.")},confirmButton={TextButton(onClick={privacy=false}){Text("Anladım")}})
+  return
+ }
+ val motion=rememberMotionEnabled()
  val nav=rememberNavController();val entry by nav.currentBackStackEntryAsState();val route=entry?.destination?.route
  var aiOpen by remember{mutableStateOf(false)};var draftDate by remember{mutableStateOf<LocalDate?>(null)};val ai:AiViewModel=viewModel{AiViewModel(c)}
  val snackbar=remember{SnackbarHostState()};val showBar=route in tabs.map{it.route}
@@ -52,15 +66,20 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
  LaunchedEffect(Unit){val id=(context as? android.app.Activity)?.intent?.getLongExtra("planId",-1)?:-1;if(id>0)nav.navigate("edit/$id")else if((context as? android.app.Activity)?.intent?.getBooleanExtra("newPlan",false)==true)nav.navigate("new?date=&copy=-1")}
  LaunchedEffect(Unit){for(n in c.notices){val result=snackbar.showSnackbar(n.text,if(n.undo!=null)"Geri al"else null,duration=SnackbarDuration.Long);if(result==SnackbarResult.ActionPerformed)runCatching{n.undo?.invoke()}}}
  fun manual(date:LocalDate?=null){nav.navigate("new?date=${date?:""}&copy=-1")}
- fun new(date:LocalDate?=null){draftDate=date;aiOpen=true}
+ fun new(date:LocalDate?=null){nav.navigate("plan?date=${date?:""}")}
  Scaffold(containerColor=Background,contentWindowInsets=WindowInsets.safeDrawing,
   snackbarHost={SnackbarHost(snackbar,modifier=Modifier.padding(bottom=if(planEditor)160.dp else 0.dp))},bottomBar={if(showBar)Row(Modifier.fillMaxWidth().background(Background).navigationBarsPadding().padding(vertical=10.dp)){
    tabs.forEach{t->val selected=t.route==route;Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable{nav.navigate(t.route){popUpTo(nav.graph.findStartDestination().id){saveState=true};launchSingleTop=true;restoreState=true}}.padding(vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(t.icon,t.label,tint=if(selected)Accent else SubtleText,modifier=Modifier.size(25.dp));Text(t.label,style=MaterialTheme.typography.labelSmall,color=if(selected)Primary else SubtleText,modifier=Modifier.padding(top=5.dp));Spacer(Modifier.height(7.dp));Box(Modifier.size(4.dp).clip(CircleShape).background(if(selected)Accent else Background))}}
   }}){padding->
-  NavHost(nav,startDestination="home",modifier=Modifier.padding(padding).consumeWindowInsets(padding),enterTransition={androidx.compose.animation.EnterTransition.None},exitTransition={androidx.compose.animation.ExitTransition.None}){
+  NavHost(nav,startDestination="home",modifier=Modifier.padding(padding).consumeWindowInsets(padding),enterTransition={fadeIn(tween(if(motion)RotamMotion.Navigate else 0))+slideInHorizontally(tween(if(motion)RotamMotion.Navigate else 0)){it/14}},exitTransition={fadeOut(tween(if(motion)RotamMotion.Exit else 0))},popEnterTransition={fadeIn(tween(if(motion)RotamMotion.Replace else 0))},popExitTransition={fadeOut(tween(if(motion)RotamMotion.Exit else 0))+slideOutHorizontally(tween(if(motion)RotamMotion.Exit else 0)){it/14}}){
    composable("home"){HomeScreen(viewModel{HomeViewModel(c)},{new()},{nav.navigate("edit/$it")},{nav.navigate("focus/$it")},{nav.navigate("search")},{nav.navigate("stats")},{nav.navigate("settings")})}
    composable("calendar"){val vm:CalendarViewModel=viewModel{CalendarViewModel(c)};CalendarScreen(vm,{new(vm.state.value.selected)},{nav.navigate("edit/$it")},onProgress={nav.navigate("stats")})}
    composable("routines"){com.nihad64.rotam.ui.routines.RoutinesScreen(c,onNew={new()},onEdit={nav.navigate("edit/$it")},onGoals={nav.navigate("goals")})}
+   composable("plan?date={date}",arguments=listOf(navArgument("date"){defaultValue=""})){e->
+    val d=e.arguments?.getString("date")?.let{runCatching{LocalDate.parse(it)}.getOrNull()}
+    LaunchedEffect(d){ai.setPlanningDate(d)}
+    AiScreen(ai,onManual={nav.popBackStack();manual(d)},onBack={nav.popBackStack()})
+   }
    composable("goals"){GoalsScreen(viewModel{GoalsViewModel(c)},onBack={nav.navigate("home")})}
    composable("settings"){SettingsScreen(viewModel{SettingsViewModel(c)},onStats={nav.navigate("stats")},onSearch={nav.navigate("search")})}
    composable("stats"){StatsScreen(viewModel{StatsViewModel(c)},onBack={nav.popBackStack()})}
