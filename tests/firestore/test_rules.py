@@ -1,7 +1,7 @@
 """Real Firestore rules tests; synthetic identities/data only, against a demo emulator.
 
 Run via firebase emulators:exec --project demo-rotam-sync --config
- tests/firestore/firebase.json --only firestore 'python3 tests/firestore/test_rules.py'.
+ firebase.test.json --only firestore 'python3 tests/firestore/test_rules.py'.
 No production credentials, SDK dependencies, or personal plans are used.
 """
 import base64

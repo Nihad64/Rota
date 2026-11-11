@@ -131,4 +131,4 @@ jobs:
           path: ~/.cache/firebase/emulators
           key: firestore-emulator-1.22.0
       - name: Test owner isolation and snapshot validation with synthetic demo data
-        run: npx --yes firebase-tools@15.35.0 emulators:exec --only firestore --project demo-rotam-sync --config tests/firestore/firebase.json 'python3 tests/firestore/test_rules.py'
+        run: npx --yes firebase-tools@15.35.0 emulators:exec --only firestore --project demo-rotam-sync --config firebase.test.json 'python3 tests/firestore/test_rules.py'
