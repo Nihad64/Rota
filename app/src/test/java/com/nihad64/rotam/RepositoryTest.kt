@@ -36,6 +36,16 @@ class RepositoryTest {
   assertEquals("Yeni başlık",repo.byId(p.id)!!.title)
   assertNull(reopened.active.value)
  }
+ @Test fun editingRetainsNewFocusLedgerAndRejectsConcurrentNoteChanges()=runBlocking {
+  val original=repo.create(Plan(title="Oku",date="2026-11-11",extraData="{\"note\":\"Eski not\"}")).single()
+  repo.recordFocusSegment(original.id,"measured",java.time.Instant.parse("2026-11-11T12:00:00Z").toEpochMilli(),60,60)
+  repo.edit(original,original.copy(title="Yeni başlık"),EditScope.THIS)
+  val measured=repo.byId(original.id)!!
+  assertEquals(60,measured.focusSeconds);assertEquals(1,com.nihad64.rotam.domain.usecase.FocusLedger.segments(measured).size)
+  val changed=measured.copy(extraData=org.json.JSONObject(measured.extraData).put("note","Başka cihazın notu").toString());repo.update(changed)
+  try{repo.edit(measured,measured.copy(title="Eski ekran"),EditScope.THIS);fail("Stale editor must not overwrite a newer note")}catch(_:IllegalStateException){}
+  assertEquals(changed,repo.byId(original.id))
+ }
  @Test fun deletingGoalClearsLinksInOccurrencesAndFutureTemplates()=runBlocking {
   val goals=GoalRepository(db)
   val goal=Goal(title="Kitap",period="weekly",targetCount=3,dueDate="2026-11-09")

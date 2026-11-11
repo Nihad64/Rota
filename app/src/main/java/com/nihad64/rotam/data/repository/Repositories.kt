@@ -21,8 +21,12 @@ class PlanRepository(private val db:AppDatabase){
  suspend fun pendingBetween(f:LocalDate,t:LocalDate)=dao.pendingBetween(f.toString(),t.toString())
  suspend fun update(p:Plan){require(PlanTime.validate(p)==null){PlanTime.validate(p).orEmpty()};dao.update(p)}
  suspend fun setFocusSeconds(id:Long,seconds:Long)=dao.setFocusSeconds(id,seconds)
+ suspend fun recordFocusSegment(id:Long,uid:String,startedAt:Long,seconds:Long,total:Long)=db.withTransaction{
+  val current=dao.byId(id)?:return@withTransaction
+  dao.update(FocusLedger.record(current,uid,startedAt,seconds,total))
+ }
  suspend fun restore(p:Plan)=dao.update(p)
- suspend fun delete(p:Plan)=dao.update(p.copy(isDeleted=true))
+ suspend fun delete(p:Plan)=dao.update(RoutineState.deliberateDeletion(p))
  suspend fun clear()=db.withTransaction{dao.clear();db.seriesDao().clear()}
  suspend fun create(p:Plan):List<Plan> = lock.withLock{db.withTransaction{
   require(PlanTime.validate(p)==null){PlanTime.validate(p).orEmpty()}
@@ -38,12 +42,28 @@ class PlanRepository(private val db:AppDatabase){
  suspend fun ensure(f:LocalDate,t:LocalDate)=lock.withLock{db.withTransaction{db.seriesDao().all().forEach{generate(it,f,t)}}}
  private suspend fun generate(s:PlanSeries,f:LocalDate,t:LocalDate){
   val p=PlanOutcome.fresh(PlanJson.decode(JSONObject(s.template))).copy(repeatUntil=s.untilDate)
+  if(RoutineState.paused(p))return
   val days=Recurrence.dates(p,LocalDate.parse(s.anchor),f,t)
   dao.insertAll(days.map{d->val key="${s.id}:$d";PlanTime.moved(p,d).copy(id=0,uid=RecordIdentity.occurrence(s.uid,d.toString()),seriesId=s.id,occurrenceKey=key,originalDate=d.toString(),isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)})
  }
+ suspend fun setRoutinePaused(id:Long,paused:Boolean,date:LocalDate=LocalDate.now())=lock.withLock{db.withTransaction{
+  val series=db.seriesDao().byId(id)?:error("Rutin bulunamadı.")
+  val template=PlanJson.decode(JSONObject(series.template))
+  if(RoutineState.paused(template)==paused)return@withTransaction
+  db.seriesDao().update(series.copy(template=PlanJson.encode(RoutineState.change(template,paused,date)).toString()))
+  val instances=dao.bySeries(id)
+  if(paused){
+   instances.filter{!it.isDeleted&&!it.isCompleted&&!it.isSkipped&&PlanOutcome.status(it)!=PlanOutcome.Status.PARTIAL&&it.date>=date.toString()}
+    .forEach{dao.update(RoutineState.suspendOccurrence(it))}
+  }else{
+   instances.filter{it.isDeleted&&RoutineState.suspended(it)&&it.date>=date.toString()}.forEach{dao.update(RoutineState.resumeOccurrence(it))}
+   generate(db.seriesDao().byId(id)!!,date,date.plusDays(400))
+  }
+ }}
  suspend fun edit(old:Plan,proposed:Plan,scope:EditScope)=lock.withLock{db.withTransaction{
   val current=dao.byId(old.id) ?: error("Plan bulunamadı.")
-  val p=proposed.copy(focusSeconds=current.focusSeconds)
+  check(current.copy(focusSeconds=old.focusSeconds,extraData=FocusLedger.withoutLedger(current.extraData))==old.copy(extraData=FocusLedger.withoutLedger(old.extraData))){"Plan öneriden sonra değişmiş. Güncel bilgileri kontrol edip yeniden dene."}
+  val p=FocusLedger.retainLedger(proposed,current)
   require(PlanTime.validate(p)==null){PlanTime.validate(p).orEmpty()}
   if(scope!=EditScope.THIS&&p.repeatUntil!=null)require(p.repeatUntil>=p.date){"Tekrar bitişi yeni ilk günden önce olamaz."}
   val s=if(old.seriesId==0L)null else db.seriesDao().byId(old.seriesId)

@@ -44,7 +44,7 @@ class FocusTracker(context:Context,private val repo:PlanRepository,private val n
   if(p.isDeleted||p.isCompleted||p.isSkipped)return@withLock
   if(session.getLong("id",0)!=id)check(session.edit().clear().putLong("id",id).putInt("boot",boot).commit())
   else check(session.edit().putLong("break",breakSeconds(id)).remove("break_since").remove("summary_id").commit())
-  check(prefs.edit().putLong("id",id).putLong("base",p.focusSeconds).putLong("since",now()).putInt("boot",boot).commit())
+  check(prefs.edit().putLong("id",id).putLong("base",p.focusSeconds).putLong("since",now()).putLong("started_at",System.currentTimeMillis()).putString("segment_uid",java.util.UUID.randomUUID().toString()).putInt("boot",boot).commit())
   mutable.value=id
  }
  suspend fun pauseIf(id:Long)=lock.withLock{if(mutable.value==id)pauseLocked()}
@@ -52,7 +52,11 @@ class FocusTracker(context:Context,private val repo:PlanRepository,private val n
  private suspend fun pauseLocked() {
   val id=mutable.value?:return
   val p=repo.byId(id)
-  if(p!=null)repo.setFocusSeconds(id,seconds(id,p.focusSeconds))
+  if(p!=null){
+   val duration=elapsed(prefs.getLong("since",now()))
+   val uid=prefs.getString("segment_uid",null)?:"legacy-focus:$boot:${prefs.getLong("since",0)}:${p.uid}"
+   repo.recordFocusSegment(id,uid,prefs.getLong("started_at",System.currentTimeMillis()-duration*1000),duration,seconds(id,p.focusSeconds))
+  }
   val measured=sessionSeconds(id)
   check(session.edit().putLong("id",id).putLong("focus",measured).putLong("break_since",now()).putInt("boot",boot).commit())
   check(prefs.edit().clear().commit());mutable.value=null

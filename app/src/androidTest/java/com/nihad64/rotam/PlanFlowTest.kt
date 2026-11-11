@@ -130,7 +130,7 @@ class PlanFlowTest {
         ui.onNodeWithContentDescription("Takvim").performClick()
         ui.onNodeWithText("İlerlemem").performClick()
         ui.waitUntil(10000){ui.onAllNodesWithText("İlerlemeni gör, ritmini koru.").fetchSemanticsNodes().isNotEmpty()}
-        ui.onNodeWithText("Son 30 gün").performClick()
+        ui.onNodeWithText("Ay").performClick()
         shot("08-statistics")
     }
 }

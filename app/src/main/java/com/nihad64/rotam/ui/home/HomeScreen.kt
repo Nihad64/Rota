@@ -23,7 +23,7 @@ import com.nihad64.rotam.ui.TrFormat
 import com.nihad64.rotam.ui.components.*
 import com.nihad64.rotam.ui.theme.*
 import java.util.Locale
-@Composable fun HomeScreen(vm:HomeViewModel,onNewPlan:()->Unit,onEdit:(Long)->Unit,onFocus:(Long)->Unit,onSearch:()->Unit,onStats:()->Unit,onSettings:()->Unit){
+@Composable fun HomeScreen(vm:HomeViewModel,onNewPlan:()->Unit,onEdit:(Long)->Unit,onFocus:(Long)->Unit,onSearch:()->Unit,onStats:()->Unit,onSettings:()->Unit,onPostpone:(Long)->Unit={onEdit(it)}){
  val s by vm.state.collectAsStateWithLifecycle();val hero=s.hero
  LazyColumn(Modifier.fillMaxSize().testTag("home-list"),contentPadding=PaddingValues(start=24.dp,end=24.dp,top=18.dp,bottom=88.dp),verticalArrangement=Arrangement.spacedBy(24.dp)){
   item{Row(verticalAlignment=Alignment.CenterVertically){Icon(painterResource(R.drawable.rotam_mark_vector),"Rotam",Modifier.width(30.dp).height(34.dp),tint=Color.Unspecified);Text("rotam",fontSize=25.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(start=8.dp).weight(1f));IconButton(onClick=onSearch){Icon(Icons.Outlined.Search,"Planlarda ara",tint=SubtleText)}}}
@@ -40,13 +40,14 @@ import java.util.Locale
     }
    }
   }
-  item{if(hero!=null)HeroPlan(hero,s.label(hero),{onEdit(hero.id)},{onFocus(hero.id)})else Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp,bottomStart=32.dp,bottomEnd=70.dp)).background(Brush.linearGradient(listOf(HeroSurface,Surface))).padding(26.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
+  item{Column{if(hero!=null)HeroPlan(hero,s.label(hero),{onEdit(hero.id)},{onFocus(hero.id)})else Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp,bottomStart=32.dp,bottomEnd=70.dp)).background(Brush.linearGradient(listOf(HeroSurface,Surface))).padding(26.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
    Row(verticalAlignment=Alignment.CenterVertically){Diamond();Spacer(Modifier.width(10.dp));Text("BİRLİKTE PLANLAYALIM",color=SubtleText,style=MaterialTheme.typography.labelMedium)}
    Text(if(s.total>0)"Yeni bir şeye yer aç." else "İlk planını birlikte oluşturalım.",color=Primary,style=MaterialTheme.typography.headlineMedium)
    Text("Yaz veya söyle. Eklenmeden önce sen onayla.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)
    PrimaryButton("Plan ekle",onNewPlan,icon=Icons.Outlined.ArrowForward)
+  }
+  PendingPlanDeck(s.missed,vm,onPostpone,24.dp)
   }}
-  if(s.missed.isNotEmpty())item{PendingPlanDeck(s.missed,vm)}
   item{SectionTitle("Günün akışı",trailing={TextButton(onClick=onNewPlan){Icon(Icons.Outlined.AddCircleOutline,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("Plan ekle",color=SubtleText)}})}
   val timed=s.todayPlans.filter{it.startTime!=null||it.endTime!=null}
   items(timed,key={it.uid}){p->PlanCard(p,{vm.toggle(p)},{onEdit(p.id)})}
