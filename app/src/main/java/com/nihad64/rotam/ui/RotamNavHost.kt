@@ -85,7 +85,7 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
    composable("goals"){GoalsScreen(viewModel{GoalsViewModel(c)},onBack={nav.navigate("home")})}
    composable("settings"){SettingsScreen(viewModel{SettingsViewModel(c)},onStats={nav.navigate("stats")},onSearch={nav.navigate("search")})}
    composable("stats"){StatsScreen(viewModel{StatsViewModel(c)},onBack={nav.popBackStack()},onPlan={nav.navigate("detail/$it")})}
-   composable("search"){SearchScreen(c,{nav.popBackStack()},{nav.navigate("detail/$it")})}
+   composable("search"){SearchScreen(c,{nav.popBackStack()},{nav.navigate("detail/$it")},onAsk={question->ai.setEditingPlan(null);ai.setPlanningDate(null);ai.setInput(question);nav.navigate("plan?date=");ai.send(question)})}
    composable("new?date={date}&copy={copy}",arguments=listOf(navArgument("date"){defaultValue=""},navArgument("copy"){type=NavType.LongType;defaultValue=-1L})){e->val d=e.arguments?.getString("date")?.let{runCatching{LocalDate.parse(it)}.getOrNull()};val id=e.arguments?.getLong("copy")?.takeIf{it>0};NewPlanScreen(viewModel{NewPlanViewModel(c,d,copyId=id)},{nav.popBackStack()},aiAction={SmallAiButton{aiOpen=true}})}
    composable("edit/{id}",arguments=listOf(navArgument("id"){type=NavType.LongType})){e->NewPlanScreen(viewModel{NewPlanViewModel(c,editId=e.arguments!!.getLong("id"))},{nav.popBackStack()},{id->nav.navigate("new?date=&copy=$id")},aiAction={SmallAiButton{aiOpen=true}})}
    composable("detail/{id}",arguments=listOf(navArgument("id"){type=NavType.LongType})){e->

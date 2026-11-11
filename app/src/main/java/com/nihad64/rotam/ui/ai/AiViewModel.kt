@@ -2,6 +2,7 @@ package com.nihad64.rotam.ui.ai
 import androidx.lifecycle.*
 import com.nihad64.rotam.AppContainer
 import com.nihad64.rotam.data.model.EditScope
+import com.nihad64.rotam.domain.search.PlanSearch
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -20,9 +21,11 @@ class AiViewModel(private val c:AppContainer):ViewModel(){
  fun setInput(v:String){_state.update{it.copy(input=v.take(5000))}}
  fun send(text:String=state.value.input){if(text.isBlank()||state.value.loading)return
   _state.update{it.copy(messages=it.messages+ChatMessage(id++,true,text.trim()),input="",loading=true,applyError=null)}
-  viewModelScope.launch{try{val cfg=c.settings.current();val ctx=if(editingPlanId!=null)listOfNotNull(c.planRepo.byId(editingPlanId!!)?.takeUnless{it.isDeleted})else if(cfg.sharePlans)c.planRepo.range(LocalDate.now().minusDays(1),LocalDate.now().plusDays(14)).take(150)else emptyList()
+  viewModelScope.launch{try{val cfg=c.settings.current()
+   val date=if(cfg.aiContextVersion>=2)PlanSearch.period(text)else null
+   val ctx=if(editingPlanId!=null)listOfNotNull(c.planRepo.byId(editingPlanId!!)?.takeUnless{it.isDeleted})else if(cfg.sharePlans)c.planRepo.range(date?.from?:LocalDate.now().minusDays(1),date?.to?:LocalDate.now().plusDays(14)).take(150)else emptyList()
    val history=state.value.messages.filter{!it.isError}.map{it.isUser to it.text}
-   val local=if(text.contains("kaç",ignoreCase=true))LocalPlanQuestion.answer(text,c.planRepo.observeAll().first())else null
+   val local=if(PlanSearch.localQuestion(text))PlanSearch.search(text,c.planRepo.observeAll().first()).answer else null
    val r=if(local!=null)AiReply(local,emptyList())else c.gemini.ask(history,ctx,planningDate);_state.update{it.copy(messages=it.messages+ChatMessage(id++,false,r.text,r.suggestions))}
   }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){_state.update{it.copy(input=if(it.input.isBlank())text else it.input,messages=it.messages+ChatMessage(id++,false,if(e is GeminiException)e.message.orEmpty()else"Bağlantı kurulamadı. İnternetini kontrol edip yeniden dene.",isError=true))}}finally{_state.update{it.copy(loading=false)}}}
  }

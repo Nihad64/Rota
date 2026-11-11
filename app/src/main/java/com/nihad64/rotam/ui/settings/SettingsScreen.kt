@@ -52,6 +52,7 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
     val account by vm.account.collectAsStateWithLifecycle()
     val cloud by vm.cloudStatus.collectAsStateWithLifecycle()
     var confirmCloud by remember { mutableStateOf(false) }
+    var confirmAi by remember { mutableStateOf(false) }
     val authBusy by vm.authBusy.collectAsStateWithLifecycle()
     val authMessage by vm.authMessage.collectAsStateWithLifecycle()
     var quietTarget by remember { mutableStateOf<String?>(null) }
@@ -156,8 +157,9 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         if(page=="Rotam AI" || page=="Gizlilik") {
         Section("Rotam AI")
         Text("Rotam AI için API anahtarı gerekmez. Google hesabınla güvenli hizmete bağlanır. Öneriler yalnız onayından sonra kaydedilir.", color=SubtleText)
-        SwitchRow(Icons.Outlined.PrivacyTip,"Planları AI ile paylaş","İzin verirsen son 1 gün ve gelecek 14 gün içindeki en fazla 150 planın özeti AI hizmetine gönderilir. Yazdığın mesajlar her istekte gönderilir.",s.sharePlans,vm::setSharePlans)
+        SwitchRow(Icons.Outlined.PrivacyTip,"Planları AI ile paylaş","İzin verirsen sorundaki tarih aralığından en fazla 150 planın başlık, kategori ve tarih/saat özeti AI hizmetine gönderilir. Yazdığın mesajlar her istekte gönderilir.",s.sharePlans,{if(it)confirmAi=true else vm.setSharePlans(false)})
         }
+        if((page=="Rotam AI"||page=="Gizlilik")&&s.sharePlans&&s.aiContextVersion<2)TextButton(onClick={confirmAi=true}){Text("Geçmiş kayıtlar için paylaşımı gözden geçir")}
         if(page=="Verilerim") {
         ActionRow(Icons.Outlined.Search,"Planlarında ara","Başlık, not ve geçmiş planlar.","Ara",onClick=onSearch)
         CloudSyncSection(cloud,account?.email,onEnable={confirmCloud=true},onDisable=vm::disableSync,onSync=vm::syncNow,onResolve=vm::resolveSync)
@@ -179,6 +181,7 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         }
     }
 
+    if(confirmAi) AlertDialog(onDismissRequest={confirmAi=false},title={Text("Planları AI ile paylaş")},text={Text("Soruna göre geçmişten veya gelecekten seçilen en fazla 150 planın başlığı, kategorisi, tarih/saatleri ve tamamlanma bilgisi Google Gemini'ye gönderilir. Tüm arşiv her istekte gönderilmez. İstediğin zaman bu paylaşımı kapatabilirsin. Yerel arama ve sayım için bu izin gerekmez.")},confirmButton={TextButton(onClick={confirmAi=false;vm.setSharePlans(true)}){Text("Paylaşımı aç")}},dismissButton={TextButton(onClick={confirmAi=false}){Text("Vazgeç")}})
     if(confirmCloud) AlertDialog(onDismissRequest={confirmCloud=false},title={Text("Planlarını hesabına bağla?")},text={Text("Planların, notların, hedeflerin, rutinlerin ve odak sürelerin ${account?.email ?: "Google hesabın"} hesabına bağlı olarak Frankfurt'taki bulut veritabanında saklanır. Aynı hesapla diğer cihazlarında eşitlenir. Mevcut kayıtlar karşılaştırılarak birleştirilir; çakışan değişikliklerde seçim istenir. Ses ve bildirim tercihlerin bu cihazda kalır. İstediğin zaman eşitlemeyi durdurabilirsin.")},confirmButton={TextButton(onClick={confirmCloud=false;vm.enableSync()}){Text("Bağla ve eşitle")}},dismissButton={TextButton(onClick={confirmCloud=false}){Text("Şimdi değil")}})
     if(quietTarget!=null) TimeChooser(if(quietTarget=="start")clock(s.quietStart) else clock(s.quietEnd),"Sessiz saat",{quietTarget=null}) { value->
         value?.let{val m=LocalTime.parse(it).toSecondOfDay()/60;if(quietTarget=="start")vm.setQuietTimes(m,s.quietEnd) else vm.setQuietTimes(s.quietStart,m)}
