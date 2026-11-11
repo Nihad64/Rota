@@ -16,3 +16,5 @@ The skill's generic website landing-page result was rejected as inapplicable to 
 - Real data only. Unknown past outcomes are never auto-failures.
 
 Verification: compare real rendered screens to supplied references, inspect small and large text, reduced motion, small/large phones, and actual Google/AI paths. Passing compiler tests does not prove live integration.
+
+Later user correction: the R mark itself is pure white #FFFFFF; retain the orange diamond and original silhouette. Body typography remains warm ivory. Android uses traced native vector assets from the approved mask; iOS brand exports use identical paths.

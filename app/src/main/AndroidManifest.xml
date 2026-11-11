@@ -41,5 +41,13 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today_info"/>
         </receiver>
+        <receiver android:name=".widget.SmallTodayWidget" android:exported="false" android:label="Rotam · Sıradaki plan">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_small_info"/>
+        </receiver>
+        <receiver android:name=".widget.LargeTodayWidget" android:exported="false" android:label="Rotam · Günün rotası">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_large_info"/>
+        </receiver>
     </application>
 </manifest>

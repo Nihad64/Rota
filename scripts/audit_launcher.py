@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import zipfile
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -79,8 +80,18 @@ def audit(apk, aapt):
             for path in files(reference):
                 if path.endswith('.xml'):
                     bitmap = node(path)
-                    assert bitmap['tag'] == 'bitmap', f'Unexpected drawable: {path}'
-                    approved(bitmap['attrs'].get('src'), name)
+                    if bitmap['tag']=='vector' and name=='rotam_launcher_art.png':
+                        source=ET.parse(ROOT/'app/src/main/res/drawable/ic_launcher_foreground.xml').getroot()
+                        ns='{http://schemas.android.com/apk/res/android}'
+                        expected_paths=[p for p in source if p.tag=='path']
+                        actual_paths=[p for p in bitmap['children'] if p['tag']=='path']
+                        assert len(expected_paths)==len(actual_paths)==2, 'R and diamond paths required'
+                        for expected_path,actual_path,color in zip(expected_paths,actual_paths,['0xffffffff','0xffff803f']):
+                            assert actual_path['attrs'].get('pathData')==expected_path.get(ns+'pathData'), 'Stale native logo silhouette'
+                            assert actual_path['attrs'].get('fillColor','').endswith(color), 'Wrong native logo color'
+                    else:
+                        assert bitmap['tag'] == 'bitmap', f'Unexpected drawable: {path}'
+                        approved(bitmap['attrs'].get('src'), name)
                 else:
                     actual = hashlib.sha256(archive.read(path)).hexdigest()
                     assert actual == expected[name], f'Stale artwork: {path}'

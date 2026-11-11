@@ -1,16 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="20dp" android:background="@drawable/widget_background">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
-        <ImageView android:layout_width="28dp" android:layout_height="32dp" android:src="@drawable/rotam_mark" android:contentDescription="Rotam"/>
-        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Bugün" android:textColor="#F3EEE4" android:textSize="18sp" android:paddingStart="12dp" android:paddingEnd="0dp"/>
-        <TextView android:id="@+id/widget_progress" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#A2A6AD" android:textSize="12sp"/>
-    </LinearLayout>
-    <LinearLayout android:id="@+id/widget_body" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical" android:gravity="center_vertical" android:paddingTop="12dp" android:paddingBottom="8dp">
-        <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="22sp" android:textColor="#F3EEE4" android:maxLines="2" android:ellipsize="end"/>
-        <TextView android:id="@+id/widget_time" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="4dp" android:textSize="13sp" android:textColor="#A2A6AD"/>
-    </LinearLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="end">
-        <TextView android:id="@+id/widget_done" android:layout_width="wrap_content" android:layout_height="match_parent" android:paddingHorizontal="12dp" android:gravity="center" android:text="Tamamla" android:textColor="#F3EEE4" android:textSize="14sp"/>
-        <TextView android:id="@+id/widget_add" android:layout_width="wrap_content" android:layout_height="match_parent" android:paddingHorizontal="12dp" android:gravity="center" android:text="Plan ekle" android:textColor="#FF803F" android:textSize="14sp"/>
-    </LinearLayout>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="@drawable/widget_background">
+<LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical">
+<ImageView android:layout_width="24dp" android:layout_height="28dp" android:src="@drawable/rotam_mark_vector" android:contentDescription="Rotam"/>
+<TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:paddingStart="8dp" android:paddingEnd="0dp" android:text="Bugün" android:textColor="#FFFFFF" android:textSize="16sp"/>
+<TextView android:id="@+id/widget_add" android:layout_width="48dp" android:layout_height="48dp" android:gravity="center" android:text="+" android:textSize="28sp" android:textColor="#FF803F" android:contentDescription="AI ile plan ekle"/>
+</LinearLayout>
+<TextView android:id="@+id/widget_progress" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#A2A6AD" android:textSize="12sp"/>
+<ProgressBar android:id="@+id/widget_bar" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="4dp" android:layout_marginTop="6dp" android:progressTint="#FF803F" android:progressBackgroundTint="#373B40"/>
+<FrameLayout android:id="@+id/widget_body" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="10dp"><TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="18sp" android:textColor="#FFFFFF" android:maxLines="2" android:ellipsize="end"/>
+<TextView android:id="@+id/widget_time" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="4dp" android:textSize="12sp" android:textColor="#A2A6AD"/>
+<LinearLayout android:id="@+id/widget_rows" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/></LinearLayout></FrameLayout>
+<TextView android:id="@+id/widget_done" android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:text="Tamamla" android:textColor="#FF803F" android:textSize="14sp"/>
+<TextView android:id="@+id/widget_awaiting" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="36dp" android:gravity="center_vertical" android:textColor="#FFB18A" android:textSize="12sp"/>
 </LinearLayout>

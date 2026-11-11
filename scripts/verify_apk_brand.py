@@ -13,4 +13,4 @@ with zipfile.ZipFile(apk) as archive:
     for name in archive.namelist():
         if name.endswith('.dex'):
             assert b'AIzaSy' not in archive.read(name), 'Possible Google secret found in DEX; review before shipping'
-print('APK contains exact approved launcher assets; no Gemini key signature found in DEX.')
+print('Approved raster reference assets preserved; audit_launcher.py verifies the active native foreground. No Gemini key signature found in DEX.')

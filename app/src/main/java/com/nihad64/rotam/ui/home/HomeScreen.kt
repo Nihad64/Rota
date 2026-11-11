@@ -26,7 +26,7 @@ import java.util.Locale
 @Composable fun HomeScreen(vm:HomeViewModel,onNewPlan:()->Unit,onEdit:(Long)->Unit,onFocus:(Long)->Unit,onSearch:()->Unit,onStats:()->Unit,onSettings:()->Unit){
  val s by vm.state.collectAsStateWithLifecycle();val hero=s.hero
  LazyColumn(Modifier.fillMaxSize().testTag("home-list"),contentPadding=PaddingValues(start=24.dp,end=24.dp,top=18.dp,bottom=88.dp),verticalArrangement=Arrangement.spacedBy(24.dp)){
-  item{Row(verticalAlignment=Alignment.CenterVertically){Icon(painterResource(R.drawable.rotam_mark),"Rotam",Modifier.width(30.dp).height(34.dp),tint=Color.Unspecified);Text("rotam",fontSize=25.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(start=8.dp).weight(1f));IconButton(onClick=onSearch){Icon(Icons.Outlined.Search,"Planlarda ara",tint=SubtleText)}}}
+  item{Row(verticalAlignment=Alignment.CenterVertically){Icon(painterResource(R.drawable.rotam_mark_vector),"Rotam",Modifier.width(30.dp).height(34.dp),tint=Color.Unspecified);Text("rotam",fontSize=25.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(start=8.dp).weight(1f));IconButton(onClick=onSearch){Icon(Icons.Outlined.Search,"Planlarda ara",tint=SubtleText)}}}
   item {
    Column(verticalArrangement=Arrangement.spacedBy(10.dp)) {
     Text("${TrFormat.dayName(s.today)}, ${TrFormat.dayMonth(s.today)}".uppercase(Locale.forLanguageTag("tr")),color=SubtleText,letterSpacing=2.sp,style=MaterialTheme.typography.labelMedium)
@@ -68,4 +68,4 @@ import java.util.Locale
  }
 }
 
-@Composable fun RotamLogo(size:Dp=40.dp) { Icon(painterResource(R.drawable.rotam_mark),"Rotam",Modifier.size(size),tint=Color.Unspecified) }
+@Composable fun RotamLogo(size:Dp=40.dp) { Icon(painterResource(R.drawable.rotam_mark_vector),"Rotam",Modifier.size(size),tint=Color.Unspecified) }
