@@ -6,6 +6,7 @@ import com.nihad64.rotam.data.model.CategoryCount
 import com.nihad64.rotam.data.model.Goal
 import com.nihad64.rotam.data.model.Plan
 import com.nihad64.rotam.data.model.PlanSeries
+import com.nihad64.rotam.data.model.UserMemory
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -70,8 +71,17 @@ interface GoalDao {
  @Update suspend fun update(s:PlanSeries)
  @Query("DELETE FROM series") suspend fun clear()
 }
-@Database(entities = [Plan::class, Goal::class, PlanSeries::class], version = 3, exportSchema = true)
+@Dao interface MemoryDao {
+ @Query("SELECT * FROM memories ORDER BY updatedAt DESC") fun observeAll():Flow<List<UserMemory>>
+ @Query("SELECT * FROM memories") suspend fun all():List<UserMemory>
+ @Query("SELECT * FROM memories WHERE uid=:uid") suspend fun byUid(uid:String):UserMemory?
+ @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun save(memory:UserMemory)
+ @Query("DELETE FROM memories") suspend fun clear()
+ @Query("DELETE FROM memories WHERE cloudApproved=1 AND (:owner IS NULL OR ownerUid=:owner)") suspend fun clearCloudApproved(owner:String?)
+}
+@Database(entities = [Plan::class, Goal::class, PlanSeries::class,UserMemory::class], version = 4, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun memoryDao():MemoryDao
     abstract fun seriesDao():SeriesDao
     abstract fun planDao(): PlanDao
     abstract fun goalDao(): GoalDao
@@ -80,7 +90,7 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile private var instance: AppDatabase? = null
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "rotam.db")
-                .addMigrations(Migrations.V1_2,Migrations.V2_3)
+                .addMigrations(Migrations.V1_2,Migrations.V2_3,Migrations.V3_4)
                 .build().also { instance = it }
         }
     }

@@ -24,4 +24,9 @@ val V2_3=object:Migration(2,3){override fun migrate(db:SupportSQLiteDatabase){
  db.execSQL("CREATE UNIQUE INDEX index_series_uid ON series(uid)")
  db.execSQL("UPDATE plans SET uid='series:'||(SELECT uid FROM series WHERE series.id=plans.seriesId)||':'||COALESCE(originalDate,date) WHERE seriesId!=0 AND EXISTS(SELECT 1 FROM series WHERE series.id=plans.seriesId)")
 }}
+val V3_4=object:Migration(3,4){override fun migrate(db:SupportSQLiteDatabase){
+ db.execSQL("CREATE TABLE IF NOT EXISTS memories(uid TEXT NOT NULL,ownerUid TEXT NOT NULL,text TEXT NOT NULL,createdAt INTEGER NOT NULL,updatedAt INTEGER NOT NULL,isDeleted INTEGER NOT NULL,cloudApproved INTEGER NOT NULL,PRIMARY KEY(uid))")
+ db.execSQL("CREATE INDEX index_memories_ownerUid ON memories(ownerUid)")
+}}
+
 }

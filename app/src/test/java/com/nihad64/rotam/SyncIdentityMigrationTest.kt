@@ -44,7 +44,7 @@ class SyncIdentityMigrationTest {
    override fun onUpgrade(db:SupportSQLiteDatabase,oldVersion:Int,newVersion:Int)=error("Fixture upgrade not expected")
   }).build())
   helper.writableDatabase;helper.close()
-  val db=Room.databaseBuilder(ctx,AppDatabase::class.java,name).addMigrations(Migrations.V2_3).allowMainThreadQueries().build()
+  val db=Room.databaseBuilder(ctx,AppDatabase::class.java,name).addMigrations(Migrations.V2_3,Migrations.V3_4).allowMainThreadQueries().build()
   try {
    val plan=db.planDao().byId(41)!!;val series=db.seriesDao().byId(4)!!;val goal=db.goalDao().byId(7)!!
    assertEquals(original.title,plan.title);assertEquals(original.extraData,plan.extraData);assertEquals(120,plan.focusSeconds)

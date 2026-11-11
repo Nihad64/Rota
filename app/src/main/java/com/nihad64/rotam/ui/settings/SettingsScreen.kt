@@ -12,12 +12,16 @@ import android.os.Build
 import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import com.nihad64.rotam.data.sync.*
 import org.json.JSONObject
+import com.nihad64.rotam.ui.memory.MemoryDialog
+import com.nihad64.rotam.data.model.UserMemory
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -43,6 +47,7 @@ import com.nihad64.rotam.ui.theme.*
 @Composable
 fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit) {
     var page by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(page){vm.message.value=null}
     BackHandler(page!=null){page=null}
     val s by vm.settings.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
@@ -53,6 +58,9 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
     val cloud by vm.cloudStatus.collectAsStateWithLifecycle()
     var confirmCloud by remember { mutableStateOf(false) }
     var confirmAi by remember { mutableStateOf(false) }
+    val memories by vm.memories.collectAsStateWithLifecycle()
+    val memoryDraft by vm.memoryDraft.collectAsStateWithLifecycle()
+    var deletingMemory by remember{mutableStateOf<UserMemory?>(null)}
     val authBusy by vm.authBusy.collectAsStateWithLifecycle()
     val authMessage by vm.authMessage.collectAsStateWithLifecycle()
     var quietTarget by remember { mutableStateOf<String?>(null) }
@@ -160,12 +168,32 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         SwitchRow(Icons.Outlined.PrivacyTip,"Planları AI ile paylaş","İzin verirsen sorundaki tarih aralığından en fazla 150 planın başlık, kategori ve tarih/saat özeti AI hizmetine gönderilir. Yazdığın mesajlar her istekte gönderilir.",s.sharePlans,{if(it)confirmAi=true else vm.setSharePlans(false)})
         }
         if((page=="Rotam AI"||page=="Gizlilik")&&s.sharePlans&&s.aiContextVersion<2)TextButton(onClick={confirmAi=true}){Text("Geçmiş kayıtlar için paylaşımı gözden geçir")}
+        if(page=="Gizlilik") {
+            Section("Hatırlanan bilgiler")
+            Text("Yalnız eklediğin veya onayladığın bilgiler kullanılır. Bir günlük istisnalar kendiliğinden kalıcı hafızaya dönüşmez.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)
+            SwitchRow(Icons.Outlined.AutoAwesome,"Hafızayı yanıtlarda kullan","Açıkken bu hesaba ait onaylı bilgiler AI isteğine eklenir. Kapatınca kayıtlar saklanır, AI'ya gönderilmez.",s.useMemory,vm::setUseMemory)
+            if(account==null)Text("Hesabına ait hafızayı görmek için Google ile giriş yap.",color=SubtleText)
+            else {
+                Text("${memories.size} / 50 bilgi",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+                if(memories.isEmpty())Text("Henüz hatırlanan bilgi yok.",style=MaterialTheme.typography.bodyLarge)
+                memories.forEach { memory->
+                    Column(Modifier.fillMaxWidth().padding(vertical=10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Text(memory.text,style=MaterialTheme.typography.bodyLarge)
+                        Text(if(memory.cloudApproved)"Eşitleme için onaylı"else"Bu cihazda saklanıyor",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+                        Row {TextButton(onClick={vm.editMemory(memory)},enabled=!busy){Text("Düzenle")};TextButton(onClick={deletingMemory=memory},enabled=!busy){Text("Unut",color=Danger)}}
+                        HorizontalDivider(color=Outline)
+                    }
+                }
+                OutlinedButton(onClick={vm.editMemory()},enabled=!busy&&memories.size<50,modifier=Modifier.fillMaxWidth()){Icon(Icons.Outlined.Add,null);Spacer(Modifier.width(8.dp));Text("Hatırlanacak bilgi ekle")}
+            }
+        }
+        if(page=="Gizlilik"&&memoryDraft==null)message?.let{Text(it,color=Danger)}
         if(page=="Verilerim") {
         ActionRow(Icons.Outlined.Search,"Planlarında ara","Başlık, not ve geçmiş planlar.","Ara",onClick=onSearch)
         CloudSyncSection(cloud,account?.email,onEnable={confirmCloud=true},onDisable=vm::disableSync,onSync=vm::syncNow,onResolve=vm::resolveSync)
         if(account==null) OutlinedButton(onClick={page="Hesabım"}){Text("Google hesabını bağla")}
         Section("Yedekleme")
-        Text("Planlar, hedefler, tekrar kuralları ve odak süreleri korunur. API anahtarı yedeğe eklenmez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+        Text("Planlar, hedefler, rutinler, odak süreleri ve onaylı hafıza korunur. API anahtarı yedeğe eklenmez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
         PrimaryButton("Yedeği dışa aktar",{export.launch("Rotam-${java.time.LocalDate.now()}.json")},Modifier.fillMaxWidth(),enabled=!busy)
         OutlinedButton(onClick={import.launch(arrayOf("application/json","text/plain","application/octet-stream"))},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Yedekten geri yükle")}
         TextButton(onClick={vm.previewRecovery()},enabled=!busy){Text("Son işlemden önceki kayıtlara dön")}
@@ -181,12 +209,14 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         }
     }
 
+    memoryDraft?.let{draft->MemoryDialog(draft.before?.text.orEmpty(),previous=draft.before?.text,initialCloud=draft.before?.cloudApproved?:vm.syncActive(),canCloud=vm.canCloudMemory(),syncActive=vm.syncActive(),busy=busy,error=message,onDismiss=vm::dismissMemory,onSave=vm::saveMemory)}
+    deletingMemory?.let{memory->AlertDialog(onDismissRequest={deletingMemory=null},title={Text("Bu bilgiyi unutsun mu?")},text={Text(memory.text+"\n\nAI bu bilgiyi artık kullanmayacak. Eşitleme açıksa diğer cihazlarına da silinmiş olarak aktarılacak.")},confirmButton={TextButton(onClick={deletingMemory=null;vm.deleteMemory(memory.uid)}){Text("Unut",color=Danger)}},dismissButton={TextButton(onClick={deletingMemory=null}){Text("Vazgeç")}})}
     if(confirmAi) AlertDialog(onDismissRequest={confirmAi=false},title={Text("Planları AI ile paylaş")},text={Text("Soruna göre geçmişten veya gelecekten seçilen en fazla 150 planın başlığı, kategorisi, tarih/saatleri ve tamamlanma bilgisi Google Gemini'ye gönderilir. Tüm arşiv her istekte gönderilmez. İstediğin zaman bu paylaşımı kapatabilirsin. Yerel arama ve sayım için bu izin gerekmez.")},confirmButton={TextButton(onClick={confirmAi=false;vm.setSharePlans(true)}){Text("Paylaşımı aç")}},dismissButton={TextButton(onClick={confirmAi=false}){Text("Vazgeç")}})
-    if(confirmCloud) AlertDialog(onDismissRequest={confirmCloud=false},title={Text("Planlarını hesabına bağla?")},text={Text("Planların, notların, hedeflerin, rutinlerin ve odak sürelerin ${account?.email ?: "Google hesabın"} hesabına bağlı olarak Frankfurt'taki bulut veritabanında saklanır. Aynı hesapla diğer cihazlarında eşitlenir. Mevcut kayıtlar karşılaştırılarak birleştirilir; çakışan değişikliklerde seçim istenir. Ses ve bildirim tercihlerin bu cihazda kalır. İstediğin zaman eşitlemeyi durdurabilirsin.")},confirmButton={TextButton(onClick={confirmCloud=false;vm.enableSync()}){Text("Bağla ve eşitle")}},dismissButton={TextButton(onClick={confirmCloud=false}){Text("Şimdi değil")}})
+    if(confirmCloud) AlertDialog(onDismissRequest={confirmCloud=false},title={Text("Planlarını hesabına bağla?")},text={Text("Planların, notların, hedeflerin, rutinlerin, odak sürelerin ve ayrıca eşitlemeyi onayladığın hafıza bilgileri ${account?.email ?: "Google hesabın"} hesabına bağlı olarak Frankfurt'taki bulut veritabanında saklanır. Aynı hesapla diğer cihazlarında eşitlenir. Mevcut kayıtlar karşılaştırılarak birleştirilir; çakışan değişikliklerde seçim istenir. Ses ve bildirim tercihlerin bu cihazda kalır. İstediğin zaman eşitlemeyi durdurabilirsin.")},confirmButton={TextButton(onClick={confirmCloud=false;vm.enableSync()}){Text("Bağla ve eşitle")}},dismissButton={TextButton(onClick={confirmCloud=false}){Text("Şimdi değil")}})
     if(quietTarget!=null) TimeChooser(if(quietTarget=="start")clock(s.quietStart) else clock(s.quietEnd),"Sessiz saat",{quietTarget=null}) { value->
         value?.let{val m=LocalTime.parse(it).toSecondOfDay()/60;if(quietTarget=="start")vm.setQuietTimes(m,s.quietEnd) else vm.setQuietTimes(s.quietStart,m)}
     }
-    pending?.let { data-> AlertDialog(onDismissRequest={vm.dismissPreview()},title={Text("Yedeği geri yükle?")},text={Text("${data.visiblePlans} plan, ${data.goals.size} hedef ve ${data.series.size} tekrar kuralı bulundu. Mevcut kayıtlar bu yedekle değiştirilecek. İşlemden önce geri dönüş yedeği alınır.")},confirmButton={TextButton(onClick={vm.restore()},enabled=!busy){Text("Geri yükle")}},dismissButton={TextButton(onClick={vm.dismissPreview()},enabled=!busy){Text("Vazgeç")}}) }
+    pending?.let { data-> AlertDialog(onDismissRequest={vm.dismissPreview()},title={Text("Yedeği geri yükle?")},text={Text("${data.visiblePlans} plan, ${data.goals.size} hedef ve ${data.series.size} tekrar kuralı ve ${data.memories.count{!it.isDeleted}} hafıza bilgisi bulundu. Mevcut kayıtlar bu yedekle değiştirilecek. İşlemden önce geri dönüş yedeği alınır.")},confirmButton={TextButton(onClick={vm.restore()},enabled=!busy){Text("Geri yükle")}},dismissButton={TextButton(onClick={vm.dismissPreview()},enabled=!busy){Text("Vazgeç")}}) }
 
 }
 
@@ -196,15 +226,15 @@ private fun Section(text: String) =
 
 @Composable
 private fun SwitchRow(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    RotamCard(Modifier.fillMaxWidth(), onClick = { onChange(!checked) }) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    RotamCard(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().toggleable(value=checked,role=Role.Switch,onValueChange=onChange),verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = Primary)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, color = OnBackground)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = SubtleText)
             }
-            Switch(checked, onChange, colors = SwitchDefaults.colors(checkedTrackColor = Primary, checkedThumbColor = OnBackground,
+            Switch(checked, null, colors = SwitchDefaults.colors(checkedTrackColor = Primary, checkedThumbColor = OnBackground,
                 uncheckedTrackColor = SurfaceVariant, uncheckedBorderColor = Outline))
         }
     }
@@ -277,7 +307,7 @@ private fun CloudSyncSection(status:CloudStatus,email:String?,onEnable:()->Unit,
             fun label(record:CloudRecord?):String {
                 if(record==null)return "Silinmiş kayıt"
                 val json=JSONObject(record.body)
-                val name=if(conflict.key.kind==RecordKind.SERIES)json.getJSONObject("template").optString("title")else json.optString("title")
+                val name=when(conflict.key.kind){RecordKind.SERIES->json.getJSONObject("template").optString("title");RecordKind.MEMORY->json.optString("text").ifBlank{"Silinmiş hafıza"};else->json.optString("title")}
                 val date=json.optString("date","")
                 val outcome=if(json.optBoolean("isDeleted"))" · Silindi" else if(json.optBoolean("isCompleted"))" · Tamamlandı" else ""
                 return name+(if(date.isNotBlank())" · $date" else "")+outcome

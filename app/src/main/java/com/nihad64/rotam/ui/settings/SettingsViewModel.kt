@@ -16,6 +16,25 @@ class SettingsViewModel(private val c:AppContainer, private val authenticate:sus
     fun disableSync()=c.sync.disable()
     fun syncNow()=c.sync.request()
     fun resolveSync(useLocal:Boolean)=c.sync.resolve(useLocal)
+    data class MemoryDraft(val before:com.nihad64.rotam.data.model.UserMemory?=null)
+    val memoryDraft=MutableStateFlow<MemoryDraft?>(null)
+    val memories=combine(c.memory.observeAll(),c.account.account){all,account->all.filter{it.ownerUid==account?.uid&&!it.isDeleted}}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),emptyList())
+    fun editMemory(before:com.nihad64.rotam.data.model.UserMemory?=null){message.value=null;memoryDraft.value=MemoryDraft(before)}
+    fun dismissMemory(){if(!busy.value)memoryDraft.value=null}
+    fun canCloudMemory()=c.sync.canApproveMemoryForCurrentAccount()
+    fun syncActive()=c.sync.enabledForCurrentAccount()
+    fun saveMemory(text:String,cloud:Boolean)=run {
+        val uid=c.account.account.value?.uid?:error("Önce Google hesabınla giriş yap.")
+        check(!cloud||canCloudMemory()){"Eşitleme başka bir hesaba bağlı."}
+        val before=memoryDraft.value?.before
+        c.memory.save(uid,text,cloud,before?.uid,before)
+        memoryDraft.value=null;c.notices.send(com.nihad64.rotam.Notice("Hafızaya kaydedildi"))
+    }
+    fun deleteMemory(uid:String)=run {
+        val owner=c.account.account.value?.uid?:error("Önce Google hesabınla giriş yap.")
+        c.memory.remove(owner,uid);c.notices.send(com.nihad64.rotam.Notice("Bu bilgi hafızadan silindi"))
+    }
+    fun setUseMemory(value:Boolean)=run{c.settings.setUseMemory(value)}
     val account=c.account.account
     val accountConfigured=c.account.configured
     val authMessage=MutableStateFlow<String?>(null)
@@ -85,6 +104,6 @@ class SettingsViewModel(private val c:AppContainer, private val authenticate:sus
     private fun run(action:suspend ()->Unit) {
         if(busy.value)return
         busy.value=true;message.value=null
-        viewModelScope.launch { try{action()}catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){message.value=if(e is IllegalStateException)e.message else "İşlem tamamlanamadı. Bilgilerin korunuyor; yeniden deneyebilirsin."}finally{busy.value=false} }
+        viewModelScope.launch { try{action()}catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){message.value=if(e is IllegalStateException||e is IllegalArgumentException)e.message else "İşlem tamamlanamadı. Bilgilerin korunuyor; yeniden deneyebilirsin."}finally{busy.value=false} }
     }
 }

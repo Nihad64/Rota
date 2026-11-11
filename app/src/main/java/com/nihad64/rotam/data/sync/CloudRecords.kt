@@ -7,7 +7,7 @@ import org.json.JSONObject
 import java.security.MessageDigest
 
 /** Local autoincrement ids never cross the device boundary. */
-enum class RecordKind { PLAN, GOAL, SERIES }
+enum class RecordKind { PLAN, GOAL, SERIES, MEMORY }
 data class RecordKey(val kind:RecordKind,val uid:String)
 data class CloudRecord(val key:RecordKey,val body:String) {
  init {require(key.uid.isNotBlank()&&key.uid.length<=512);require(body.toByteArray().size<=256*1024)}
@@ -26,6 +26,7 @@ object CloudRecords {
   data.goals.forEach{g->add(RecordKind.GOAL,g.uid,JSONObject().put("uid",g.uid).put("title",g.title).put("period",g.period).put("targetCount",g.targetCount).put("currentCount",g.currentCount).put("category",g.category).put("dueDate",g.dueDate).put("isCompleted",g.isCompleted))}
   data.series.forEach{s->add(RecordKind.SERIES,s.uid,JSONObject().put("uid",s.uid).put("anchor",s.anchor).put("untilDate",s.untilDate).put("template",portable(PlanJson.decode(JSONObject(s.template))))) }
   data.plans.forEach{p->add(RecordKind.PLAN,p.uid,portable(p))}
+  data.memories.filter{it.cloudApproved}.forEach{m->add(RecordKind.MEMORY,m.uid,com.nihad64.rotam.data.backup.BackupCodec.memoryJson(m).apply{remove("cloudApproved")})}
   require(all.map{it.key}.distinct().size==all.size){"Yinelenen bulut kimliği"}
   return all.associateBy{it.key}
  }
@@ -52,7 +53,8 @@ object CloudRecords {
   val series=seriesJson.map{s->PlanSeries(seriesIds.getValue(s.getString("uid")),PlanJson.encode(local(s.getJSONObject("template"),0)).toString(),s.getString("anchor"),s.nullString("untilDate"),s.getString("uid"))}
   val plans=planJson.map{local(it,planIds.getValue(it.getString("uid")))}
   // Use the same validation contract as portable backups before touching Room.
-  val data=BackupData(plans,goals,series)
+  val memories=objects(RecordKind.MEMORY).map{com.nihad64.rotam.data.backup.BackupCodec.memoryFromJson(it.put("cloudApproved",true))}
+  val data=BackupData(plans,goals,series,memories)
   return com.nihad64.rotam.data.backup.BackupCodec.decode(com.nihad64.rotam.data.backup.BackupCodec.encode(data))
  }
  private fun canonical(value:Any?):String=when(value){

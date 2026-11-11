@@ -47,12 +47,17 @@ class CloudTransportTest {
    try {
     val bases=List(2){Baseline()}
     val endpoints=List(2){i->FirestoreSyncEndpoint(uid,"synthetic-client-$i",cloud[i]){auth[i].currentUser?.uid}}
-    val engines=List(2){i->SyncEngine(RoomSyncStore(context,rooms[i]),bases[i],endpoints[i])}
+    val engines=List(2){i->SyncEngine(RoomSyncStore(context,rooms[i],ownerUid=uid),bases[i],endpoints[i])}
     val original=Plan(id=41,uid="shared-${UUID.randomUUID()}",title="Sentetik okuma",date="2026-11-11",extraData="{\"note\":\"Sentetik not\"}")
+    val memoryRepo=com.nihad64.rotam.data.repository.MemoryRepository(rooms[0])
+    val memory=memoryRepo.save(uid,"Sentetik ulaşım tercihi",true)
+    val localMemory=memoryRepo.save(uid,"Yalnız ilk cihazdaki sentetik bilgi",false)
     rooms[0].planDao().insert(original)
     assertTrue(engines[0].synchronize() is SyncResult.Complete)
     assertTrue(engines[1].synchronize() is SyncResult.Complete)
     val restored=rooms[1].planDao().byUid(original.uid)!!
+    assertEquals(memory.text,rooms[1].memoryDao().byUid(memory.uid)!!.text)
+    assertNull(rooms[1].memoryDao().byUid(localMemory.uid))
     assertNotEquals(original.id,restored.id);assertEquals(original.extraData,restored.extraData)
     // Device A advances while device B is offline and edits the same plan.
     rooms[0].planDao().update(original.copy(title="Cihaz A"));engines[0].synchronize()
@@ -79,6 +84,10 @@ class CloudTransportTest {
     rooms[0].planDao().update(rooms[0].planDao().byUid(original.uid)!!.copy(isDeleted=true))
     engines[0].synchronize();engines[1].synchronize()
     assertTrue(rooms[1].planDao().byUid(original.uid)!!.isDeleted)
+    memoryRepo.remove(uid,memory.uid);engines[0].synchronize();engines[1].synchronize()
+    assertEquals("",rooms[1].memoryDao().byUid(memory.uid)!!.text)
+    assertTrue(rooms[1].memoryDao().byUid(memory.uid)!!.isDeleted)
+    assertEquals(localMemory,rooms[0].memoryDao().byUid(localMemory.uid))
    } finally {
     rooms.forEach{it.close()}
     cloud.forEach{it.terminate().await()}

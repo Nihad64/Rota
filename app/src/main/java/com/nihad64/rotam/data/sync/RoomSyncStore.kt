@@ -8,13 +8,13 @@ import com.nihad64.rotam.data.db.AppDatabase
 import org.json.JSONObject
 import java.io.File
 
-class RoomSyncStore(private val context:Context,private val db:AppDatabase,private val allowed:()->Boolean={true}):SyncLocalStore {
- private suspend fun data()=BackupData(db.planDao().all(),db.goalDao().all(),db.seriesDao().all())
+class RoomSyncStore(private val context:Context,private val db:AppDatabase,private val ownerUid:String?=null,private val allowed:()->Boolean={true}):SyncLocalStore {
+ private suspend fun data(allMemory:Boolean=false)=BackupData(db.planDao().all(),db.goalDao().all(),db.seriesDao().all(),db.memoryDao().all().filter{allMemory||(it.cloudApproved&&(ownerUid==null||it.ownerUid==ownerUid))})
  override suspend fun records()=db.withTransaction{check(allowed());CloudRecords.encode(data())}
  override suspend fun applyIfUnchanged(expected:Map<RecordKey,CloudRecord>,incoming:Map<RecordKey,CloudRecord>):Boolean {
   check(allowed())
   if(incoming==expected)return db.withTransaction{check(allowed());CloudRecords.encode(data())==expected}
-  val previous=db.withTransaction{data()}
+  val previous=db.withTransaction{data(allMemory=true)}
   val decoded=CloudRecords.decode(incoming,previous)
   // A recoverable copy is written before changing the database. It is never uploaded.
   val file=AtomicFile(File(context.noBackupFilesDir,"before-cloud-sync.json"))
@@ -23,10 +23,15 @@ class RoomSyncStore(private val context:Context,private val db:AppDatabase,priva
   return db.withTransaction {
    check(allowed())
    if(CloudRecords.encode(data())!=expected)return@withTransaction false
-   db.planDao().clear();db.seriesDao().clear();db.goalDao().clear()
+   for(m in decoded.memories){
+    val old=db.memoryDao().byUid(m.uid)
+    check(old==null||(old.ownerUid==m.ownerUid&&(old.cloudApproved||old==m))){"Cihazda özel tutulan hafıza kaydı korunuyor. Önce Gizlilik bölümündeki paylaşımını kontrol et."}
+   }
+   db.planDao().clear();db.seriesDao().clear();db.goalDao().clear();db.memoryDao().clearCloudApproved(ownerUid)
    decoded.goals.forEach{db.goalDao().insert(it)}
    decoded.series.forEach{db.seriesDao().insert(it)}
    check(db.planDao().insertAll(decoded.plans).all{it>0}){"Bir kayıt eklenemedi; işlem geri alındı."}
+   decoded.memories.forEach{db.memoryDao().save(it)}
    true
   }
  }

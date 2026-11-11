@@ -61,7 +61,7 @@ class SyncCoordinator(private val c:AppContainer) {
       }
      try {
       launch {
-       combine(c.db.planDao().observeSyncRecords(),c.db.goalDao().observeAll(),c.db.seriesDao().observeAll()){_,_,_->Unit}
+       combine(c.db.planDao().observeSyncRecords(),c.db.goalDao().observeAll(),c.db.seriesDao().observeAll(),c.db.memoryDao().observeAll()){_,_,_,_->Unit}
         .collect { request() }
       }
       requests.trySend(Unit)
@@ -74,6 +74,8 @@ class SyncCoordinator(private val c:AppContainer) {
    }
   }
  }
+ fun canApproveMemoryForCurrentAccount():Boolean {val uid=c.account.account.value?.uid?:return false;val bound=prefs.getString("bound_uid",null);return bound==null||bound==uid}
+ fun enabledForCurrentAccount():Boolean=c.account.account.value?.uid?.let{allowed(it)}==true
  fun enable():String? {
   val uid=c.account.account.value?.uid?:return "Önce Google hesabınla giriş yap."
   val bound=prefs.getString("bound_uid",null)
@@ -96,7 +98,7 @@ class SyncCoordinator(private val c:AppContainer) {
  private fun getSession(uid:String):Session {
   session?.takeIf{it.uid==uid}?.let{return it}
   val writer=prefs.getString("writer",null)?:UUID.randomUUID().toString().also{check(prefs.edit().putString("writer",it).commit())}
-  val store=RoomSyncStore(c.app,c.db){allowed(uid)}
+  val store=RoomSyncStore(c.app,c.db,ownerUid=uid){allowed(uid)}
   return Session(uid,SyncEngine(store,FileSyncBaseline(c.app,uid),FirestoreSyncEndpoint(uid,writer))).also{session=it}
  }
  suspend fun synchronize():Boolean=lock.withLock {

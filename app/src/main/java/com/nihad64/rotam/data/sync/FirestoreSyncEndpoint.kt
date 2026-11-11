@@ -22,11 +22,11 @@ class FirestoreSyncEndpoint(private val uid:String,private val writer:String,pri
   check(revision>0)
   val records=SyncEnvelopeCodec.decode(doc.getBlob("payload")?.toBytes()?:error("Bulut verisi eksik"))
   // Validate all types and relationships before the caller may import anything.
-  CloudRecords.decode(records)
+  check(CloudRecords.decode(records).memories.all{it.ownerUid==uid}){"Hafıza kaydı farklı bir hesaba ait; eşitleme durduruldu."}
   return SyncEnvelope(revision,records)
  }
  override suspend fun write(expectedRevision:Long,records:Map<RecordKey,CloudRecord>):Long {
-  checkAccount();CloudRecords.decode(records)
+  checkAccount();check(CloudRecords.decode(records).memories.all{it.ownerUid==uid}){"Hafıza kaydı farklı bir hesaba ait; eşitleme durduruldu."}
   val payload=SyncEnvelopeCodec.encode(records)
   val revision=firestore.runTransaction{tx->
    checkAccount()

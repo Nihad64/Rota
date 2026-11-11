@@ -7,11 +7,11 @@ import java.time.LocalTime
 private val Context.dataStore by preferencesDataStore(name="rotam_settings")
 data class Settings(val userName:String="",val remindersEnabled:Boolean=true,val reminderMinutes:Int=15,
  val quietEnabled:Boolean=true,val quietStart:Int=1380,val quietEnd:Int=480,val uiSounds:Boolean=false,val haptics:Boolean=true,
- val theme:String="dark",val geminiKey:String="",val animations:Boolean=true,val sharePlans:Boolean=false,val geminiModel:String="gemini-3.5-flash-lite",val welcomeCompleted:Boolean=false,val aiContextVersion:Int=1)
+ val theme:String="dark",val geminiKey:String="",val animations:Boolean=true,val sharePlans:Boolean=false,val geminiModel:String="gemini-3.5-flash-lite",val welcomeCompleted:Boolean=false,val aiContextVersion:Int=1,val useMemory:Boolean=true)
 class SettingsStore(private val context:Context){
  private val vault=KeyVault(context)
  private fun s(k:String)=stringPreferencesKey(k);private fun b(k:String)=booleanPreferencesKey(k);private fun i(k:String)=intPreferencesKey(k)
- val settings:Flow<Settings> = context.dataStore.data.map{p->Settings(p[s("user_name")]?:"",p[b("reminders")]?:true,p[i("reminder_minutes")]?:15,p[b("quiet")]?:true,p[i("quiet_start_minutes")]?:1380,p[i("quiet_end_minutes")]?:480,p[b("ui_sounds")]?:false,p[b("haptics")]?:true,"dark",vault.read(),p[b("animations")]?:true,p[b("share_plans")]?:false,p[s("gemini_model")]?:"gemini-3.5-flash-lite",p[b("welcome_completed")]?:false,p[i("ai_context_version")]?:1)}
+ val settings:Flow<Settings> = context.dataStore.data.map{p->Settings(p[s("user_name")]?:"",p[b("reminders")]?:true,p[i("reminder_minutes")]?:15,p[b("quiet")]?:true,p[i("quiet_start_minutes")]?:1380,p[i("quiet_end_minutes")]?:480,p[b("ui_sounds")]?:false,p[b("haptics")]?:true,"dark",vault.read(),p[b("animations")]?:true,p[b("share_plans")]?:false,p[s("gemini_model")]?:"gemini-3.5-flash-lite",p[b("welcome_completed")]?:false,p[i("ai_context_version")]?:1,p[b("use_memory")]?:true)}
  suspend fun completeWelcome()=context.dataStore.edit{it[b("welcome_completed")]=true}
  suspend fun current()=settings.first()
  suspend fun setName(v:String)=context.dataStore.edit{it[s("user_name")]=v.trim().take(50)}
@@ -23,6 +23,7 @@ class SettingsStore(private val context:Context){
  suspend fun setHaptics(v:Boolean)=context.dataStore.edit{it[b("haptics")]=v}
  suspend fun setAnimations(v:Boolean)=context.dataStore.edit{it[b("animations")]=v}
  suspend fun setSharePlans(v:Boolean)=context.dataStore.edit{it[b("share_plans")]=v;it[i("ai_context_version")]=if(v)2 else 0}
+ suspend fun setUseMemory(v:Boolean)=context.dataStore.edit{it[b("use_memory")]=v}
  suspend fun setTheme(v:String)=Unit
  suspend fun setGeminiKey(v:String){vault.write(v.trim());context.dataStore.edit{it[longPreferencesKey("key_version")]=System.currentTimeMillis();it.remove(s("gemini_key"))}}
  suspend fun setGeminiModel(v:String){require(v.matches(Regex("[a-zA-Z0-9._-]{1,100}")));context.dataStore.edit{it[s("gemini_model")]=v}}

@@ -12,20 +12,26 @@ import java.io.File
 import java.time.LocalDate
 
 // Credentials and local notification delivery tokens never enter a portable backup.
-data class BackupData(val plans:List<Plan>,val goals:List<Goal>,val series:List<PlanSeries>) {
+data class BackupData(val plans:List<Plan>,val goals:List<Goal>,val series:List<PlanSeries>,val memories:List<UserMemory> = emptyList()) {
     val visiblePlans get()=plans.count{!it.isDeleted}
 }
 object BackupCodec {
-    fun encode(data:BackupData):String=JSONObject().put("format","rotam-backup").put("version",2)
+    fun memoryJson(m:UserMemory)=JSONObject().put("uid",m.uid).put("ownerUid",m.ownerUid).put("text",m.text).put("createdAt",m.createdAt).put("updatedAt",m.updatedAt).put("isDeleted",m.isDeleted).put("cloudApproved",m.cloudApproved)
+    fun memoryFromJson(m:JSONObject)=UserMemory(m.getString("uid"),m.getString("ownerUid"),m.getString("text"),m.getLong("createdAt"),m.getLong("updatedAt"),m.getBoolean("isDeleted"),m.optBoolean("cloudApproved",false))
+    fun encode(data:BackupData):String=JSONObject().put("format","rotam-backup").put("version",3)
         .put("plans",JSONArray(data.plans.map{PlanJson.encode(it)}))
         .put("goals",JSONArray(data.goals.map{g->JSONObject().put("id",g.id).put("uid",g.uid).put("title",g.title).put("period",g.period).put("targetCount",g.targetCount).put("currentCount",g.currentCount).put("category",g.category).put("dueDate",g.dueDate).put("isCompleted",g.isCompleted)}))
+        .put("memories",JSONArray(data.memories.map{memoryJson(it)}))
         .put("series",JSONArray(data.series.map{s->JSONObject().put("id",s.id).put("uid",s.uid).put("template",s.template).put("anchor",s.anchor).put("untilDate",s.untilDate)})).toString(2)
 
     fun decode(raw:String):BackupData {
         val obj=JSONObject(raw)
-        require(obj.getString("format")=="rotam-backup" && obj.getInt("version") in 1..2){"Bu yedek biçimi desteklenmiyor."}
+        require(obj.getString("format")=="rotam-backup" && obj.getInt("version") in 1..3){"Bu yedek biçimi desteklenmiyor."}
         fun array(key:String)=obj.getJSONArray(key).also{require(it.length()<=100000){"Yedek çok büyük."}}
         val pa=array("plans");val ga=array("goals");val sa=array("series")
+        val ma=obj.optJSONArray("memories")?:JSONArray();require(ma.length()<=100000);val memories=(0 until ma.length()).map{memoryFromJson(ma.getJSONObject(it))}
+        require(memories.map{it.uid}.distinct().size==memories.size)
+        memories.forEach{require(it.uid.isNotBlank()&&it.uid.length<=512&&it.ownerUid.isNotBlank()&&it.ownerUid.length<=128);require((it.isDeleted&&it.text.isEmpty())||(!it.isDeleted&&it.text.isNotBlank()&&it.text.length<=500));require(it.createdAt>=0&&it.updatedAt>=0)}
         var plans=(0 until pa.length()).map{PlanJson.decode(pa.getJSONObject(it))}
         val goals=(0 until ga.length()).map { i->val g=ga.getJSONObject(i);Goal(g.getLong("id"),g.getString("title"),g.getString("period"),g.getInt("targetCount"),g.getInt("currentCount"),g.getString("category"),g.getString("dueDate"),g.getBoolean("isCompleted"),g.nullString("uid")?:RecordIdentity.legacyGoal(g.getLong("id"),g.getString("title"),g.getString("dueDate"))) }
         val series=(0 until sa.length()).map { i->val s=sa.getJSONObject(i);PlanSeries(s.getLong("id"),s.getString("template"),s.getString("anchor"),s.nullString("untilDate"),s.nullString("uid")?:RecordIdentity.legacySeries(JSONObject(s.getString("template")).getString("uid"))) }
@@ -45,11 +51,11 @@ object BackupCodec {
             require(p.goalId==null || goals.any{it.id==p.goalId}){"Yedekte bir hedef eksik."}
             if(p.seriesId!=0L){val original=p.originalDate ?: error("Tekrar tarihi eksik");LocalDate.parse(original);require(p.occurrenceKey=="${p.seriesId}:$original")}
         }
-        return BackupData(plans,goals,series)
+        return BackupData(plans,goals,series,memories)
     }
 }
 class BackupStore(private val context:Context,private val db:AppDatabase) {
-    suspend fun export():String=db.withTransaction{BackupCodec.encode(BackupData(db.planDao().all(),db.goalDao().all(),db.seriesDao().all()))}
+    suspend fun export():String=db.withTransaction{BackupCodec.encode(BackupData(db.planDao().all(),db.goalDao().all(),db.seriesDao().all(),db.memoryDao().all()))}
     suspend fun checkpoint():File=withContext(Dispatchers.IO) {
         val raw=export();val file=File(context.noBackupFilesDir,"before-restore-${System.currentTimeMillis()}.json")
         file.writeText(raw);check(file.length()>0);file
@@ -57,10 +63,11 @@ class BackupStore(private val context:Context,private val db:AppDatabase) {
     suspend fun restore(data:BackupData) {
         checkpoint()
         db.withTransaction {
-            db.planDao().clear();db.seriesDao().clear();db.goalDao().clear()
+            db.planDao().clear();db.seriesDao().clear();db.goalDao().clear();db.memoryDao().clear()
             data.goals.forEach{db.goalDao().insert(it)}
             data.series.forEach{db.seriesDao().insert(it)}
             db.planDao().insertAll(data.plans)
+            data.memories.forEach{db.memoryDao().save(it)}
         }
     }
     suspend fun recovery():String=withContext(Dispatchers.IO){

@@ -7,11 +7,15 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-data class ChatMessage(val id:Long,val isUser:Boolean,val text:String,val suggestions:List<PlanSuggestion> = emptyList(),val added:Set<Int> = emptySet(),val isError:Boolean=false)
+data class ChatMessage(val id:Long,val isUser:Boolean,val text:String,val suggestions:List<PlanSuggestion> = emptyList(),val added:Set<Int> = emptySet(),val isError:Boolean=false,val memories:List<MemorySuggestion> = emptyList(),val remembered:Set<Int> = emptySet())
 data class AiState(val messages:List<ChatMessage> = emptyList(),val loading:Boolean=false,val applying:Boolean=false,val input:String="",val applyError:String?=null)
 class AiViewModel(private val c:AppContainer):ViewModel(){
  private val _state=MutableStateFlow(AiState());val state=_state.asStateFlow();private var id=1L
  val settings=c.settings.settings.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),com.nihad64.rotam.data.prefs.Settings())
+ val memories=combine(c.memory.observeAll(),c.account.account){all,account->all.filter{!it.isDeleted&&it.ownerUid==account?.uid}}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),emptyList())
+ val syncStatus=c.sync.status
+ val memoryError=MutableStateFlow<String?>(null)
+ val memoryBusy=MutableStateFlow(false)
  val starters=listOf("Yarın için saatsiz bir okuma planı öner","Bu hafta için çalışma planı hazırlayalım")
  private var editingPlanId:Long?=null
  val editingSelection=MutableStateFlow(false)
@@ -26,7 +30,7 @@ class AiViewModel(private val c:AppContainer):ViewModel(){
    val ctx=if(editingPlanId!=null)listOfNotNull(c.planRepo.byId(editingPlanId!!)?.takeUnless{it.isDeleted})else if(cfg.sharePlans)c.planRepo.range(date?.from?:LocalDate.now().minusDays(1),date?.to?:LocalDate.now().plusDays(14)).take(150)else emptyList()
    val history=state.value.messages.filter{!it.isError}.map{it.isUser to it.text}
    val local=if(PlanSearch.localQuestion(text))PlanSearch.search(text,c.planRepo.observeAll().first()).answer else null
-   val r=if(local!=null)AiReply(local,emptyList())else c.gemini.ask(history,ctx,planningDate);_state.update{it.copy(messages=it.messages+ChatMessage(id++,false,r.text,r.suggestions))}
+   val r=if(local!=null)AiReply(local,emptyList())else c.gemini.ask(history,ctx,planningDate);_state.update{it.copy(messages=it.messages+ChatMessage(id++,false,r.text,r.suggestions,memories=r.memories))}
   }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){_state.update{it.copy(input=if(it.input.isBlank())text else it.input,messages=it.messages+ChatMessage(id++,false,if(e is GeminiException)e.message.orEmpty()else"Bağlantı kurulamadı. İnternetini kontrol edip yeniden dene.",isError=true))}}finally{_state.update{it.copy(loading=false)}}}
  }
  fun retry(){if(state.value.loading||state.value.messages.lastOrNull()?.isError!=true)return
@@ -40,6 +44,21 @@ class AiViewModel(private val c:AppContainer):ViewModel(){
    _state.update{st->st.copy(messages=st.messages.map{if(it.id==mid)it.copy(added=it.added+index)else it})}
   };c.scheduler.rescheduleAll()
   }catch(e:Exception){_state.update{it.copy(applyError=e.message?:"Öneri kaydedilemedi. Kaydedilenler işaretli; kalanları yeniden deneyebilirsin.")}}finally{_state.update{it.copy(applying=false)}}}
+ }
+ fun canCloudMemory()=c.sync.canApproveMemoryForCurrentAccount()
+ fun syncActive()=c.sync.enabledForCurrentAccount()
+ fun remember(mid:Long,index:Int,text:String,cloud:Boolean){
+  if(memoryBusy.value)return
+  val message=state.value.messages.firstOrNull{it.id==mid}?:return
+  val suggestion=message.memories.getOrNull(index)?:return
+  if(index in message.remembered)return
+  memoryBusy.value=true;memoryError.value=null
+  viewModelScope.launch{try{
+   val uid=c.account.account.value?.uid?:error("Önce Google hesabınla giriş yap.")
+   check(!cloud||canCloudMemory()){"Eşitleme başka bir hesaba bağlı."}
+   c.memory.save(uid,text,cloud,suggestion.before?.uid,suggestion.before)
+   _state.update{st->st.copy(messages=st.messages.map{if(it.id==mid)it.copy(remembered=it.remembered+index)else it})}
+  }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){memoryError.value=e.message?:"Hafıza kaydedilemedi. Yeniden dene."}finally{memoryBusy.value=false}}
  }
  fun clear(){if(!state.value.loading&&!state.value.applying)_state.value=AiState()}
 }

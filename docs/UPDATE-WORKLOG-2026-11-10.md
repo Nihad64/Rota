@@ -78,3 +78,15 @@ Bu aşamanın kodu 3.1.0-dev (39) olarak hazırlanır. iOS, onaylı AI hafızas�
 - Eski plan-paylaşım izninin son 1 gün/gelecek 14 gün sınırı sessizce genişletilmez. Yeni ai_context_version tercihi ancak açık onayla 2 olur; bu durumda sorunun tarih aralığından en fazla 150 başlık/kategori/tarih-saat/tamamlanma özeti seçilir. Genel AI veri izni kapatılabilir. Yerel sayım için izin gerekmez.
 - Arama girdisi/filtreler ekran yeniden kurulurken korunur; sonuçlar gecikmeli ve ana UI iş parçacığı dışında hesaplanır. Yeni Android testi tarih sonucu/sayı güncellemesini, karmaşık sorunun paylaşım izni olmadan gönderilmemesini ve vazgeçince metnin korunmasını kontrol edecek.
 - 69 JVM testi, lint, uygulama ve cihaz test APK derlemeleri yerelde geçti. Bu son arama testinin cihaz CI sonucu henüz yok. Kişisel telefonda (40) sürümü korunuyor; görüşme sırasında ekranına müdahale edilmedi.
+
+
+## 11 Kasım — onaylı, hesapla ayrılmış AI hafızası
+
+- 80beddb / GitHub run 43041350525: verify, backend, firestore-rules ve device başarılı. Birleşik arama/izin değişiklikleri Android emülatöründe geçti.
+- AI artık yalnız hatırlama önerisi sunar. Kalıcı kayıt için kullanıcı metni inceler/düzenler ve Onayla ve hatırla der. Bir günlük istisnalar kalıcı bilgi yapılmaz; mevcut kayıt değişiklikleri eski sürüm karşılaştırmasıyla korunur. Modelin metninde hatırladım demesi kayıt oluşturmaz.
+- Her kayıt mevcut Google hesabına aittir; başka hesaba geçildiğinde o hesabın hafızası görünmez ve modele gönderilmez. Gizlilik ekranında ekleme, düzenleme, unutma ve AI yanıtlarında hafıza kullanımını kapatma bulunur. En fazla 50 etkin bilgi / bilgi başına 500 karakter; geçersiz/uzun öneri otomatik kesilip kaydedilmez.
+- Diğer cihazlarım için de eşitle ayrı onaydır. Yalnız cihazda tutulan bilgi bulut snapshot'ına eklenmez; AI kullanımı açıkken Gemini'ye gönderilebileceği ayrıca açıklanır. Unutulan kaydın metni silinir, içeriksiz kimlik işareti çevrimdışı cihazdan kendiliğinden canlanmayı engeller. Özel kayıtlar bulut içe aktarımında korunur.
+- Room v3→v4 yalnız memories tablosunu ekler. Gerçek v3 şema fikstüründe eski not/odak alanları korundu. Yedek biçimi v3, eski v1/v2 yedekler okunur. Sıkıştırılmış eşitleme iç zarfı v2, dış Firestore sözleşmesi v1 kalır; eski uygulama desteklemediği iç biçimi okuyup yazmaya çalışmadan durur. İki cihazın güncel sürüme geçmesi gerekir.
+- 75 JVM testi, lint, uygulama ve Android test APK derlemeleri yerelde geçti. Yeni hafıza onay ekranı ve iki ayrı Firebase SDK istemcisiyle hafıza aktarımı/unutma/özel kayıt koruma testleri CI'da ayrıca çalışacak; henüz geçmiş sayılmaz. Gerçek kullanıcı hafızası oluşturulmadı/yüklenmedi. Kişisel telefonda (40) sürümü korunuyor.
+
+Bu aşama 3.1.0-dev (42). Tercihlerin geri dönüşü, akıllı takip, kalan ekran/erişilebilirlik ve iOS çalışmaları devam ediyor; tam ürün teslimi değildir.
