@@ -29,6 +29,7 @@ class PlanDetailViewModel(private val c:AppContainer,val id:Long):ViewModel() {
  val plan=c.db.planDao().observeSyncRecords().map{all->all.firstOrNull{it.id==id&&!it.isDeleted}}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),null)
  val busy=MutableStateFlow(false);val error=MutableStateFlow<String?>(null);val saved=MutableStateFlow(false)
  fun complete()=perform{old->c.completePlan(old);c.offerUndo(if(old.isCompleted)"Plan yeniden açıldı"else"Plan tamamlandı",old)}
+ fun started(value:Boolean)=perform{old->c.planRepo.setStarted(old.id,old.uid,value);c.scheduler.rescheduleAll()}
  fun delete()=perform{old->c.deletePlan(old);c.offerUndo("Plan silindi",old);saved.value=true}
  fun subtask(task:String,done:Boolean)=perform{old->
   val json=JSONObject(old.extraData);val checked=json.optString("checkedSubtasks").lines().filter{it.isNotBlank()}.toSet()
@@ -85,8 +86,9 @@ class PlanDetailViewModel(private val c:AppContainer,val id:Long):ViewModel() {
    tasks.forEach{task->Row(verticalAlignment=Alignment.CenterVertically){Checkbox(task in checked,{vm.subtask(task,it)},enabled=!busy);Text(task,modifier=Modifier.weight(1f))}}
   }
   json.optString("note").takeIf{it.isNotBlank()}?.let{Text(it,style=MaterialTheme.typography.bodyLarge,color=SubtleText)}
-  DetailRow("Hatırlatmalar",if(plan.reminderEnabled)PlanTime.reminder(plan)?.let{"${it.toLocalDate()} · ${it.toLocalTime()}"}?:"Açık"else"Kapalı",onEdit)
+  DetailRow("Hatırlatmalar",ReminderPolicy.label(plan),onEdit)
   if(plan.focusSeconds>0)Text("Kaydedilen odak · ${plan.focusSeconds/60} dk ${plan.focusSeconds%60} sn",color=SubtleText)
+  if(!plan.isCompleted&&!plan.isSkipped)TextButton(onClick={vm.started(!ReminderPolicy.started(plan))},enabled=!busy){Text(if(ReminderPolicy.started(plan))"Başlandı · geri al"else"Başladım · hatırlatmaları durdur")}
   if(!plan.isCompleted&&!plan.isSkipped)OutlinedButton(onClick=onFocus,modifier=Modifier.fillMaxWidth().heightIn(min=54.dp)){Icon(Icons.Outlined.PlayArrow,null);Spacer(Modifier.width(8.dp));Text("Odaklan")}
   OutlinedButton(onClick={share=true},modifier=Modifier.fillMaxWidth().heightIn(min=54.dp)){Icon(Icons.Outlined.AutoAwesome,null,tint=Accent);Spacer(Modifier.width(8.dp));Text("AI ile değişiklik öner")}
   PrimaryButton(if(plan.isCompleted)"Tamamlamayı geri al"else"Tamamladım",vm::complete,Modifier.fillMaxWidth(),icon=Icons.Outlined.Check,enabled=!busy)

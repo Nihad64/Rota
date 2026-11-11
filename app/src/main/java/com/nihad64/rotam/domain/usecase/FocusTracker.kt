@@ -45,6 +45,7 @@ class FocusTracker(context:Context,private val repo:PlanRepository,private val n
   if(session.getLong("id",0)!=id)check(session.edit().clear().putLong("id",id).putInt("boot",boot).commit())
   else check(session.edit().putLong("break",breakSeconds(id)).remove("break_since").remove("summary_id").commit())
   check(prefs.edit().putLong("id",id).putLong("base",p.focusSeconds).putLong("since",now()).putLong("started_at",System.currentTimeMillis()).putString("segment_uid",java.util.UUID.randomUUID().toString()).putInt("boot",boot).commit())
+  repo.setStarted(id,p.uid)
   mutable.value=id
  }
  suspend fun pauseIf(id:Long)=lock.withLock{if(mutable.value==id)pauseLocked()}

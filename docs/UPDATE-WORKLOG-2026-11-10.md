@@ -90,3 +90,15 @@ Bu aşamanın kodu 3.1.0-dev (39) olarak hazırlanır. iOS, onaylı AI hafızas�
 - 75 JVM testi, lint, uygulama ve Android test APK derlemeleri yerelde geçti. Yeni hafıza onay ekranı ve iki ayrı Firebase SDK istemcisiyle hafıza aktarımı/unutma/özel kayıt koruma testleri CI'da ayrıca çalışacak; henüz geçmiş sayılmaz. Gerçek kullanıcı hafızası oluşturulmadı/yüklenmedi. Kişisel telefonda (40) sürümü korunuyor.
 
 Bu aşama 3.1.0-dev (42). Tercihlerin geri dönüşü, akıllı takip, kalan ekran/erişilebilirlik ve iOS çalışmaları devam ediyor; tam ürün teslimi değildir.
+
+
+## 11 Kasım — duruma bağlı ve sınırlı hatırlatmalar
+
+- Yeni AI/elle oluşturulan planlarda Otomatik / Özel / Kapalı seçimi. Eski kapalı seçimler açılmaz, eski özel tek hatırlatma korunur. Otomatik bildirim takvimi plan alanlarına saat yazmaz. Ayrıntılı varsayımlar ve Android sınırları docs/REMINDER-POLICY.md içinde.
+- Plan saatine/kategorisine göre hazırlık, zamanında uyarı ve giderek seyrekleşen takip. Plan başına en fazla dört otomatik aşama; genel altı/gün ve 15 dakika aralık sınırı. Sessiz saatlerde birleşen aşamalar tekilleşir. Bilinen iş/saat aralığı içindeki takip sorusu aralığın sonuna taşınır. Eski yanıtsız kayıtlar topluca bildirim üretmez.
+- Bildirim eylemleri Başladım / Tamamladım / Biraz sonra. Başladım yalnız durumdur, odak süresi uydurmaz. Gerçek odak başlatma da takibi durdurur. Biraz sonra yalnız bildirimi 30 dakika erteler, planı taşımaz; üç kez sınırı ve bildirimi kapatınca o örneğin takibini durdurma var. Bu tercihler başka örneğe yayılmaz.
+- Alarm/eylemler kalıcı plan UID'si ve takvim imzasıyla doğrulanır. Ertelenen kaydın eski bildirimi veya geri yüklemede tekrar kullanılan sayısal kimlik yanlış kaydı değiştiremez. Birden çok eşzamanlı alarm günlük bütçeyi aynı kilit altında paylaşır. Hata artık sessiz catch ile gizlenmez; Ayarlar/Hatırlatmalar'da hata ve yeniden deneme bulunur. Android'in kapalı kanalı/izinleri aşılmaz.
+- Yerelde 82 JVM testi, lint, app ve test APK derlemeleri geçti. Senaryolar: eski tercih koruma, saatsiz plan, gece/sessiz saat, çalışma aralığı, ertelenince eski imza, içerik manipülasyonu, bildirim kapatma, günlük sınırın yeniden açılışta korunması, başlanınca iptal, saati değiştirmeyen bildirim ertelemesi. Kişisel telefona bu sürüm kurulmadı; Android cihaz CI doğrulaması sonraki commit'te yapılacak.
+- Geri al işlemi sonradan ölçülmüş odak aralıklarını da koruyacak şekilde düzeltildi; yalnız toplam saniyenin korunması yeterli değildi.
+
+Kod 3.1.0-dev (43). Tam ürün teslimi değildir; önceki kalan kapsam devam ediyor.

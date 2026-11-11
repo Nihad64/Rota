@@ -20,6 +20,11 @@ class PlanRepository(private val db:AppDatabase){
  suspend fun upcoming(f:LocalDate)=dao.upcoming(f.toString())
  suspend fun pendingBetween(f:LocalDate,t:LocalDate)=dao.pendingBetween(f.toString(),t.toString())
  suspend fun update(p:Plan){require(PlanTime.validate(p)==null){PlanTime.validate(p).orEmpty()};dao.update(p)}
+ suspend fun setStarted(id:Long,uid:String,value:Boolean=true)=db.withTransaction{
+  val p=dao.byId(id)?:return@withTransaction
+  check(p.uid==uid){"Plan değişmiş; güncel kaydı aç."}
+  if(!p.isDeleted&&!p.isCompleted&&!p.isSkipped)dao.update(ReminderPolicy.markStarted(p,value))
+ }
  suspend fun setFocusSeconds(id:Long,seconds:Long)=dao.setFocusSeconds(id,seconds)
  suspend fun recordFocusSegment(id:Long,uid:String,startedAt:Long,seconds:Long,total:Long)=db.withTransaction{
   val current=dao.byId(id)?:return@withTransaction

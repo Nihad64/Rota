@@ -26,7 +26,7 @@ object PlanOutcome {
  }
  fun fresh(p:Plan):Plan {
   val e=JSONObject(p.extraData)
-  listOf("outcome","outcomeHistory","completedAmount","targetAmount","focusSegments").forEach{e.remove(it)}
+  listOf("outcome","outcomeHistory","completedAmount","targetAmount","focusSegments","startedSchedule").forEach{e.remove(it)}
   return p.copy(extraData=e.toString(),isCompleted=false,isSkipped=false)
  }
  fun fraction(p:Plan):Double?=when(status(p)) {

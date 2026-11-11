@@ -71,7 +71,7 @@ internal object AiResponseParser {
     startTime=optionalTime("startTime"),endTime=optionalTime("endTime"),endDate=o.nullString("endDate")?.let{LocalDate.parse(it).toString()},
     repeatType=if(before?.seriesId!=null&&before.seriesId!=0L)before.repeatType else o.optString("repeatType","none"),repeatDays=o.optString("repeatDays"),repeatEvery=o.optInt("repeatEvery",1),repeatUntil=o.nullString("repeatUntil"),
     reminderEnabled=before?.reminderEnabled?:false,reminderTime=before?.reminderTime)
-   require(PlanTime.validate(p)==null);result.add(PlanSuggestion(p,before))
+   require(PlanTime.validate(p)==null);result.add(PlanSuggestion(if(before==null)com.nihad64.rotam.domain.usecase.ReminderPolicy.withMode(p,com.nihad64.rotam.domain.usecase.ReminderPolicy.Mode.AUTO)else p,before))
   }catch(_:Exception){invalid++}
   if(items.length()>20)invalid+=items.length()-20
   if(invalid>0&&result.isEmpty())throw GeminiException("AI geçerli bir plan taslağı üretemedi. Tarih ve saatleri kontrol et veya elle ekle. Hiçbir plan kaydedilmedi.")

@@ -12,11 +12,11 @@ object Notifications {
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_REMINDERS, "Plan hatırlatmaları", NotificationManager.IMPORTANCE_HIGH)
-                .apply { description = "Saatli planlardan önce bildirim" }
+                .apply { description = "Planına göre hatırlatma ve sınırlı takip" }
         )
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_MISSED, "Kaçırılan planlar", NotificationManager.IMPORTANCE_DEFAULT)
-                .apply { description = "Tamamlanmamış planlar için taşıma önerisi" }
+            NotificationChannel(CHANNEL_MISSED, "Plan takibi", NotificationManager.IMPORTANCE_DEFAULT)
+                .apply { description = "Yanıtını bekleyen planlar" }
         )
     }
 }

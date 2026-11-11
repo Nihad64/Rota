@@ -155,6 +155,10 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
             }
         }
 
+        Text("Otomatik takip: plan başına en fazla 4 aşama; tüm planlarda günde en fazla 6 otomatik bildirim ve aralarında en az 15 dakika. Biraz sonra, yalnız bildirimi 30 dakika erteler (en fazla 3 kez). Plan saatini değiştirmez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+        val reminderError by vm.reminderError.collectAsStateWithLifecycle()
+        reminderError?.let { Text(it,color=Danger);TextButton(onClick=vm::retryReminders){Text("Yeniden planla")} }
+
         Section("Ses · Hareket")
         SwitchRow(Icons.Outlined.VolumeUp, "Onay sesleri", "Başarılı kayıtta kısa ses; telefonun sessiz modu korunur.", s.uiSounds, vm::setSounds)
         SwitchRow(Icons.Outlined.Vibration, "Titreşim", "Hafif dokunsal geri bildirim.", s.haptics, vm::setHaptics)

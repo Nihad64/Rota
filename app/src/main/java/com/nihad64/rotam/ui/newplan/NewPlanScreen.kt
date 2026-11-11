@@ -58,7 +58,7 @@ import java.time.LocalDate
     ReminderFields(s.plan){vm.change(it)}
    }
    if(!s.editing&&s.step==4){Text("Son bir bakış",style=MaterialTheme.typography.headlineMedium);RotamCard(Modifier.fillMaxWidth()){
-    DetailRow("Plan",s.plan.title){vm.step(0)};DetailRow("Kategori",s.plan.categoryEnum.label){vm.step(1)};DetailRow("Tarih ve saat","${TrFormat.dayMonth(LocalDate.parse(s.plan.date))} · ${PlanTime.label(s.plan)}"){vm.step(2)};DetailRow("Tekrar",RepeatType.fromKey(s.plan.repeatType).label){vm.step(3)};Text(if(s.plan.reminderEnabled)"Hatırlatma açık"else"Hatırlatma yok",color=SubtleText)
+    DetailRow("Plan",s.plan.title){vm.step(0)};DetailRow("Kategori",s.plan.categoryEnum.label){vm.step(1)};DetailRow("Tarih ve saat","${TrFormat.dayMonth(LocalDate.parse(s.plan.date))} · ${PlanTime.label(s.plan)}"){vm.step(2)};DetailRow("Tekrar",RepeatType.fromKey(s.plan.repeatType).label){vm.step(3)};Text(ReminderPolicy.label(s.plan),color=SubtleText)
    };val note=JSONObject(s.plan.extraData).optString("note");if(note.isNotBlank())Text(note,color=SubtleText)}
    if(s.error!=null)Text(s.error!!,color=Danger)
    if(s.editing){HorizontalDivider(color=Outline);FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
@@ -115,13 +115,20 @@ import java.time.LocalDate
  if(until)DateChooser(p.repeatUntil?:p.date,{until=false}){v->change{it.copy(repeatUntil=v)}}
 }
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun ReminderFields(p:Plan,change:((Plan)->Plan)->Unit){var picker by remember{mutableStateOf(false)};Row(verticalAlignment=Alignment.CenterVertically){Text("Hatırlatma",style=MaterialTheme.typography.headlineSmall,modifier=Modifier.weight(1f));Switch(p.reminderEnabled,{v->change{it.copy(reminderEnabled=v)}})}
- if(p.reminderEnabled){
- if(p.startTime==null&&p.endTime==null){DetailRow("Ayrı hatırlatma saati",p.reminderTime?:"Saat seç"){picker=true};Text("Bu seçim planına başlangıç saati eklemez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)}else{
- if(p.startTime!=null&&p.endTime!=null)FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){SelectChip("Başlangıçta",!p.remindAtEnd,{change{it.copy(remindAtEnd=false,reminderTime=null)}});SelectChip("Bitişte",p.remindAtEnd,{change{it.copy(remindAtEnd=true,reminderTime=null)}})}
- FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf(0,5,15,30,60).forEach{m->SelectChip(if(m==0)"Tam zamanında"else"$m dk önce",p.reminderMinutes==m,{change{it.copy(reminderMinutes=m,reminderTime=null)}})}}
+@Composable private fun ReminderFields(p:Plan,change:((Plan)->Plan)->Unit){
+ var picker by remember{mutableStateOf(false)}
+ val mode=ReminderPolicy.mode(p)
+ Text("Hatırlatmalar",style=MaterialTheme.typography.headlineSmall)
+ FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+  ReminderPolicy.Mode.entries.forEach{m->SelectChip(when(m){ReminderPolicy.Mode.AUTO->"Otomatik";ReminderPolicy.Mode.CUSTOM->"Özel";ReminderPolicy.Mode.OFF->"Kapalı"},mode==m,{change{ReminderPolicy.withMode(it,m)}})}
  }
- Text("Bildirim izinleri ve sessiz saat tercihlerin uygulanır.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+ if(mode==ReminderPolicy.Mode.AUTO)Text(if(p.startTime==null&&p.endTime==null)"Saat eklemeden gün içinde durumunu sorar. Yanıtsızsa ertesi gün son bir kez hatırlatır."else"Planına göre hazırlık, zamanında uyarı ve sınırlı takip. Başladığında veya tamamladığında durur.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)
+ if(mode==ReminderPolicy.Mode.CUSTOM){
+  if(p.startTime==null&&p.endTime==null){DetailRow("Ayrı hatırlatma saati",p.reminderTime?:"Saat seç"){picker=true};Text("Bu seçim planına başlangıç saati eklemez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)}else{
+   if(p.startTime!=null&&p.endTime!=null)FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){SelectChip("Başlangıçta",!p.remindAtEnd,{change{it.copy(remindAtEnd=false,reminderTime=null)}});SelectChip("Bitişte",p.remindAtEnd,{change{it.copy(remindAtEnd=true,reminderTime=null)}})}
+   FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf(0,5,15,30,60).forEach{m->SelectChip(if(m==0)"Tam zamanında"else"$m dk önce",p.reminderMinutes==m,{change{it.copy(reminderMinutes=m,reminderTime=null)}})}}
+  }
  }
+ if(mode!=ReminderPolicy.Mode.OFF)Text("Bildirim izinleri ve sessiz saatler korunur. Bildirimi kapatırsan o planın takibi durur.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
  if(picker)TimeChooser(p.reminderTime,"Hatırlatma saati",{picker=false}){v->change{it.copy(reminderTime=v)}}
 }

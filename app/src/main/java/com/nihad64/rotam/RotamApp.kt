@@ -2,7 +2,7 @@ package com.nihad64.rotam
 
 import android.app.Application
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.nihad64.rotam.data.db.LegacyMigration
@@ -24,7 +24,7 @@ class AppContainer(val app: Application) {
     suspend fun offerUndo(message:String, before:com.nihad64.rotam.data.model.Plan) {
         val expected=planRepo.byId(before.id)
         notices.send(Notice(message) {
-            if(planRepo.byId(before.id)==expected){planRepo.restore(before.copy(focusSeconds=expected?.focusSeconds?:before.focusSeconds));scheduler.rescheduleAll()}
+            if(planRepo.byId(before.id)==expected){planRepo.restore(if(expected==null)before else FocusLedger.retainLedger(before,expected));scheduler.rescheduleAll()}
         })
     }
     val ready = MutableStateFlow(false)
@@ -35,9 +35,18 @@ class AppContainer(val app: Application) {
         try { LegacyMigration(app, db).run(); settings.migrate()
             planRepo.ensure(java.time.LocalDate.now().minusDays(30), java.time.LocalDate.now().plusDays(400))
             ready.value=true; startupError.value=null; sync.start()
+            startReminderObserver()
         } catch (e:Exception) { startupError.value="Eski veriler aktarılırken işlem durdu. Kaynak veriler ve yedeği korundu. Yeniden deneyebilirsin."; throw e }
     }
 
+    @OptIn(FlowPreview::class)
+    private fun startReminderObserver() {
+        CoroutineScope(SupervisorJob()+Dispatchers.IO).launch {
+            combine(planRepo.observeAll().map { plans->plans.map{p->listOf(ReminderPolicy.signature(p),p.isDeleted,p.isCompleted,p.isSkipped,ReminderPolicy.started(p)).joinToString(":")}.sorted() }.distinctUntilChanged(),settings.settings.map{s->listOf(s.remindersEnabled,s.quietEnabled,s.quietStart,s.quietEnd)}.distinctUntilChanged()){a,b->a to b}.debounce(350).collect {
+                try{scheduler.rescheduleAll()}catch(e:CancellationException){throw e}catch(_:Exception){scheduler.reportFailure()}
+            }
+        }
+    }
     val db = AppDatabase.get(app)
     val settings = SettingsStore(app)
     val planRepo = PlanRepository(db)
@@ -67,7 +76,7 @@ class RotamApp : Application() {
         container = AppContainer(this)
         Notifications.createChannels(this)
         MissedPlanManager.enqueue(this)
-        CoroutineScope(SupervisorJob()+Dispatchers.IO).launch { runCatching { container.initialize(); container.scheduler.rescheduleAll() } }
+        CoroutineScope(SupervisorJob()+Dispatchers.IO).launch { try{container.initialize(); container.scheduler.rescheduleAll()}catch(e:CancellationException){throw e}catch(_:Exception){container.scheduler.reportFailure()} }
     }
 
     companion object {
