@@ -11,6 +11,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 class SettingsViewModel(private val c:AppContainer, private val authenticate:suspend (android.app.Activity)->Unit = {c.account.signIn(it)}):ViewModel() {
+    val cloudStatus=c.sync.status
+    fun enableSync(){message.value=c.sync.enable()}
+    fun disableSync()=c.sync.disable()
+    fun syncNow()=c.sync.request()
+    fun resolveSync(useLocal:Boolean)=c.sync.resolve(useLocal)
     val account=c.account.account
     val accountConfigured=c.account.configured
     val authMessage=MutableStateFlow<String?>(null)

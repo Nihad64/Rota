@@ -7,4 +7,21 @@ object Migrations {val V1_2=object:Migration(1,2){override fun migrate(db:Suppor
  db.execSQL("""INSERT INTO plans (id,title,category,date,startTime,endTime,isCompleted,isSkipped,repeatType,extraData,createdAt,reminderMinutes,seriesId,uid,reminderEnabled,remindAtEnd,repeatEvery,repeatDays,monthLastDay,isDeleted,focusSeconds,endDate) SELECT id,title,category,date,NULLIF(startTime,''),NULLIF(endTime,''),isCompleted,isSkipped,repeatType,extraData,createdAt,reminderMinutes,seriesId,'room-v1-'||id,1,0,1,'',0,0,0,CASE WHEN endTime<=startTime AND endTime!='' THEN date(date,'+1 day') ELSE NULL END FROM plans_v1""")
  db.execSQL("DROP TABLE plans_v1");db.execSQL("CREATE INDEX index_plans_date ON plans(date)");db.execSQL("CREATE UNIQUE INDEX index_plans_uid ON plans(uid)");db.execSQL("CREATE UNIQUE INDEX index_plans_occurrenceKey ON plans(occurrenceKey)")
  db.execSQL("CREATE TABLE series(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,template TEXT NOT NULL,anchor TEXT NOT NULL,untilDate TEXT)")
-}}}
+}}
+val V2_3=object:Migration(2,3){override fun migrate(db:SupportSQLiteDatabase){
+ db.execSQL("ALTER TABLE goals ADD COLUMN uid TEXT NOT NULL DEFAULT ''")
+ db.execSQL("ALTER TABLE series ADD COLUMN uid TEXT NOT NULL DEFAULT ''")
+ db.query("SELECT id,title,dueDate FROM goals").use{c->while(c.moveToNext()){
+  val uid=com.nihad64.rotam.data.model.RecordIdentity.legacyGoal(c.getLong(0),c.getString(1),c.getString(2))
+  db.execSQL("UPDATE goals SET uid=? WHERE id=?",arrayOf(uid,c.getLong(0)))
+ }}
+ db.query("SELECT id,template FROM series").use{c->while(c.moveToNext()){
+  val template=org.json.JSONObject(c.getString(1))
+  val uid=com.nihad64.rotam.data.model.RecordIdentity.legacySeries(template.getString("uid"))
+  db.execSQL("UPDATE series SET uid=? WHERE id=?",arrayOf(uid,c.getLong(0)))
+ }}
+ db.execSQL("CREATE UNIQUE INDEX index_goals_uid ON goals(uid)")
+ db.execSQL("CREATE UNIQUE INDEX index_series_uid ON series(uid)")
+ db.execSQL("UPDATE plans SET uid='series:'||(SELECT uid FROM series WHERE series.id=plans.seriesId)||':'||COALESCE(originalDate,date) WHERE seriesId!=0 AND EXISTS(SELECT 1 FROM series WHERE series.id=plans.seriesId)")
+}}
+}

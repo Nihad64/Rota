@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PlanDao {
  @Query("SELECT * FROM plans WHERE isDeleted=0 ORDER BY date DESC") fun observeAll(): Flow<List<Plan>>
+ @Query("SELECT * FROM plans ORDER BY id") fun observeSyncRecords():Flow<List<Plan>>
  @Query("SELECT * FROM plans") suspend fun all(): List<Plan>
  @Query("SELECT * FROM plans WHERE uid=:uid") suspend fun byUid(uid:String):Plan?
  @Query("SELECT * FROM plans WHERE seriesId=:id") suspend fun bySeries(id:Long):List<Plan>
@@ -49,6 +50,7 @@ interface PlanDao {
 
 @Dao
 interface GoalDao {
+    @Query("SELECT * FROM goals WHERE uid=:uid") suspend fun byUid(uid:String):Goal?
     @Query("SELECT * FROM goals WHERE id=:id") suspend fun byId(id:Long):Goal?
  @Query("SELECT * FROM goals") suspend fun all():List<Goal>
     @Query("SELECT * FROM goals ORDER BY isCompleted, dueDate")
@@ -60,6 +62,7 @@ interface GoalDao {
 }
 
 @Dao interface SeriesDao {
+ @Query("SELECT * FROM series WHERE uid=:uid") suspend fun byUid(uid:String):PlanSeries?
  @Query("SELECT * FROM series ORDER BY id DESC") fun observeAll():Flow<List<PlanSeries>>
  @Query("SELECT * FROM series") suspend fun all():List<PlanSeries>
  @Query("SELECT * FROM series WHERE id=:id") suspend fun byId(id:Long):PlanSeries?
@@ -67,7 +70,7 @@ interface GoalDao {
  @Update suspend fun update(s:PlanSeries)
  @Query("DELETE FROM series") suspend fun clear()
 }
-@Database(entities = [Plan::class, Goal::class, PlanSeries::class], version = 2, exportSchema = true)
+@Database(entities = [Plan::class, Goal::class, PlanSeries::class], version = 3, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun seriesDao():SeriesDao
     abstract fun planDao(): PlanDao
@@ -77,7 +80,7 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile private var instance: AppDatabase? = null
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "rotam.db")
-                .addMigrations(Migrations.V1_2)
+                .addMigrations(Migrations.V1_2,Migrations.V2_3)
                 .build().also { instance = it }
         }
     }

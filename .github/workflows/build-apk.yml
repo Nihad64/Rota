@@ -113,3 +113,22 @@ jobs:
         working-directory: backend
       - run: npm audit --omit=dev --audit-level=moderate
         working-directory: backend
+
+  firestore-rules:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firestore-emulator-1.22.0
+      - name: Test owner isolation and snapshot validation with synthetic demo data
+        run: npx --yes firebase-tools@15.35.0 emulators:exec --only firestore --project demo-rotam-sync --config tests/firestore/firebase.json 'python3 tests/firestore/test_rules.py'

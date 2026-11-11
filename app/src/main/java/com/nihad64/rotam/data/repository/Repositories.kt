@@ -39,7 +39,7 @@ class PlanRepository(private val db:AppDatabase){
  private suspend fun generate(s:PlanSeries,f:LocalDate,t:LocalDate){
   val p=PlanOutcome.fresh(PlanJson.decode(JSONObject(s.template))).copy(repeatUntil=s.untilDate)
   val days=Recurrence.dates(p,LocalDate.parse(s.anchor),f,t)
-  dao.insertAll(days.map{d->val key="${s.id}:$d";PlanTime.moved(p,d).copy(id=0,uid="series:$key",seriesId=s.id,occurrenceKey=key,originalDate=d.toString(),isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)})
+  dao.insertAll(days.map{d->val key="${s.id}:$d";PlanTime.moved(p,d).copy(id=0,uid=RecordIdentity.occurrence(s.uid,d.toString()),seriesId=s.id,occurrenceKey=key,originalDate=d.toString(),isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)})
  }
  suspend fun edit(old:Plan,proposed:Plan,scope:EditScope)=lock.withLock{db.withTransaction{
   val current=dao.byId(old.id) ?: error("Plan bulunamadı.")
@@ -49,7 +49,7 @@ class PlanRepository(private val db:AppDatabase){
   if(s==null){
    if(p.repeatType=="none"){dao.update(p.copy(id=old.id,uid=old.uid))}else{
     val sid=db.seriesDao().insert(PlanSeries(template=PlanJson.encode(p).toString(),anchor=p.date,untilDate=p.repeatUntil))
-    dao.update(p.copy(id=old.id,uid=old.uid,seriesId=sid,occurrenceKey="$sid:${p.date}",originalDate=p.date))
+    dao.update(p.copy(id=old.id,uid=RecordIdentity.occurrence(db.seriesDao().byId(sid)!!.uid,p.date),seriesId=sid,occurrenceKey="$sid:${p.date}",originalDate=p.date))
     generate(db.seriesDao().byId(sid)!!,LocalDate.parse(p.date),maxOf(LocalDate.now().plusDays(400),LocalDate.parse(p.date).plusDays(60)))
    }
   }else if(scope==EditScope.THIS){dao.update(p.copy(id=old.id,uid=old.uid,seriesId=old.seriesId,occurrenceKey=old.occurrenceKey,originalDate=old.originalDate,repeatType=old.repeatType))}
@@ -65,7 +65,7 @@ class PlanRepository(private val db:AppDatabase){
     // Completed/skipped history and deleted exceptions remain single occurrences.
     all.filter{LocalDate.parse(it.originalDate?:it.date)>=from&&(it.isCompleted||it.isSkipped||it.isDeleted||PlanOutcome.status(it)==PlanOutcome.Status.PARTIAL)}.forEach{
      val d=LocalDate.parse(it.originalDate?:it.date).plusDays(shift);val key="$id:$d"
-     dao.insert(PlanTime.moved(fresh,d).copy(uid="series:$key",seriesId=id,occurrenceKey=key,originalDate=d.toString(),isDeleted=true))
+     dao.insert(PlanTime.moved(fresh,d).copy(uid=RecordIdentity.occurrence(db.seriesDao().byId(id)!!.uid,d.toString()),seriesId=id,occurrenceKey=key,originalDate=d.toString(),isDeleted=true))
     }
     generate(db.seriesDao().byId(id)!!,anchor,maxOf(LocalDate.now().plusDays(400),anchor.plusDays(60)))
    }

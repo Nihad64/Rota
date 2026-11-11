@@ -10,5 +10,5 @@ import com.nihad64.rotam.ui.RotamRoot
 import com.nihad64.rotam.ui.theme.RotamTheme
 class MainActivity:ComponentActivity(){
  override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);enableEdgeToEdge(statusBarStyle=SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),navigationBarStyle=SystemBarStyle.dark(android.graphics.Color.TRANSPARENT));setContent{RotamTheme{RotamRoot()}}}
- override fun onResume(){super.onResume();lifecycleScope.launch{runCatching{RotamApp.container.initialize();RotamApp.container.scheduler.rescheduleAll()}}}
+ override fun onResume(){super.onResume();lifecycleScope.launch{runCatching{RotamApp.container.initialize();RotamApp.container.scheduler.rescheduleAll();RotamApp.container.sync.request()}}}
 }

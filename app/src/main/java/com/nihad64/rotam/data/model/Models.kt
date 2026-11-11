@@ -14,11 +14,11 @@ data class Plan(
  val occurrenceKey:String?=null,val originalDate:String?=null,val isDeleted:Boolean=false,
  val focusSeconds:Long=0,val goalId:Long?=null)
 val Plan.categoryEnum:Category get()=Category.fromKey(category)
-@Entity(tableName="series")
-data class PlanSeries(@PrimaryKey(autoGenerate=true) val id:Long=0,val template:String,val anchor:String,val untilDate:String?=null)
-@Entity(tableName="goals")
+@Entity(tableName="series",indices=[Index(value=["uid"],unique=true)])
+data class PlanSeries(@PrimaryKey(autoGenerate=true) val id:Long=0,val template:String,val anchor:String,val untilDate:String?=null,@ColumnInfo(defaultValue="''") val uid:String=UUID.randomUUID().toString())
+@Entity(tableName="goals",indices=[Index(value=["uid"],unique=true)])
 data class Goal(@PrimaryKey(autoGenerate=true) val id:Long=0,val title:String,val period:String,val targetCount:Int,
- val currentCount:Int=0,val category:String="kisisel",val dueDate:String,val isCompleted:Boolean=false)
+ val currentCount:Int=0,val category:String="kisisel",val dueDate:String,val isCompleted:Boolean=false,@ColumnInfo(defaultValue="''") val uid:String=UUID.randomUUID().toString())
 enum class Category(val key:String,val label:String){
  KITAP("kitap","Okuma"),IS("is","İş"),VIDEO("video","İçerik"),SPOR("spor","Spor"),IBADET("ibadet","İbadet"),
  RANDEVU("randevu","Randevu"),YEMEK("yemek","Yemek"),OGRENME("ogrenme","Öğrenme"),KISISEL("kisisel","Kişisel");

@@ -16,19 +16,25 @@ data class BackupData(val plans:List<Plan>,val goals:List<Goal>,val series:List<
     val visiblePlans get()=plans.count{!it.isDeleted}
 }
 object BackupCodec {
-    fun encode(data:BackupData):String=JSONObject().put("format","rotam-backup").put("version",1)
+    fun encode(data:BackupData):String=JSONObject().put("format","rotam-backup").put("version",2)
         .put("plans",JSONArray(data.plans.map{PlanJson.encode(it)}))
-        .put("goals",JSONArray(data.goals.map{g->JSONObject().put("id",g.id).put("title",g.title).put("period",g.period).put("targetCount",g.targetCount).put("currentCount",g.currentCount).put("category",g.category).put("dueDate",g.dueDate).put("isCompleted",g.isCompleted)}))
-        .put("series",JSONArray(data.series.map{s->JSONObject().put("id",s.id).put("template",s.template).put("anchor",s.anchor).put("untilDate",s.untilDate)})).toString(2)
+        .put("goals",JSONArray(data.goals.map{g->JSONObject().put("id",g.id).put("uid",g.uid).put("title",g.title).put("period",g.period).put("targetCount",g.targetCount).put("currentCount",g.currentCount).put("category",g.category).put("dueDate",g.dueDate).put("isCompleted",g.isCompleted)}))
+        .put("series",JSONArray(data.series.map{s->JSONObject().put("id",s.id).put("uid",s.uid).put("template",s.template).put("anchor",s.anchor).put("untilDate",s.untilDate)})).toString(2)
 
     fun decode(raw:String):BackupData {
         val obj=JSONObject(raw)
-        require(obj.getString("format")=="rotam-backup" && obj.getInt("version")==1){"Bu yedek biçimi desteklenmiyor."}
+        require(obj.getString("format")=="rotam-backup" && obj.getInt("version") in 1..2){"Bu yedek biçimi desteklenmiyor."}
         fun array(key:String)=obj.getJSONArray(key).also{require(it.length()<=100000){"Yedek çok büyük."}}
         val pa=array("plans");val ga=array("goals");val sa=array("series")
-        val plans=(0 until pa.length()).map{PlanJson.decode(pa.getJSONObject(it))}
-        val goals=(0 until ga.length()).map { i->val g=ga.getJSONObject(i);Goal(g.getLong("id"),g.getString("title"),g.getString("period"),g.getInt("targetCount"),g.getInt("currentCount"),g.getString("category"),g.getString("dueDate"),g.getBoolean("isCompleted")) }
-        val series=(0 until sa.length()).map { i->val s=sa.getJSONObject(i);PlanSeries(s.getLong("id"),s.getString("template"),s.getString("anchor"),s.nullString("untilDate")) }
+        var plans=(0 until pa.length()).map{PlanJson.decode(pa.getJSONObject(it))}
+        val goals=(0 until ga.length()).map { i->val g=ga.getJSONObject(i);Goal(g.getLong("id"),g.getString("title"),g.getString("period"),g.getInt("targetCount"),g.getInt("currentCount"),g.getString("category"),g.getString("dueDate"),g.getBoolean("isCompleted"),g.nullString("uid")?:RecordIdentity.legacyGoal(g.getLong("id"),g.getString("title"),g.getString("dueDate"))) }
+        val series=(0 until sa.length()).map { i->val s=sa.getJSONObject(i);PlanSeries(s.getLong("id"),s.getString("template"),s.getString("anchor"),s.nullString("untilDate"),s.nullString("uid")?:RecordIdentity.legacySeries(JSONObject(s.getString("template")).getString("uid"))) }
+        if(obj.getInt("version")==1) plans=plans.map{p->
+            val seriesUid=series.firstOrNull{it.id==p.seriesId}?.uid
+            if(seriesUid!=null)p.copy(uid=RecordIdentity.occurrence(seriesUid,p.originalDate?:p.date))else p
+        }
+        require(goals.all{it.uid.isNotBlank()}&&series.all{it.uid.isNotBlank()})
+        require(goals.map{it.uid}.distinct().size==goals.size&&series.map{it.uid}.distinct().size==series.size)
         require(plans.map{it.id}.distinct().size==plans.size && plans.map{it.uid}.distinct().size==plans.size){"Yedekte yinelenen kayıt var."}
         val keys=plans.mapNotNull{it.occurrenceKey};require(keys.distinct().size==keys.size){"Yedekte yinelenen tekrar var."}
         require(goals.map{it.id}.distinct().size==goals.size && series.map{it.id}.distinct().size==series.size)

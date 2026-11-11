@@ -20,3 +20,17 @@ Yerel derleme/lint/28 JVM testi ilk değişikliklerde geçti. Karşılama UI tes
 - Kullanıcı Frankfurt konumunu açıkça onayladı. rotam-nihad64 projesinde `(default)` Firestore veritabanı Standard/Native, europe-west3, freeTier=true ve silme koruması açık olarak oluşturuldu. Billing açılmadı. Henüz kişisel plan yüklenmedi, uygulama senkronizasyonu etkinleştirilmedi. Erişim kuralları kapalı durumda korunuyor; cihazlar arası kimlik/çakışma sözleşmesi tamamlanmadan veri aktarımı yapılmayacak.
 
 Kalan kapsam: güvenli senkronizasyon ve hesap ayrımı, AI hafızası, tüm ekranların görsel tamamlanması, rutin duraklatma, üç widget, hatırlatma iyileştirmeleri, kapsamlı geçmiş arama/AI sorguları, ikonun saf beyaz varyantı ve iOS. Bunlar bitmiş olarak sunulmaz.
+
+## 11 Kasım — devam eden eşitleme uygulaması
+
+Önceki commit daea12a için GitHub run 42898647255: verify, backend ve device başarılı. Bu sonuç aşağıdaki yeni kodun test sonucu değildir.
+
+- Room v3 geçişi: rutin/hedef için kalıcı UID; tekrar örnekleri rutin UID+tarih üzerinden tanınır. Sayısal yerel kimlikler buluta gönderilmez. Eski v1 yedekler okunur, yeni v2 yedek UID'leri korur. Gerçek v2 şema fikstürüyle not, odak süresi, plan/rutin/hedef bağlantıları ve kimliklerin korunması test edildi.
+- Üç yönlü birleştirme: eşzamanlı farklı değişiklikler kullanıcı seçimi olmadan yazılmaz. Ağ beklerken yapılan yerel değişiklik, eski çakışma seçimi ve eksik üst kayıt güvenli durur. Rutin/hedef silme ile yeni bağlı planın çakışması tutarlı sürümlerle incelemeye açılır. Daha önce eşitlenmiş bulut kopyasının kaybolması yerel kayıtları silmez.
+- Yerel kayıt, önceki bulut sürümü ve cihazlar arası kimlik sözleşmesi ayrıdır. İçe aktarmadan önce özel geri dönüş kopyası yazılır; Room karşılaştırma ve uygulaması tek transaction içinde yapılır. Bozuk eşitleme geçmişi boş kabul edilmez.
+- Ayarlarda açık onay ile ilk hesaba bağlama, hesabı değiştirince veri aktarımını durdurma, durum/hata/çakışma ekranı, elle eşitleme, çevrimiçi WorkManager denemesi ve 15 dk periyodik iş eklendi. Periyodik iş Android pil/ağ koşullarına bağlıdır, kesin zaman garantisi yoktur. Bu aşama yalnız plan/not/hedef/rutin/odak verisini kapsar; cihaz ses/bildirim tercihleri taşınmaz.
+- Taşıma, revizyon karşılaştırmalı tek atomik kişisel snapshot kullanır. Sıkıştırılmış üst sınır 700 KiB, açılmış veri 20 MiB. Sınır aşılırsa kayıtlar korunarak hata gösterilir; sınırsız eşitleme olarak sunulmaz.
+- Firestore kuralları yalnız hesabın kendi snapshot yolunu açar, create/update tip-boyut-alan-zaman/revizyon doğrular. Özel kurallar sözdizimi doğrulamasından geçti; canlıya dağıtmadan önce GitHub demo Firestore emülatöründe kötüye kullanım testleri çalıştırılacak. Kurallar prototip olarak ele alınır. Yerelde büyük emülatör indirilmedi. Kişisel kayıtlar henüz buluta gönderilmedi.
+- Ayarlar ana sayfası referanslara uygun gruplu satırlar ve Google profilinden gelen hesap kartıyla düzenlendi. Tam tasarımın bütün ekranları bitmiş değildir.
+
+Yeni kod yerel JVM/Room testleri, lint, uygulama APK'sı ve cihaz test APK'sı ile doğrulanıyor. Bu aşama henüz kişisel telefona kurulmadı; canlı iki cihaz testi yapılmış değildir. Tam ürün teslimi değildir; önceki kalan kapsam sürmektedir.

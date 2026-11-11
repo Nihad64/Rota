@@ -34,7 +34,7 @@ class AppContainer(val app: Application) {
         if (ready.value) return@withLock
         try { LegacyMigration(app, db).run(); settings.migrate()
             planRepo.ensure(java.time.LocalDate.now().minusDays(30), java.time.LocalDate.now().plusDays(400))
-            ready.value=true; startupError.value=null
+            ready.value=true; startupError.value=null; sync.start()
         } catch (e:Exception) { startupError.value="Eski veriler aktarılırken işlem durdu. Kaynak veriler ve yedeği korundu. Yeniden deneyebilirsin."; throw e }
     }
 
@@ -46,6 +46,7 @@ class AppContainer(val app: Application) {
     val scheduler = ReminderScheduler(app, planRepo, settings)
     val account = com.nihad64.rotam.data.account.AccountService(app)
     val gemini = GeminiService(settings, account)
+    val sync = com.nihad64.rotam.data.sync.SyncCoordinator(this)
 
     val getPlansForDay = GetPlansForDay(planRepo)
     val createPlan = CreatePlan(planRepo, scheduler)
