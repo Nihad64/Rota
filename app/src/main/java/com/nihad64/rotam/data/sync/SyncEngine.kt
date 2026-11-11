@@ -25,7 +25,7 @@ class SyncEngine(private val local:SyncLocalStore,private val baseline:SyncBasel
  private val mutex=Mutex()
  suspend fun synchronize():SyncResult=mutex.withLock {
   val base=baseline.read();val before=local.records();val server=remote.read()
-  check(base.revision==0L||server.revision>0){"Önceki bulut kopyası bulunamadı. Yerel kayıtlar korundu; eşitleme durduruldu."}
+  check(server.revision>=base.revision){"Önceki bulut kopyası bulunamadı. Yerel kayıtlar korundu; eşitleme durduruldu."}
   val merged=reviewableMerge(base.records,before,server.records)
   if(!merged.canCommit)return@withLock SyncResult.Conflicts(server.revision,before,merged)
   CloudRecords.decode(merged.records)

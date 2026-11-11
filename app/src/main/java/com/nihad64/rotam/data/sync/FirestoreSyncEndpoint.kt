@@ -10,9 +10,9 @@ import kotlinx.coroutines.tasks.await
 class RemoteChangedException:Exception("Bulut kaydı değişti; güncel hâliyle yeniden eşitlenecek.")
 
 /** Revision CAS prevents a stale device overwriting another device's changes. */
-class FirestoreSyncEndpoint(private val uid:String,private val writer:String):SyncEndpoint {
- private val ref get()=FirebaseFirestore.getInstance().document("users/$uid/sync/snapshot")
- private fun checkAccount(){check(FirebaseAuth.getInstance().currentUser?.uid==uid){"Hesap değişti; eşitleme durduruldu."}}
+class FirestoreSyncEndpoint(private val uid:String,private val writer:String,private val firestore:FirebaseFirestore=FirebaseFirestore.getInstance(),private val authenticatedUid:()->String?={FirebaseAuth.getInstance().currentUser?.uid}):SyncEndpoint {
+ private val ref get()=firestore.document("users/$uid/sync/snapshot")
+ private fun checkAccount(){check(authenticatedUid()==uid){"Hesap değişti; eşitleme durduruldu."}}
  override suspend fun read():SyncEnvelope {
   checkAccount()
   val doc=ref.get(Source.SERVER).await();checkAccount()
@@ -28,7 +28,7 @@ class FirestoreSyncEndpoint(private val uid:String,private val writer:String):Sy
  override suspend fun write(expectedRevision:Long,records:Map<RecordKey,CloudRecord>):Long {
   checkAccount();CloudRecords.decode(records)
   val payload=SyncEnvelopeCodec.encode(records)
-  val revision=FirebaseFirestore.getInstance().runTransaction{tx->
+  val revision=firestore.runTransaction{tx->
    checkAccount()
    val snapshot=tx.get(ref)
    val current=if(snapshot.exists())snapshot.getLong("revision")?:error("Bulut sürümü eksik")else 0L

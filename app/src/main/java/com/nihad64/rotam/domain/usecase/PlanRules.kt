@@ -30,7 +30,7 @@ object PlanTime {
  if(p.reminderMinutes !in 0..10080)return "Hatırlatma süresi geçerli değil."
  if(p.repeatEvery !in 1..365)return "Tekrar aralığı 1–365 arasında olmalı."
  if(p.repeatType=="custom"&&p.repeatDays.split(',').none{it.toIntOrNull() in 1..7})return "En az bir tekrar günü seç."
- if(p.repeatUntil!=null&&LocalDate.parse(p.repeatUntil)<date)return "Tekrar bitişi ilk günden önce olamaz."
+ if(p.seriesId==0L&&p.repeatUntil!=null&&LocalDate.parse(p.repeatUntil)<date)return "Tekrar bitişi ilk günden önce olamaz."
  if(RepeatType.entries.none{it.key==p.repeatType})return "Tekrar türü geçerli değil."
  null }catch(_:Exception){"Tarih veya saat biçimini kontrol et."}}
 }

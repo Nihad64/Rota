@@ -21,6 +21,7 @@ import com.nihad64.rotam.ui.newplan.RotamField
 import com.nihad64.rotam.ui.theme.*
 import java.util.Locale
 @Composable fun AiScreen(vm:AiViewModel,onManual:()->Unit={},onBack:(()->Unit)?=null){val s by vm.state.collectAsStateWithLifecycle();val settings by vm.settings.collectAsStateWithLifecycle();val context=LocalContext.current;var tts by remember{mutableStateOf<TextToSpeech?>(null)};var ttsReady by remember{mutableStateOf(false)};var speechError by remember{mutableStateOf<String?>(null)}
+ val selectedPlan by vm.editingSelection.collectAsStateWithLifecycle()
  val completionFeedback=rememberCompletionFeedback()
  val added=s.messages.sumOf{it.added.size}
  var previouslyAdded by remember(vm){mutableIntStateOf(added)}
@@ -31,7 +32,7 @@ import java.util.Locale
  DisposableEffect(context){var engine:TextToSpeech?=null;engine=TextToSpeech(context){status->if(status==TextToSpeech.SUCCESS){val result=engine?.setLanguage(Locale.forLanguageTag("tr-TR"));ttsReady=result!=TextToSpeech.LANG_MISSING_DATA&&result!=TextToSpeech.LANG_NOT_SUPPORTED}};tts=engine;onDispose{engine?.stop();engine?.shutdown()}}
  Column(Modifier.fillMaxSize().imePadding().padding(horizontal=24.dp)){
   PageHeader("Birlikte planlayalım",onBack=onBack,action={TextButton(onClick=onManual){Text("Elle ekle")}})
-  Text(if(settings.sharePlans)"Mesajların ve önümüzdeki 14 günün plan özetleri yanıt için Google Gemini'ye gönderilir."else"Yazdıkların yanıt için Google Gemini'ye gönderilir. Mevcut planların paylaşımı kapalı.",style=MaterialTheme.typography.bodySmall,color=SubtleText)
+  Text(if(selectedPlan)"Mesajların ve düzenlemek için seçtiğin planın başlık/tarih/saat bilgileri Google Gemini’ye gönderilir."else if(settings.sharePlans)"Mesajların ve önümüzdeki 14 günün plan özetleri yanıt için Google Gemini'ye gönderilir."else"Yazdıkların yanıt için Google Gemini'ye gönderilir. Mevcut planların paylaşımı kapalı.",style=MaterialTheme.typography.bodySmall,color=SubtleText)
   val list=rememberLazyListState();LaunchedEffect(s.messages.size,s.loading){if(s.messages.isNotEmpty())list.animateScrollToItem(s.messages.lastIndex)}
   LazyColumn(state=list,modifier=Modifier.weight(1f),contentPadding=PaddingValues(vertical=20.dp),verticalArrangement=Arrangement.spacedBy(22.dp)){
    if(s.messages.isEmpty())item{EmptyState("Birlikte planlayalım.","Saat belli değilse söylemen yeterli. Her değişiklik önce burada gösterilir.",null,{});vm.starters.forEach{q->TextButton(onClick={vm.send(q)}){Text(q)}}}

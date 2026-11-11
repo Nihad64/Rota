@@ -12,12 +12,15 @@ class AiViewModel(private val c:AppContainer):ViewModel(){
  private val _state=MutableStateFlow(AiState());val state=_state.asStateFlow();private var id=1L
  val settings=c.settings.settings.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),com.nihad64.rotam.data.prefs.Settings())
  val starters=listOf("Yarın için saatsiz bir okuma planı öner","Bu hafta için çalışma planı hazırlayalım")
+ private var editingPlanId:Long?=null
+ val editingSelection=MutableStateFlow(false)
+ fun setEditingPlan(id:Long?){editingPlanId=id;editingSelection.value=id!=null}
  private var planningDate:LocalDate?=null
  fun setPlanningDate(date:LocalDate?){planningDate=date}
  fun setInput(v:String){_state.update{it.copy(input=v.take(5000))}}
  fun send(text:String=state.value.input){if(text.isBlank()||state.value.loading)return
   _state.update{it.copy(messages=it.messages+ChatMessage(id++,true,text.trim()),input="",loading=true,applyError=null)}
-  viewModelScope.launch{try{val cfg=c.settings.current();val ctx=if(cfg.sharePlans)c.planRepo.range(LocalDate.now().minusDays(1),LocalDate.now().plusDays(14)).take(150)else emptyList()
+  viewModelScope.launch{try{val cfg=c.settings.current();val ctx=if(editingPlanId!=null)listOfNotNull(c.planRepo.byId(editingPlanId!!)?.takeUnless{it.isDeleted})else if(cfg.sharePlans)c.planRepo.range(LocalDate.now().minusDays(1),LocalDate.now().plusDays(14)).take(150)else emptyList()
    val history=state.value.messages.filter{!it.isError}.map{it.isUser to it.text}
    val local=if(text.contains("kaç",ignoreCase=true))LocalPlanQuestion.answer(text,c.planRepo.observeAll().first())else null
    val r=if(local!=null)AiReply(local,emptyList())else c.gemini.ask(history,ctx,planningDate);_state.update{it.copy(messages=it.messages+ChatMessage(id++,false,r.text,r.suggestions))}

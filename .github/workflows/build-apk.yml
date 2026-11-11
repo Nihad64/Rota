@@ -61,10 +61,22 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
         with:
           cache-read-only: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firestore-emulator-1.22.0
+      - name: Start isolated Firebase demo for two-client Android tests
+        run: |
+          npx --yes firebase-tools@15.35.0 emulators:start --only auth,firestore --project demo-rotam-sync --config firebase.test.json > firebase-demo.log 2>&1 &
+          echo $! > firebase-demo.pid
+          python3 tests/firestore/wait_ready.py
       - name: Restore existing install identity
         run: python3 scripts/restore_legacy_signing.py
       - uses: actions/download-artifact@v4

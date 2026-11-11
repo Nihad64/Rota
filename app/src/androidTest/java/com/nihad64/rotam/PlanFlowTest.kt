@@ -89,6 +89,18 @@ class PlanFlowTest {
         ui.onNode(hasSetTextAction()).assertIsDisplayed()
         ui.onNodeWithTag("search-list").performScrollToNode(hasText("Saatsiz test planı") and !hasSetTextAction())
         ui.onNode(hasText("Saatsiz test planı") and !hasSetTextAction()).performScrollTo().performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("Plan detayı").fetchSemanticsNodes().isNotEmpty()}
+        shot("04-plan-detail")
+        ui.onNodeWithText("Odaklan").performScrollTo().performClick()
+        ui.onNodeWithText("Başla").performScrollTo().performClick()
+        ui.waitUntil(5000){RotamApp.container.focus.active.value==plan.id}
+        ui.onNodeWithText("Bitir ve özeti gör").performScrollTo().performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("Oturum özeti").fetchSemanticsNodes().isNotEmpty()}
+        org.junit.Assert.assertFalse(runBlocking{RotamApp.container.planRepo.byId(plan.id)!!.isCompleted})
+        shot("04-focus-summary")
+        ui.onNodeWithText("Sonra devam edeceğim").performScrollTo().performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("Plan detayı").fetchSemanticsNodes().isNotEmpty()}
+        ui.onNodeWithText("Düzenle").performClick()
         ui.waitUntil(10000){ui.onAllNodesWithText("Planını düzenle").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithText("Planını düzenle").assertIsDisplayed()
         assertAiAbove("Değişiklikleri kaydet")
@@ -102,6 +114,8 @@ class PlanFlowTest {
         ui.waitUntil(10000){runBlocking{RotamApp.container.db.planDao().all().any{it.id==plan.id&&it.title=="Düzenlenmiş saatsiz plan"&&it.startTime==null&&it.endTime==null}}}
         ui.waitUntil(10000){ui.onAllNodesWithText("Planını düzenle").fetchSemanticsNodes().isEmpty()}
         ui.onNodeWithContentDescription("Geri").performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithTag("search-list").fetchSemanticsNodes().isNotEmpty()}
+        ui.onNodeWithContentDescription("Geri").performClick()
         ui.waitUntil(10000){ui.onAllNodesWithContentDescription("Takvim").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithContentDescription("Takvim").performClick()
         ui.waitUntil(10000){ui.onAllNodesWithText("Günlerine uzaktan bir bakış.").fetchSemanticsNodes().isNotEmpty()}
@@ -111,7 +125,7 @@ class PlanFlowTest {
         ui.waitUntil(10000){ui.onAllNodesWithText("Yeni rutin oluştur").fetchSemanticsNodes().isNotEmpty()}
         shot("06-routines")
         ui.onNodeWithContentDescription("Ayarlar").performClick()
-        ui.waitUntil(10000){ui.onAllNodesWithText("Hesabım").fetchSemanticsNodes().isNotEmpty()}
+        ui.waitUntil(10000){ui.onAllNodesWithTag("account-settings-entry").fetchSemanticsNodes().isNotEmpty()}
         shot("07-settings")
         ui.onNodeWithContentDescription("Takvim").performClick()
         ui.onNodeWithText("İlerlemem").performClick()

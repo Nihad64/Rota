@@ -23,7 +23,7 @@ class AccountInteractionTest {
    throw IllegalStateException("Test bağlantı hatası")
   })
   ui.activity.runOnUiThread{ui.activity.setContent{RotamTheme{SettingsScreen(vm,{}, {})}}}
-  ui.onNodeWithText("Hesabım").performScrollTo().performClick()
+  ui.onNodeWithTag("account-settings-entry").performScrollTo().performClick()
   ui.onNodeWithText("Google ile giriş yap").performScrollTo().performClick()
   ui.waitUntil(5000){calls==1 && !vm.authBusy.value}
   ui.onNodeWithText("Google girişi tamamlanamadı",substring=true).assertIsDisplayed()

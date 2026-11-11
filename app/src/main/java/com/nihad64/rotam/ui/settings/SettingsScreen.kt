@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -81,7 +82,7 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         if(page==null) {
             Spacer(Modifier.height(4.dp))
             SettingsHero(Modifier.fillMaxWidth()) {
-                Row(Modifier.clickable {page="Hesabım"}.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
+                Row(Modifier.testTag("account-settings-entry").clickable {page="Hesabım"}.padding(8.dp),verticalAlignment=Alignment.CenterVertically) {
                     RotamLogo(44.dp)
                     Spacer(Modifier.width(16.dp))
                     Column(Modifier.weight(1f)) {

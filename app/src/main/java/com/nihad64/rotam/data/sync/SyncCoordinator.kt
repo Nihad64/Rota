@@ -55,6 +55,7 @@ class SyncCoordinator(private val c:AppContainer) {
     coroutineScope {
      val registration=FirebaseFirestore.getInstance().document("users/$uid/sync/snapshot")
       .addSnapshotListener(MetadataChanges.INCLUDE){snapshot,error->
+       if(!allowed(uid))return@addSnapshotListener
        if(error!=null){mutable.value=CloudStatus.Error("Bulut bağlantısı tamamlanamadı. Kayıtların cihazında korunuyor.")}
        else if(snapshot!=null&&!snapshot.metadata.isFromCache)requests.trySend(Unit)
       }
@@ -113,6 +114,13 @@ class SyncCoordinator(private val c:AppContainer) {
    if(allowed(uid))mutable.value=CloudStatus.Error(when(e){
     is IllegalArgumentException->e.message?:"Bulut kaydı doğrulanamadı. Yerel kayıtlar korundu."
     is RemoteChangedException->"Diğer cihazın kayıtları değişti. Yeniden eşitleyebilirsin."
+    is com.google.firebase.firestore.FirebaseFirestoreException->when(e.code){
+     com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED->"Hesabının bulut erişimi doğrulanamadı. Yerel kayıtların korundu; bu uygulama bağlantısının kontrol edilmesi gerekiyor."
+     com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAUTHENTICATED->"Google oturumunu yeniden açıp eşitlemeyi dene. Yerel kayıtların korunuyor."
+     com.google.firebase.firestore.FirebaseFirestoreException.Code.RESOURCE_EXHAUSTED->"Bulut kullanım kotasına ulaşıldı. Yerel kayıtların korunuyor; daha sonra yeniden dene."
+     else->"Bulut bağlantısı tamamlanamadı. Yerel kayıtların korunuyor; yeniden denenecek."
+    }
+    is IllegalStateException->e.message?:"Eşitleme verisi doğrulanamadı. Yerel kayıtlar korundu."
     else->"Eşitleme tamamlanamadı. İnternet geldiğinde yeniden denenecek; kayıtların cihazında korunuyor."
    })
    false

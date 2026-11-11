@@ -45,6 +45,7 @@ class PlanRepository(private val db:AppDatabase){
   val current=dao.byId(old.id) ?: error("Plan bulunamadı.")
   val p=proposed.copy(focusSeconds=current.focusSeconds)
   require(PlanTime.validate(p)==null){PlanTime.validate(p).orEmpty()}
+  if(scope!=EditScope.THIS&&p.repeatUntil!=null)require(p.repeatUntil>=p.date){"Tekrar bitişi yeni ilk günden önce olamaz."}
   val s=if(old.seriesId==0L)null else db.seriesDao().byId(old.seriesId)
   if(s==null){
    if(p.repeatType=="none"){dao.update(p.copy(id=old.id,uid=old.uid))}else{
