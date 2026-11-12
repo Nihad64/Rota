@@ -1,6 +1,9 @@
 rules_version = '2';
 // Prototype personal-sync schema, reviewed against app data/sync/FirestoreSyncEndpoint.
-// Only /users/{auth.uid}/sync/snapshot exists. No public profiles or collection queries.
+// Owner-only /users/{auth.uid}/sync/snapshot and /preferences/snapshot.
+// No public profiles or collection queries. Preference consent is separate in the app.
+// Preferences use the same outer fields, max 16384 payload bytes, eight whitelisted
+// typed non-secret settings validated by the client before import. No session/consent keys.
 // Required fields: schema (int=1), revision (int, +1 on each write, max 2^53-1),
 // writer (installation UUID, 1..100 chars; diagnostic only, grants no permissions),
 // updatedAt (server timestamp), payload (opaque gzip bytes, 1..716800 bytes).
@@ -18,6 +21,13 @@ service cloud.firestore {
     data.writer is string && data.writer.size() > 0 && data.writer.size() <= 100 &&
     data.updatedAt is timestamp && data.updatedAt == request.time &&
     data.payload is bytes && data.payload.size() > 0 && data.payload.size() <= 716800;
+  }
+  function isValidPreferences(data) { return isValidSnapshot(data) && data.payload.size() <= 16384; }
+  match /users/{uid}/preferences/snapshot {
+   allow read: if isOwner(uid);
+   allow create: if isOwner(uid) && isValidPreferences(request.resource.data) && request.resource.data.revision == 1;
+   allow update: if isOwner(uid) && isValidPreferences(request.resource.data) && request.resource.data.revision == resource.data.revision + 1;
+   allow delete: if false;
   }
   match /users/{uid}/sync/snapshot {
    allow read: if isOwner(uid);

@@ -88,6 +88,24 @@ class CloudTransportTest {
     assertEquals("",rooms[1].memoryDao().byUid(memory.uid)!!.text)
     assertTrue(rooms[1].memoryDao().byUid(memory.uid)!!.isDeleted)
     assertEquals(localMemory,rooms[0].memoryDao().byUid(localMemory.uid))
+    // Independent DataStores and the separate owner-only preferences path.
+    val prefScopes=List(2){kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob()+kotlinx.coroutines.Dispatchers.IO)}
+    try {
+     val stores=List(2){i->val file=java.io.File(context.filesDir,"sdk-prefs-${UUID.randomUUID()}.preferences_pb");com.nihad64.rotam.data.prefs.SettingsStore(context,androidx.datastore.preferences.core.PreferenceDataStoreFactory.create(scope=prefScopes[i],produceFile={file}))}
+     stores[0].setSounds(true);stores[0].setSharePlans(true);stores[0].setUseMemory(false)
+     val prefEngines=List(2){i->SyncEngine(PreferenceLocalStore(stores[i]){true},Baseline(),FirestoreSyncEndpoint(uid,"preferences-client-$i",cloud[i],preferences=true){auth[i].currentUser?.uid}){PreferenceRecords.decode(it);Unit}}
+     assertTrue(prefEngines[0].synchronize() is SyncResult.Complete)
+     val prefReview=prefEngines[1].synchronize() as SyncResult.Conflicts
+     assertFalse(stores[1].current().uiSounds)
+     assertTrue(prefEngines[1].resolve(prefReview,false) is SyncResult.Complete)
+     assertTrue(stores[1].current().uiSounds);assertFalse(stores[1].current().sharePlans);assertTrue(stores[1].current().useMemory)
+     cloud[1].disableNetwork().await();stores[1].setAnimations(false)
+     stores[0].setHaptics(false);prefEngines[0].synchronize()
+     cloud[1].enableNetwork().await();prefEngines[1].synchronize();prefEngines[0].synchronize()
+     assertFalse(stores[0].current().animations);assertFalse(stores[1].current().haptics)
+     try{cloud[2].document("users/$uid/preferences/snapshot").get(Source.SERVER).await();fail("Different user read preferences")}catch(e:com.google.firebase.firestore.FirebaseFirestoreException){assertEquals(com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED,e.code)}
+    }finally{prefScopes.forEach{it.coroutineContext[kotlinx.coroutines.Job]?.cancel()}}
+
    } finally {
     rooms.forEach{it.close()}
     cloud.forEach{it.terminate().await()}

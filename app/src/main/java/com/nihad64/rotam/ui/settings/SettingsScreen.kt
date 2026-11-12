@@ -56,6 +56,9 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
     val busy by vm.busy.collectAsStateWithLifecycle()
     val account by vm.account.collectAsStateWithLifecycle()
     val cloud by vm.cloudStatus.collectAsStateWithLifecycle()
+    val preferenceStatus by vm.preferenceStatus.collectAsStateWithLifecycle()
+    val preferencesEnabled by vm.preferencesEnabled.collectAsStateWithLifecycle()
+    var confirmPreferences by remember{mutableStateOf(false)}
     var confirmCloud by remember { mutableStateOf(false) }
     var confirmAi by remember { mutableStateOf(false) }
     val memories by vm.memories.collectAsStateWithLifecycle()
@@ -196,6 +199,7 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         ActionRow(Icons.Outlined.Search,"Planlarında ara","Başlık, not ve geçmiş planlar.","Ara",onClick=onSearch)
         CloudSyncSection(cloud,account?.email,onEnable={confirmCloud=true},onDisable=vm::disableSync,onSync=vm::syncNow,onResolve=vm::resolveSync)
         if(account==null) OutlinedButton(onClick={page="Hesabım"}){Text("Google hesabını bağla")}
+        PreferenceSyncSection(preferenceStatus,preferencesEnabled,onEnable={confirmPreferences=true},onDisable=vm::disablePreferences,onSync=vm::syncPreferences,onResolve=vm::resolvePreferences)
         Section("Yedekleme")
         Text("Planlar, hedefler, rutinler, odak süreleri ve onaylı hafıza korunur. API anahtarı yedeğe eklenmez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
         PrimaryButton("Yedeği dışa aktar",{export.launch("Rotam-${java.time.LocalDate.now()}.json")},Modifier.fillMaxWidth(),enabled=!busy)
@@ -215,8 +219,9 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
 
     memoryDraft?.let{draft->MemoryDialog(draft.before?.text.orEmpty(),previous=draft.before?.text,initialCloud=draft.before?.cloudApproved?:vm.syncActive(),canCloud=vm.canCloudMemory(),syncActive=vm.syncActive(),busy=busy,error=message,onDismiss=vm::dismissMemory,onSave=vm::saveMemory)}
     deletingMemory?.let{memory->AlertDialog(onDismissRequest={deletingMemory=null},title={Text("Bu bilgiyi unutsun mu?")},text={Text(memory.text+"\n\nAI bu bilgiyi artık kullanmayacak. Eşitleme açıksa diğer cihazlarına da silinmiş olarak aktarılacak.")},confirmButton={TextButton(onClick={deletingMemory=null;vm.deleteMemory(memory.uid)}){Text("Unut",color=Danger)}},dismissButton={TextButton(onClick={deletingMemory=null}){Text("Vazgeç")}})}
+    if(confirmPreferences)AlertDialog(onDismissRequest={confirmPreferences=false},title={Text("Tercihlerini de eşitle?")},text={Text("Hatırlatma açık/kapalı, özel hatırlatma ön süresi, sessiz saatler, onay sesi, titreşim ve hareket seçimlerin ${account?.email?:"Google hesabın"} hesabıyla Frankfurt'ta saklanır. Yeni cihazda farklı seçimler varsa iki tarafı inceleyerek seçersin. Google oturumu, API anahtarı, AI paylaşım ve hafıza kullanım izinleri aktarılmaz. Telefonun sistem izinleri ayrıca yönetilir.")},confirmButton={TextButton(onClick={confirmPreferences=false;vm.enablePreferences()}){Text("Tercihlerimi eşitle")}},dismissButton={TextButton(onClick={confirmPreferences=false}){Text("Şimdi değil")}})
     if(confirmAi) AlertDialog(onDismissRequest={confirmAi=false},title={Text("Planları AI ile paylaş")},text={Text("Soruna göre geçmişten veya gelecekten seçilen en fazla 150 planın başlığı, kategorisi, tarih/saatleri ve tamamlanma bilgisi Google Gemini'ye gönderilir. Tüm arşiv her istekte gönderilmez. İstediğin zaman bu paylaşımı kapatabilirsin. Yerel arama ve sayım için bu izin gerekmez.")},confirmButton={TextButton(onClick={confirmAi=false;vm.setSharePlans(true)}){Text("Paylaşımı aç")}},dismissButton={TextButton(onClick={confirmAi=false}){Text("Vazgeç")}})
-    if(confirmCloud) AlertDialog(onDismissRequest={confirmCloud=false},title={Text("Planlarını hesabına bağla?")},text={Text("Planların, notların, hedeflerin, rutinlerin, odak sürelerin ve ayrıca eşitlemeyi onayladığın hafıza bilgileri ${account?.email ?: "Google hesabın"} hesabına bağlı olarak Frankfurt'taki bulut veritabanında saklanır. Aynı hesapla diğer cihazlarında eşitlenir. Mevcut kayıtlar karşılaştırılarak birleştirilir; çakışan değişikliklerde seçim istenir. Ses ve bildirim tercihlerin bu cihazda kalır. İstediğin zaman eşitlemeyi durdurabilirsin.")},confirmButton={TextButton(onClick={confirmCloud=false;vm.enableSync()}){Text("Bağla ve eşitle")}},dismissButton={TextButton(onClick={confirmCloud=false}){Text("Şimdi değil")}})
+    if(confirmCloud) AlertDialog(onDismissRequest={confirmCloud=false},title={Text("Planlarını hesabına bağla?")},text={Text("Planların, notların, hedeflerin, rutinlerin, odak sürelerin ve ayrıca eşitlemeyi onayladığın hafıza bilgileri ${account?.email ?: "Google hesabın"} hesabına bağlı olarak Frankfurt'taki bulut veritabanında saklanır. Aynı hesapla diğer cihazlarında eşitlenir. Mevcut kayıtlar karşılaştırılarak birleştirilir; çakışan değişikliklerde seçim istenir. Ses ve bildirim tercihlerini eşitlemek için ayrıca Tercihlerim adımını açabilirsin. İstediğin zaman eşitlemeyi durdurabilirsin.")},confirmButton={TextButton(onClick={confirmCloud=false;vm.enableSync()}){Text("Bağla ve eşitle")}},dismissButton={TextButton(onClick={confirmCloud=false}){Text("Şimdi değil")}})
     if(quietTarget!=null) TimeChooser(if(quietTarget=="start")clock(s.quietStart) else clock(s.quietEnd),"Sessiz saat",{quietTarget=null}) { value->
         value?.let{val m=LocalTime.parse(it).toSecondOfDay()/60;if(quietTarget=="start")vm.setQuietTimes(m,s.quietEnd) else vm.setQuietTimes(s.quietStart,m)}
     }
@@ -333,4 +338,29 @@ private fun CloudSyncSection(status:CloudStatus,email:String?,onEnable:()->Unit,
 @Composable
 private fun SettingsHero(modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit) {
  Column(modifier.clip(RoundedCornerShape(topStart=28.dp,topEnd=28.dp,bottomStart=28.dp,bottomEnd=52.dp)).background(Brush.linearGradient(listOf(HeroSurface,Surface))).padding(24.dp),content=content)
+}
+
+@Composable private fun PreferenceSyncSection(status:CloudStatus,enabled:Boolean,onEnable:()->Unit,onDisable:()->Unit,onSync:()->Unit,onResolve:(Boolean)->Unit){
+ Section("Tercihlerim")
+ Text("Bildirim, ses, titreşim ve hareket seçimlerini de aynı hesabında koru. AI paylaşım izinleri her cihazda ayrı kalır.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)
+ when(status){
+  CloudStatus.Working->Row(verticalAlignment=Alignment.CenterVertically){CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp);Spacer(Modifier.width(10.dp));Text("Tercihler eşitleniyor…",color=SubtleText)}
+  is CloudStatus.Current->Text("Tercihlerin güncel.",color=Primary)
+  is CloudStatus.Error->Text(status.message,color=Danger)
+  is CloudStatus.Review->{
+   Text("Cihazında ve bulutta farklı seçimler var. Hangisi kullanılsın?",style=MaterialTheme.typography.titleMedium)
+   status.conflicts.forEach{conflict->
+    Column(Modifier.fillMaxWidth().padding(vertical=8.dp)){
+     Text(com.nihad64.rotam.data.prefs.PortablePreferences.label(conflict.key.uid),style=MaterialTheme.typography.titleSmall)
+     Text("Bu cihaz · ${PreferenceRecords.display(conflict.local)}\nBulut · ${PreferenceRecords.display(conflict.remote)}",style=MaterialTheme.typography.bodyMedium,color=SubtleText)
+    }
+   }
+   PrimaryButton("Buluttaki seçimleri kullan",{onResolve(false)},Modifier.fillMaxWidth())
+   OutlinedButton(onClick={onResolve(true)},modifier=Modifier.fillMaxWidth()){Text("Bu cihazın seçimlerini kullan")}
+  }
+  CloudStatus.SignedOut->Text("Bağlı Google hesabına giriş yaptığında devam eder.",color=SubtleText)
+  else->Text(if(enabled)"Tercih eşitlemesi için plan eşitlemesini ve bağlı hesabını kontrol et."else"Şimdilik bu cihazda saklanıyor.",color=SubtleText)
+ }
+ if(!enabled)OutlinedButton(onClick=onEnable,modifier=Modifier.fillMaxWidth()){Text("Tercihlerimi de eşitle")}
+ else {Row{TextButton(onClick=onSync,enabled=status !is CloudStatus.Working&&status !is CloudStatus.Review){Text("Şimdi eşitle")};TextButton(onClick=onDisable){Text("Tercih eşitlemesini durdur")}}}
 }

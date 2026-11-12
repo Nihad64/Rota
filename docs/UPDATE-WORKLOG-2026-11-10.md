@@ -115,3 +115,14 @@ Kod 3.1.0-dev (43). Tam ürün teslimi değildir; önceki kalan kapsam devam edi
 - 85 JVM testi, lint, app/test APK derlemeleri yerelde geçti. Taslağın yeniden açılış/hesap ayrımı/bozuk dosya korunması ve hero yinelenmesi test edildi. Android'de 1.8x metin boyutuyla önizleme düğmelerine erişim/geçersiz taslağın kayıt yapmaması testi eklendi; bu yeni UI testinin CI sonucu henüz yok.
 
 Yeni kod (44). Tercih senkronizasyonu, kalan görsel/erişilebilirlik ve iOS hâlâ sürüyor; tam ürün teslimi değildir.
+
+
+## 12 Kasım — ayrı onayla tercihlerin geri dönüşü
+
+- Hatırlatma commit'i 0f06b6a / run 43048868646: dört CI işi başarılı. Önizleme/taslak commit'i 684fe53 için run 43229581413 başladı; yeni erişilebilirlik testi henüz bitmiş sayılmaz.
+- Tercihlerim, plan eşitlemesinden ayrı onayla sekiz beyaz listeli ses/bildirim/hareket değerini taşır. Google oturumu/API anahtarı/AI paylaşımı/hafıza kullanım izni/onboarding/sistem izinleri taşınmaz. Eski plan-eşitleme onayı sessizce genişletilmez.
+- Yeni cihazın farklı varsayılanları veya eşzamanlı aynı alan değişikliği iki tarafın gerçek değeriyle incelenir. DataStore atomik karşılaştırma/uygulaması yeni yerel değişikliği ezmez. Farklı alanlardaki çevrimdışı değişiklikler birleşir. Hesap/izin kontrolü ağ yazımından önce tekrar yapılır; bu kontrol mevcut plan eşitlemesine de eklendi.
+- Ayrı owner-only preferences/snapshot yolu, sıkı dış alan/tip/zaman/revizyon ve 16 KiB sınırı. Plan snapshot'ı ayrı kalır. İç tercih zarfı schema=3, mevcut plan/hafıza schema=2. Kuralların CLI dry-run doğrulaması geçti. Yeni emülatör kuralları/SDK testleri CI'dan önce canlıya dağıtılmayacak. Kişisel tercih yüklenmedi.
+- 87 JVM testi, lint, uygulama/test APK derlemeleri yerelde başarılı. İki ayrı DataStore ile geri dönüş, gizlilik izinlerinin korunması, çevrimdışı alan birleştirme, eski inceleme, bilinmeyen/secret alan reddi ve karşılaştırmalı yazma doğrulandı. Android'deki iki SDK istemcisine tercihler ve hesap ayrımı senaryosu eklendi; CI sonucu beklenecek. Teknik ayrıntı docs/PREFERENCE-SYNC.md içinde.
+
+Kod (45). Kalan kapsam: yeni UI/tercih cihaz CI sonuçları, kalan ekran/hareket/bildirim gerçek cihaz doğrulaması, iOS, son veri yükseltmesi ve tek final APK. Tam ürün teslimi değildir.

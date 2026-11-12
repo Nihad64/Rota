@@ -54,7 +54,8 @@ def write(path, data, uid, server_time=True):
 class SnapshotRules(unittest.TestCase):
     def setUp(self):
         self.uid = 'test-' + self._testMethodName
-        self.path = f'users/{self.uid}/sync/snapshot'
+        self.segment = 'sync'
+        self.path = f'users/{self.uid}/{self.segment}/snapshot'
         self.assertEqual(200, write(self.path, fields(), self.uid))
 
     def test_owner_reads_and_revises(self):
@@ -71,12 +72,12 @@ class SnapshotRules(unittest.TestCase):
                 self.assertEqual(403, write(f'users/{self.uid}/sync/another', fields(), uid))
 
     def test_cannot_create_someone_elses_snapshot(self):
-        self.assertEqual(403, write('users/someone-else/sync/snapshot', fields(), self.uid))
+        self.assertEqual(403, write(f'users/someone-else/{self.segment}/snapshot', fields(), self.uid))
 
     def test_invalid_initial_revision(self):
         for revision in (0, -1, 2, 9007199254740992):
             uid = self.uid + '-' + str(revision)
-            self.assertEqual(403, write(f'users/{uid}/sync/snapshot', fields(revision), uid))
+            self.assertEqual(403, write(f'users/{uid}/{self.segment}/snapshot', fields(revision), uid))
 
     def test_stale_or_skipped_revision(self):
         for revision in (0, 1, 3, 9007199254740992):
@@ -112,7 +113,7 @@ class SnapshotRules(unittest.TestCase):
             if fresh.get('revision') == {'integerValue': '2'}:
                 fresh['revision'] = {'integerValue': '1'}
             with self.subTest(label=label, operation='create'):
-                self.assertEqual(403, write(f'users/{uid}/sync/snapshot', fresh, uid))
+                self.assertEqual(403, write(f'users/{uid}/{self.segment}/snapshot', fresh, uid))
 
     def test_timestamp_must_be_server_time(self):
         self.assertEqual(403, write(self.path, fields(2), self.uid, server_time=False))
@@ -130,6 +131,30 @@ class SnapshotRules(unittest.TestCase):
             self.assertEqual(403, request('GET', '/' + path, self.uid)[0])
         self.assertEqual(403, request('GET', '/users', self.uid)[0])
         self.assertEqual(403, request('GET', '/users')[0])
+
+class PreferenceRules(SnapshotRules):
+    # Re-run the entire ownership/type/timestamp/revision matrix on the separate path.
+    def setUp(self):
+        self.uid = 'prefs-' + self._testMethodName
+        self.segment = 'preferences'
+        self.path = f'users/{self.uid}/{self.segment}/snapshot'
+        self.assertEqual(200, write(self.path, fields(), self.uid))
+
+    def test_preference_creation_is_owner_only(self):
+        self.assertEqual(403, write('users/someone-else/preferences/snapshot', fields(), self.uid))
+        self.assertEqual(403, request('GET', f'/users/{self.uid}/preferences', self.uid)[0])
+        self.assertEqual(403, request('DELETE', '/' + self.path, self.uid)[0])
+
+    def test_preference_payload_has_smaller_limit_on_create_and_update(self):
+        oversized = fields(2)
+        oversized['payload'] = {'bytesValue': base64.b64encode(b'x' * 16385).decode()}
+        self.assertEqual(403, write(self.path, oversized, self.uid))
+        uid = self.uid + '-new'
+        oversized['revision'] = {'integerValue': '1'}
+        self.assertEqual(403, write(f'users/{uid}/preferences/snapshot', oversized, uid))
+        valid = fields(2)
+        valid['payload'] = {'bytesValue': base64.b64encode(b'x' * 16384).decode()}
+        self.assertEqual(200, write(self.path, valid, self.uid))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

@@ -13,6 +13,12 @@ import kotlinx.coroutines.flow.*
 class SettingsViewModel(private val c:AppContainer, private val authenticate:suspend (android.app.Activity)->Unit = {c.account.signIn(it)}):ViewModel() {
     val reminderError=c.scheduler.error
     fun retryReminders()=run{c.scheduler.error.value=null;c.scheduler.rescheduleAll()}
+    val preferenceStatus=c.preferenceSync.status
+    val preferencesEnabled=c.preferenceSync.isEnabled
+    fun enablePreferences(){message.value=c.preferenceSync.enable()}
+    fun disablePreferences()=c.preferenceSync.disable()
+    fun syncPreferences()=c.preferenceSync.request()
+    fun resolvePreferences(useLocal:Boolean)=c.preferenceSync.resolve(useLocal)
     val cloudStatus=c.sync.status
     fun enableSync(){message.value=c.sync.enable()}
     fun disableSync()=c.sync.disable()

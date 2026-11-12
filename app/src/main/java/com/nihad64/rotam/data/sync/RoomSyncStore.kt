@@ -36,9 +36,9 @@ class RoomSyncStore(private val context:Context,private val db:AppDatabase,priva
   }
  }
 }
-class FileSyncBaseline(context:Context,uid:String):SyncBaselineStore {
+class FileSyncBaseline(context:Context,uid:String,preferences:Boolean=false):SyncBaselineStore {
  private val id=java.security.MessageDigest.getInstance("SHA-256").digest(uid.toByteArray()).joinToString(""){"%02x".format(it)}
- private val file=AtomicFile(File(context.noBackupFilesDir,"sync-$id.json"))
+ private val file=AtomicFile(File(context.noBackupFilesDir,if(preferences)"preferences-sync-$id.json"else"sync-$id.json"))
  override fun read():SyncEnvelope {
   if(!file.baseFile.exists())return SyncEnvelope(0,emptyMap())
   val obj=JSONObject(String(file.readFully(),Charsets.UTF_8))

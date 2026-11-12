@@ -21,14 +21,14 @@ sealed interface SyncResult {
  data class Conflicts(val remoteRevision:Long,val local:Map<RecordKey,CloudRecord>,val merged:MergeResult):SyncResult
  data object LocalChanged:SyncResult
 }
-class SyncEngine(private val local:SyncLocalStore,private val baseline:SyncBaselineStore,private val remote:SyncEndpoint){
+class SyncEngine(private val local:SyncLocalStore,private val baseline:SyncBaselineStore,private val remote:SyncEndpoint,private val validate:(Map<RecordKey,CloudRecord>)->Unit={CloudRecords.decode(it);Unit}){
  private val mutex=Mutex()
  suspend fun synchronize():SyncResult=mutex.withLock {
   val base=baseline.read();val before=local.records();val server=remote.read()
   check(server.revision>=base.revision){"Önceki bulut kopyası bulunamadı. Yerel kayıtlar korundu; eşitleme durduruldu."}
   val merged=reviewableMerge(base.records,before,server.records)
   if(!merged.canCommit)return@withLock SyncResult.Conflicts(server.revision,before,merged)
-  CloudRecords.decode(merged.records)
+  validate(merged.records)
   val revision=if(merged.records==server.records)server.revision else remote.write(server.revision,merged.records)
   if(!local.applyIfUnchanged(before,merged.records))return@withLock SyncResult.LocalChanged
   baseline.write(SyncEnvelope(revision,merged.records))
@@ -41,7 +41,7 @@ class SyncEngine(private val local:SyncLocalStore,private val baseline:SyncBasel
   fun choice(useLocal:Boolean):Map<RecordKey,CloudRecord> = merged.records.toMutableMap().apply {
    merged.conflicts.forEach{conflict->val value=if(useLocal)conflict.local else conflict.remote;if(value==null)remove(conflict.key)else put(conflict.key,value)}
   }
-  val valid=runCatching{CloudRecords.decode(choice(true));CloudRecords.decode(choice(false))}.isSuccess
+  val valid=runCatching{validate(choice(true));validate(choice(false))}.isSuccess
   if(valid)return merged
   val conflicts=(local.keys+remote.keys).filter{local[it]!=remote[it]}.map{SyncConflict(it,base[it],local[it],remote[it])}
   check(conflicts.isNotEmpty()){"Bulut kayıtları doğrulanamadı."}
@@ -57,7 +57,7 @@ class SyncEngine(private val local:SyncLocalStore,private val baseline:SyncBasel
    val value=if(useLocal)conflict.local else conflict.remote
    if(value==null)chosen.remove(conflict.key)else chosen[conflict.key]=value
   }
-  CloudRecords.decode(chosen)
+  validate(chosen)
   val revision=if(chosen==server.records)server.revision else remote.write(server.revision,chosen)
   if(!local.applyIfUnchanged(review.local,chosen))return@withLock SyncResult.LocalChanged
   baseline.write(SyncEnvelope(revision,chosen))

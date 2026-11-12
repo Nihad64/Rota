@@ -10,8 +10,12 @@ import kotlinx.coroutines.tasks.await
 class RemoteChangedException:Exception("Bulut kaydı değişti; güncel hâliyle yeniden eşitlenecek.")
 
 /** Revision CAS prevents a stale device overwriting another device's changes. */
-class FirestoreSyncEndpoint(private val uid:String,private val writer:String,private val firestore:FirebaseFirestore=FirebaseFirestore.getInstance(),private val authenticatedUid:()->String?={FirebaseAuth.getInstance().currentUser?.uid}):SyncEndpoint {
- private val ref get()=firestore.document("users/$uid/sync/snapshot")
+class FirestoreSyncEndpoint(private val uid:String,private val writer:String,private val firestore:FirebaseFirestore=FirebaseFirestore.getInstance(),private val preferences:Boolean=false,private val authenticatedUid:()->String?={FirebaseAuth.getInstance().currentUser?.uid}):SyncEndpoint {
+ private val ref get()=firestore.document(if(preferences)"users/$uid/preferences/snapshot"else"users/$uid/sync/snapshot")
+ private fun validate(records:Map<RecordKey,CloudRecord>){
+  if(preferences)PreferenceRecords.decode(records)
+  else check(CloudRecords.decode(records).memories.all{it.ownerUid==uid}){"Hafıza kaydı farklı bir hesaba ait; eşitleme durduruldu."}
+ }
  private fun checkAccount(){check(authenticatedUid()==uid){"Hesap değişti; eşitleme durduruldu."}}
  override suspend fun read():SyncEnvelope {
   checkAccount()
@@ -22,12 +26,12 @@ class FirestoreSyncEndpoint(private val uid:String,private val writer:String,pri
   check(revision>0)
   val records=SyncEnvelopeCodec.decode(doc.getBlob("payload")?.toBytes()?:error("Bulut verisi eksik"))
   // Validate all types and relationships before the caller may import anything.
-  check(CloudRecords.decode(records).memories.all{it.ownerUid==uid}){"Hafıza kaydı farklı bir hesaba ait; eşitleme durduruldu."}
+  validate(records)
   return SyncEnvelope(revision,records)
  }
  override suspend fun write(expectedRevision:Long,records:Map<RecordKey,CloudRecord>):Long {
-  checkAccount();check(CloudRecords.decode(records).memories.all{it.ownerUid==uid}){"Hafıza kaydı farklı bir hesaba ait; eşitleme durduruldu."}
-  val payload=SyncEnvelopeCodec.encode(records)
+  checkAccount();validate(records)
+  val payload=SyncEnvelopeCodec.encode(records);if(preferences)require(payload.size<=16384){"Tercih kaydı sınırı aşılıyor."}
   val revision=firestore.runTransaction{tx->
    checkAccount()
    val snapshot=tx.get(ref)

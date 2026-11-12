@@ -99,7 +99,7 @@ class SyncCoordinator(private val c:AppContainer) {
   session?.takeIf{it.uid==uid}?.let{return it}
   val writer=prefs.getString("writer",null)?:UUID.randomUUID().toString().also{check(prefs.edit().putString("writer",it).commit())}
   val store=RoomSyncStore(c.app,c.db,ownerUid=uid){allowed(uid)}
-  return Session(uid,SyncEngine(store,FileSyncBaseline(c.app,uid),FirestoreSyncEndpoint(uid,writer))).also{session=it}
+  return Session(uid,SyncEngine(store,FileSyncBaseline(c.app,uid),FirestoreSyncEndpoint(uid,writer,authenticatedUid={if(allowed(uid))uid else null}))).also{session=it}
  }
  suspend fun synchronize():Boolean=lock.withLock {
   val uid=c.account.account.value?.uid
@@ -160,7 +160,7 @@ class SyncCoordinator(private val c:AppContainer) {
 class CloudSyncWorker(context:Context,params:WorkerParameters):CoroutineWorker(context,params) {
  override suspend fun doWork():Result {
   val c=RotamApp.container
-  return try {c.initialize();if(c.sync.synchronize())Result.success()else if(runAttemptCount<5)Result.retry()else Result.failure()}
+  return try {c.initialize();if(c.sync.synchronize()&&c.preferenceSync.synchronize())Result.success()else if(runAttemptCount<5)Result.retry()else Result.failure()}
   catch(e:CancellationException){throw e}catch(_:Exception){if(runAttemptCount<5)Result.retry()else Result.failure()}
  }
 }

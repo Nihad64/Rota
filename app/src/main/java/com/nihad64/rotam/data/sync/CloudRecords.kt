@@ -7,7 +7,7 @@ import org.json.JSONObject
 import java.security.MessageDigest
 
 /** Local autoincrement ids never cross the device boundary. */
-enum class RecordKind { PLAN, GOAL, SERIES, MEMORY }
+enum class RecordKind { PLAN, GOAL, SERIES, MEMORY, PREFERENCE }
 data class RecordKey(val kind:RecordKind,val uid:String)
 data class CloudRecord(val key:RecordKey,val body:String) {
  init {require(key.uid.isNotBlank()&&key.uid.length<=512);require(body.toByteArray().size<=256*1024)}
@@ -31,6 +31,7 @@ object CloudRecords {
   return all.associateBy{it.key}
  }
  fun decode(records:Map<RecordKey,CloudRecord>,existing:BackupData=BackupData(emptyList(),emptyList(),emptyList())):BackupData {
+  require(records.keys.none{it.kind==RecordKind.PREFERENCE}){"Tercihler plan kaydına karıştırılamaz."}
   records.forEach{(key,value)->require(key==value.key&&JSONObject(value.body).getString("uid")==key.uid){"Bulut kayıt kimliği uyuşmuyor"}}
   fun objects(kind:RecordKind)=records.values.filter{it.key.kind==kind}.sortedBy{it.key.uid}.map{JSONObject(it.body)}
   fun ids(existing:Map<String,Long>,uids:List<String>):Map<String,Long>{
