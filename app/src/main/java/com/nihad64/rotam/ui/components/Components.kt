@@ -44,3 +44,18 @@ fun Category.icon():ImageVector=when(this){Category.KITAP->Icons.AutoMirrored.Ou
 @Composable fun PageHeader(title:String,subtitle:String?=null,onBack:(()->Unit)?=null,action:(@Composable ()->Unit)?=null){
  Column(Modifier.fillMaxWidth().padding(bottom=20.dp)){Row(verticalAlignment=Alignment.CenterVertically){if(onBack!=null){IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Outlined.ArrowBack,"Geri")};Spacer(Modifier.width(4.dp))};Text(title,style=MaterialTheme.typography.headlineMedium,modifier=Modifier.weight(1f));action?.invoke()};if(subtitle!=null)Text(subtitle,color=SubtleText,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=8.dp))}}
 @Composable fun DetailRow(label:String,value:String,onClick:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=16.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(label,style=MaterialTheme.typography.labelMedium,color=SubtleText);Text(value,style=MaterialTheme.typography.bodyLarge,modifier=Modifier.padding(top=4.dp))};Icon(Icons.Outlined.ChevronRight,null,tint=SubtleText)}}
+
+@Composable fun SegmentedProgress(done:Int,total:Int,modifier:Modifier=Modifier){
+ val enabled=rememberMotionEnabled()
+ val target=if(total<=0)0f else done.toFloat()/total
+ val value by androidx.compose.animation.core.animateFloatAsState(target,androidx.compose.animation.core.tween(if(enabled)RotamMotion.Navigate else 0),label="daily-progress")
+ val segments=total.coerceIn(1,7)
+ Canvas(modifier.fillMaxWidth().height(6.dp)) {
+  val gap=5.dp.toPx();val width=(size.width-gap*(segments-1))/segments
+  repeat(segments){i->
+   val left=i*(width+gap);val fraction=(value*segments-i).coerceIn(0f,1f)
+   drawRoundRect(Outline,androidx.compose.ui.geometry.Offset(left,0f),androidx.compose.ui.geometry.Size(width,size.height),androidx.compose.ui.geometry.CornerRadius(size.height/2))
+   if(fraction>0f)drawRoundRect(Accent,androidx.compose.ui.geometry.Offset(left,0f),androidx.compose.ui.geometry.Size(width*fraction,size.height),androidx.compose.ui.geometry.CornerRadius(size.height/2))
+  }
+ }
+}

@@ -102,3 +102,16 @@ Bu aşama 3.1.0-dev (42). Tercihlerin geri dönüşü, akıllı takip, kalan ekr
 - Geri al işlemi sonradan ölçülmüş odak aralıklarını da koruyacak şekilde düzeltildi; yalnız toplam saniyenin korunması yeterli değildi.
 
 Kod 3.1.0-dev (43). Tam ürün teslimi değildir; önceki kalan kapsam devam ediyor.
+
+
+## 11 Kasım — AI önizlemesi, özel taslak ve ana ekran düzeni
+
+- Hafıza commit'i 8e9939f / GitHub run 43046783804: dört iş başarılı, Android emülatöründe 10 test geçti. Bunlara açık hafıza onayı ve iki ayrı SDK/veritabanında aktarım, unutma, özel kayıt koruma dahil.
+- Önceki sentetik CI ekranları gerçekten açılıp incelendi. Gecikmiş planın hem hero hem destede yinelenmesi kaldırıldı; aynı plan günün devamında tekrar çizilmez. Etkin odak oturumu önceliği korunur. Günlük ilerleme referanstaki gibi turuncu bölümlere ayrılır; sıfırda yanlış tamamlanma noktası gösterilmez. Rotam AI erişimi gün akışında bulunur.
+- AI girişi, tek ana başlık, referansın kart/mesaj hiyerarşisi, yazma alanına metin yerleştiren başlangıç örnekleri, kullanıcı mesaj balonu, kısa yanıt giriş hareketi ve net önizleme kartlarıyla düzenlendi. Paylaşılan veriler açıklaması erişilebilir Paylaşım alanında; onay/taslak bilgisi saklanmadı.
+- Plan önizlemesindeki Düzenle ile başlık/gün/bağımsız başlangıç/bitiş ve geceyi aşan bitiş günü kayıt yapmadan değişebilir. Geçersiz taslak pencerede kalır. Nihai kayıt ayrı Onayla ve ekle işlemidir.
+- Yarım AI metni ve bekleyen istek, hesap kimliğinin karmasıyla adlandırılan özel no_backup dosyalarında cihazda tutulur. Yeniden açılışta metin geri gelir; otomatik yeniden gönderim ve otomatik kayıt yoktur. Başka hesaba/yerel misafire metin geçmez. Hesap değişince bekleyen istek iptal edilir, eski sohbet yeni isteğin geçmişine eklenmez. Hatalı dosya boş taslak sayılıp sessizce üzerine yazılmaz; saklama hatası da görünürdür. Yeniden dene, o sırada yazılmış farklı bir sonraki mesajı silmez.
+- AI bağlamında tamamlanmadı alanının başarısızlık kanıtı olmadığı açıklandı; yanıtsız/kısmi/yapılmadı/ertelendi ayrımı korunur.
+- 85 JVM testi, lint, app/test APK derlemeleri yerelde geçti. Taslağın yeniden açılış/hesap ayrımı/bozuk dosya korunması ve hero yinelenmesi test edildi. Android'de 1.8x metin boyutuyla önizleme düğmelerine erişim/geçersiz taslağın kayıt yapmaması testi eklendi; bu yeni UI testinin CI sonucu henüz yok.
+
+Yeni kod (44). Tercih senkronizasyonu, kalan görsel/erişilebilirlik ve iOS hâlâ sürüyor; tam ürün teslimi değildir.
