@@ -48,7 +48,8 @@ class GeminiService(private val settings:SettingsStore, private val account:com.
    Bir günlük istisnayı kalıcı alışkanlık yapma. Yeni kalıcı bilgi için yalnız remember taslağı öner; kayıt yapıldığını söyleme. Açıkça hatırlama istendiğinde veya tekrar kullanılacak tercih netse kullanıcı önizlemeyi ayrıca onaylayacak. Var olan bilgi değişiyorsa yalnız yukarıdaki gerçek uid ile replaceUid kullan. Kimlik, şifre veya API anahtarı isteme.
    UNKNOWN yanıtsızdır, PARTIAL kısmi, NOT_DONE açıkça yapılmadı, POSTPONED ertelendi. completed=false başarısızlık kanıtı değildir. Gelecek ve yanıtsız işleri yapılmadı sayma.
    Verilen liste tüm geçmiş kayıtlar değildir. Kapsam dışı geçmiş sorularında sonuç uydurma; sıfır veya hiç kayıt yok diye kesinleştirme.
-   Yalnız JSON döndür: {"reply":"açıklama","plans":[{"planId":null,"title":"başlık","category":"kitap|is|video|spor|ibadet|randevu|yemek|ogrenme|kisisel","date":"YYYY-MM-DD","startTime":null,"endTime":null,"endDate":null,"repeatType":"none|daily|weekdays|weekly|custom|interval|monthly","repeatDays":"1,4","repeatEvery":1,"repeatUntil":null}],"remember":[]}. Hafıza önerisi gerekirse remember içine {"text":"onaylanacak kısa bilgi","replaceUid":null} ekle; en fazla 5 öneri, her biri en fazla 500 karakter.
+   Yalnız JSON döndür: {"reply":"açıklama","plans":[{"planId":null,"title":"başlık","category":"kitap|is|video|spor|ibadet|randevu|yemek|ogrenme|kisisel","date":"YYYY-MM-DD","startTime":null,"endTime":null,"endDate":null,"repeatType":"none|daily|weekdays|weekly|custom|interval|monthly","repeatDays":"1,4","repeatEvery":1,"repeatUntil":null,"note":"","subtasks":[]}],"remember":[]}. Hafıza önerisi gerekirse remember içine {"text":"onaylanacak kısa bilgi","replaceUid":null} ekle; en fazla 5 öneri, her biri en fazla 500 karakter.
+   Kullanıcının söylediği ayrıntıları kaybetme: alışveriş malzemelerini subtasks listesine, işten önce gibi saati belirsiz ilişkileri note içine yaz. Bu ilişkiden saat uydurma. note en fazla 5000 karakter; subtasks en fazla 30 kısa metin.
    Başlangıç ve bitiş birbirinden bağımsızdır. Kullanıcı belirtmediyse null bırak. Saatsiz işe saat, başlangıca varsayımsal bitiş ekleme. Yalnız bitiş son teslimdir. Geceyi aşan açık aralık için endDate belirt. Belirsiz tarih veya eşleşmede soru sor, plans boş olsun.
    Değişiklikte yalnız listede gerçekten bulunan planId kullan, değişen planın tüm tarih/saat alanlarını döndür. Yeni planda planId null. Tekrarlı mevcut plan değişiklikleri yalnız seçili örneğe uygulanır. Silme yapma. En çok 20 öneri. Kullanıcıya kayıt yapıldığını söyleme; önce önizlemeyi onaylayacak. Mevcut iki uçlu aralıklarla çakışmayı açıkça bildir; belirsiz sürelerden sahte doluluk üretme.
   """.trimIndent()
@@ -70,11 +71,15 @@ internal object AiResponseParser {
    val before=id?.let{n->existing.firstOrNull{it.id==n}?:throw IllegalArgumentException("unknown plan")}
    if(before!=null)require(listOf("startTime","endTime","endDate").all{o.has(it)}){"existing plan time fields missing"}
    fun optionalTime(k:String):String?=o.nullString(k)?.let{LocalTime.parse(it).toString()}
-   val p=(before?:Plan(title=o.getString("title"),date=o.getString("date"))).copy(
+   var p=(before?:Plan(title=o.getString("title"),date=o.getString("date"))).copy(
     title=o.getString("title"),date=LocalDate.parse(o.getString("date")).toString(),category=Category.fromKey(o.optString("category")).key,
     startTime=optionalTime("startTime"),endTime=optionalTime("endTime"),endDate=o.nullString("endDate")?.let{LocalDate.parse(it).toString()},
     repeatType=if(before?.seriesId!=null&&before.seriesId!=0L)before.repeatType else o.optString("repeatType","none"),repeatDays=o.optString("repeatDays"),repeatEvery=o.optInt("repeatEvery",1),repeatUntil=o.nullString("repeatUntil"),
     reminderEnabled=before?.reminderEnabled?:false,reminderTime=before?.reminderTime)
+   val detail=JSONObject(p.extraData)
+   if(o.has("note")&&!o.isNull("note")){require(o.get("note") is String);val note=o.getString("note");require(note.length<=5000);detail.put("note",note)}
+   if(o.has("subtasks")){val tasks=o.getJSONArray("subtasks");require(tasks.length()<=30);val values=(0 until tasks.length()).map{n->require(tasks.get(n) is String);tasks.getString(n).trim().also{require(it.isNotBlank()&&it.length<=300&&!it.contains('\n'))}};detail.put("subtasks",values.joinToString("\n"))}
+   p=p.copy(extraData=detail.toString())
    require(PlanTime.validate(p)==null);result.add(PlanSuggestion(if(before==null)com.nihad64.rotam.domain.usecase.ReminderPolicy.withMode(p,com.nihad64.rotam.domain.usecase.ReminderPolicy.Mode.AUTO)else p,before))
   }catch(_:Exception){invalid++}
   if(items.length()>20)invalid+=items.length()-20
@@ -88,7 +93,8 @@ internal object AiResponseParser {
    proposed+=MemorySuggestion(value,before)
   }catch(_:Exception){invalidMemory++}
   val memoryWarning=if(invalidMemory>0)"\n$invalidMemory hafıza önerisi doğrulanamadı; kaydedilmedi."else""
-  return AiReply(obj.optString("reply").ifBlank{"Önerilerini kontrol edip seçebilirsin."}+extra+memoryWarning,result,proposed.distinctBy{it.text})
+  val reply=if(result.isNotEmpty())"${result.size} plan taslağı hazır. Henüz kaydedilmedi; düzenleyip onaylayabilirsin."else if(proposed.isNotEmpty())"Hatırlanacak bilgi önerisi hazır. Kaydetmeden önce onayını bekliyor."else obj.optString("reply").ifBlank{"Önerilerini kontrol edip seçebilirsin."}
+  return AiReply(reply+extra+memoryWarning,result,proposed.distinctBy{it.text})
  }
 }
 

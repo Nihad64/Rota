@@ -72,4 +72,9 @@ import XCTest
   XCTAssertEqual(1,LocalSearch.search("Kasım 2026 market kaç kere yaptım",plans:[complete,work],now:now).plans.count)
   XCTAssertTrue(LocalSearch.search("İşi yarına taşı",plans:[market,work],now:now).needsAI)
  }
+ func testAIProposalUsesAppOwnedApprovalTextAndRetainsShoppingDetails()throws{
+  let reply=try AiDraftParser.parse("{\"reply\":\"Planınız eklendi.\",\"plans\":[{\"title\":\"Alışveriş\",\"date\":\"2026-11-13\",\"note\":\"İşten önce\",\"subtasks\":[\"Süt al\",\"Yumurta al\"]}]}",existing:[],memories:[])
+  XCTAssertTrue(reply.text.contains("Henüz kaydedilmedi"));XCTAssertFalse(reply.text.contains("eklendi"))
+  let p=try PortablePlan(reply.plans[0].plan);XCTAssertNil(p.start);XCTAssertNil(p.end);XCTAssertEqual("İşten önce",p.metadata["note"]?.string);XCTAssertEqual("Süt al\nYumurta al",p.metadata["subtasks"]?.string)
+ }
 }

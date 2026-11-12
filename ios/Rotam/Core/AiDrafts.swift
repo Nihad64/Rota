@@ -27,6 +27,10 @@ public enum AiDraftParser {
    var changes:[String:JSONValue]=["title":.string(title),"date":.string(date),"category":d["category"] ?? .string("kisisel")]
    for key in ["startTime","endTime","endDate"]{changes[key]=d[key] ?? .null}
    if before==nil{for key in ["repeatType","repeatDays","repeatEvery","repeatUntil"]{if let v=d[key]{changes[key]=v}}}
+   var metadata=try PortablePlan(base).metadata
+   if let note=d["note"],note != .null{guard let value=note.string,value.utf16.count<=5000 else{throw RotamDataError.invalid("AI plan notu doğrulanamadı.")};metadata["note"] = .string(value)}
+   if let tasks=d["subtasks"]{guard let rows=tasks.items,rows.count<=30 else{throw RotamDataError.invalid("AI alt adımları doğrulanamadı.")};let values=try rows.map{row->String in guard let value=row.string?.trimmingCharacters(in:.whitespacesAndNewlines),!value.isEmpty,value.utf16.count<=300,!value.contains("\n")else{throw RotamDataError.invalid("AI alt adımı doğrulanamadı.")};return value};metadata["subtasks"] = .string(values.joined(separator:"\n"))}
+   if d["note"] != nil||d["subtasks"] != nil{changes["extraData"] = .string(try JSONValue.object(metadata).canonical())}
    let proposed=try base.changing(changes)
    var graph=existing.filter{$0.key != proposed.key};graph.append(proposed);try CoreValidator.validate(graph)
    proposals.append(PlanProposal(plan:proposed,before:before))
@@ -38,7 +42,8 @@ public enum AiDraftParser {
    if let uid=d["replaceUid"]?.string{guard let found=memories.first(where:{$0.uid==uid})else{throw RotamDataError.invalid("Değiştirilecek hafıza bulunamadı.")};before=found}else{before=nil}
    return MemoryProposal(text:value,before:before)
   }
-  return ParsedAiReply(text:root["reply"]?.string ?? "Taslakları inceleyebilirsin.",plans:proposals,memories:memory)
+  let reply = !proposals.isEmpty ? "\(proposals.count) plan taslağı hazır. Henüz kaydedilmedi; düzenleyip onaylayabilirsin.":!memory.isEmpty ? "Hatırlanacak bilgi önerisi hazır. Kaydetmeden önce onayını bekliyor.":root["reply"]?.string ?? "Taslakları inceleyebilirsin."
+  return ParsedAiReply(text:reply,plans:proposals,memories:memory)
  }
 }
 extension RecordStore {

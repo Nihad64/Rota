@@ -42,7 +42,7 @@ import java.util.Locale
   }
   item{Column{if(hero!=null)HeroPlan(hero,s.label(hero),{onEdit(hero.id)},{onFocus(hero.id)})else if(s.missed.isEmpty())Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart=32.dp,topEnd=32.dp,bottomStart=32.dp,bottomEnd=70.dp)).background(Brush.linearGradient(listOf(HeroSurface,Surface))).padding(26.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
    Row(verticalAlignment=Alignment.CenterVertically){Diamond();Spacer(Modifier.width(10.dp));Text("BİRLİKTE PLANLAYALIM",color=SubtleText,style=MaterialTheme.typography.labelMedium)}
-   Text(if(s.total>0)"Yeni bir şeye yer aç." else "İlk planını birlikte oluşturalım.",color=Primary,style=MaterialTheme.typography.headlineMedium)
+   Text(if(s.total>0)"Yeni bir şeye yer aç." else if(s.hasAnyPlans)"Bugününe bir plan ekleyelim."else "İlk planını birlikte oluşturalım.",color=Primary,style=MaterialTheme.typography.headlineMedium)
    Text("Yaz veya söyle. Eklenmeden önce sen onayla.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)
    PrimaryButton("Plan ekle",onNewPlan,icon=Icons.Outlined.ArrowForward)
   }

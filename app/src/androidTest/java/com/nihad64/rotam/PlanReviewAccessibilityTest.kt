@@ -26,10 +26,10 @@ class PlanReviewAccessibilityTest {
     RotamTheme{PlanSuggestionReview(Plan(title="Kitap oku",date="2026-11-12"),{dismissed=true}){p->PlanTime.validate(p).also{if(it==null)applied=p}}}
    }
   }
-  ui.onNode(hasSetTextAction()).performTextReplacement("")
+  ui.onNode(hasSetTextAction() and hasText("Plan adı")).performTextReplacement("")
   ui.onNodeWithText("Önizlemeye uygula").assertIsDisplayed().performClick()
   ui.runOnIdle{assertNull(applied);assertFalse(dismissed)}
-  ui.onNode(hasSetTextAction()).performScrollTo().performTextReplacement("20 sayfa oku")
+  ui.onNode(hasSetTextAction() and hasText("Plan adı")).performScrollTo().performTextReplacement("20 sayfa oku")
   ui.onNodeWithText("Önizlemeye uygula").performClick()
   ui.runOnIdle{assertEquals("20 sayfa oku",applied!!.title);assertNull(applied!!.startTime);assertNull(applied!!.endTime);assertTrue(dismissed)}
  }

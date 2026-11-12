@@ -26,6 +26,9 @@ import java.time.LocalDate
    DetailRow("Başlangıç",plan.startTime?:"Saat yok"){field="start"}
    DetailRow("Bitiş / son teslim",plan.endTime?:"Saat yok"){field="end"}
    if(plan.endTime!=null)DetailRow("Bitiş günü",TrFormat.full(LocalDate.parse(plan.endDate?:plan.date))){field="endDate"}
+   val extra=org.json.JSONObject(plan.extraData)
+   RotamField(extra.optString("note"),{plan=plan.copy(extraData=org.json.JSONObject(plan.extraData).put("note",it).toString())},"Not · isteğe bağlı",Modifier.fillMaxWidth(),singleLine=false)
+   if(extra.optString("subtasks").isNotBlank())Text(extra.optString("subtasks"),color=SubtleText,style=MaterialTheme.typography.bodyMedium)
    Text(ReminderPolicy.label(plan),color=SubtleText,style=MaterialTheme.typography.bodySmall)
    error?.let{Text(it,color=Danger)}
   }

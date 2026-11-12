@@ -35,4 +35,12 @@ class AiResponseParserTest {
   val r=AiResponseParser.parse(raw("""[{"planId":10,"title":"İş","date":"2026-11-10","startTime":"14:00","endTime":"22:00","endDate":null}]"""),listOf(p)).suggestions.single()
   assertEquals("14:00",r.plan.startTime);assertEquals("22:00",r.plan.endTime)
  }
+ @Test fun modelCannotClaimThatUnapprovedDraftsWereSaved(){
+  val r=AiResponseParser.parseText("""{"reply":"Planınız eklendi.","plans":[{"title":"Oku","date":"2026-11-12"}]}""")
+  assertTrue(r.text.contains("Henüz kaydedilmedi"));assertFalse(r.text.contains("eklendi"))
+ }
+ @Test fun shoppingItemsAndRelativeConstraintsSurviveWithoutInventingTime(){
+  val r=AiResponseParser.parseText("""{"plans":[{"title":"Alışveriş","date":"2026-11-13","note":"İşten önce","subtasks":["Süt al","Yumurta al"]}]}""").suggestions.single().plan
+  val e=JSONObject(r.extraData);assertEquals("İşten önce",e.getString("note"));assertEquals("Süt al\nYumurta al",e.getString("subtasks"));assertNull(r.startTime);assertNull(r.endTime)
+ }
 }

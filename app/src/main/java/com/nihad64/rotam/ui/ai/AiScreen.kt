@@ -19,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nihad64.rotam.data.model.categoryEnum
@@ -36,7 +38,7 @@ import java.util.Locale
  val selectedPlan by vm.editingSelection.collectAsStateWithLifecycle();val memories by vm.memories.collectAsStateWithLifecycle()
  val memoryBusy by vm.memoryBusy.collectAsStateWithLifecycle();val memoryError by vm.memoryError.collectAsStateWithLifecycle()
  val cloudStatus by vm.syncStatus.collectAsStateWithLifecycle();val draftError by vm.draftError.collectAsStateWithLifecycle()
- val context=LocalContext.current;val motion=rememberMotionEnabled()
+ val context=LocalContext.current;val motion=rememberMotionEnabled();val focusManager=LocalFocusManager.current;val keyboard=LocalSoftwareKeyboardController.current
  var tts by remember{mutableStateOf<TextToSpeech?>(null)};var ttsReady by remember{mutableStateOf(false)}
  var speechError by remember{mutableStateOf<String?>(null)};var sharingInfo by remember{mutableStateOf(false)}
  var remembering by remember{mutableStateOf<Pair<Long,Int>?>(null)};var reviewing by remember{mutableStateOf<Pair<Long,Int>?>(null)}
@@ -80,6 +82,9 @@ import java.util.Locale
       Icon(item.plan.categoryEnum.icon(),null,tint=Primary,modifier=Modifier.size(28.dp));Spacer(Modifier.width(14.dp))
       Column(Modifier.weight(1f)){Text(item.plan.title,style=MaterialTheme.typography.titleLarge);Text("${TrFormat.full(LocalDate.parse(item.plan.date))} · ${PlanTime.label(item.plan)}",color=SubtleText,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=6.dp))}
      }
+     val details=org.json.JSONObject(item.plan.extraData);val note=details.optString("note");val tasks=details.optString("subtasks")
+     if(note.isNotBlank())Text(note,color=SubtleText,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=12.dp))
+     if(tasks.isNotBlank())Text(tasks.lines().joinToString("\n"){"• $it"},color=SubtleText,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=8.dp))
      if(item.before!=null)Text("Önce · ${item.before.title} · ${TrFormat.full(LocalDate.parse(item.before.date))} · ${PlanTime.label(item.before)}",style=MaterialTheme.typography.bodySmall,color=SubtleText,modifier=Modifier.padding(top=14.dp))
      if(item.plan.repeatType!="none")Text(com.nihad64.rotam.data.model.RepeatType.fromKey(item.plan.repeatType).label,color=SubtleText,modifier=Modifier.padding(top=10.dp))
      Row(Modifier.fillMaxWidth().padding(top=14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
@@ -100,12 +105,12 @@ import java.util.Locale
   draftError?.let{Text(it,color=Danger,style=MaterialTheme.typography.bodySmall)}
   s.applyError?.let{Text(it,color=Danger,style=MaterialTheme.typography.bodySmall)}
   speechError?.let{Text(it,color=SubtleText,style=MaterialTheme.typography.bodySmall)}
-  if(s.messages.lastOrNull()?.isError==true)TextButton(onClick=vm::retry,enabled=!s.loading){Text("Yeniden dene")}
+  if(s.messages.lastOrNull()?.isError==true)TextButton(onClick={focusManager.clearFocus();keyboard?.hide();vm.retry()},enabled=!s.loading){Text("Yeniden dene")}
   if(s.input.length>=4900)Text("${s.input.length} / 5000",style=MaterialTheme.typography.bodySmall,color=SubtleText)
   Row(Modifier.padding(bottom=20.dp),verticalAlignment=Alignment.CenterVertically) {
-   RotamField(s.input,vm::setInput,"Yaz veya söyle…",Modifier.weight(1f).heightIn(max=156.dp),singleLine=false)
+   RotamField(s.input,vm::setInput,"Yaz veya söyle…",Modifier.weight(1f).heightIn(max=156.dp),singleLine=false,minLines=1)
    IconButton(onClick={try{dictate.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM).putExtra(RecognizerIntent.EXTRA_LANGUAGE,"tr-TR").putExtra(RecognizerIntent.EXTRA_PROMPT,"Planını anlat"))}catch(_:android.content.ActivityNotFoundException){speechError="Bu cihazda sesli giriş bulunamadı. Yazarak devam edebilirsin."}},enabled=!s.loading&&!s.restoring){Icon(Icons.Outlined.Mic,"Planını sesle anlat")}
-   FilledIconButton(onClick={vm.send()},enabled=!s.loading&&!s.restoring&&s.input.isNotBlank(),colors=IconButtonDefaults.filledIconButtonColors(containerColor=Accent,contentColor=Background)){Icon(Icons.Outlined.ArrowUpward,"Mesajı gönder")}
+   FilledIconButton(onClick={focusManager.clearFocus();keyboard?.hide();vm.send()},enabled=!s.loading&&!s.restoring&&s.input.isNotBlank(),colors=IconButtonDefaults.filledIconButtonColors(containerColor=Accent,contentColor=Background)){Icon(Icons.Outlined.ArrowUpward,"Mesajı gönder")}
   }
  }
  if(sharingInfo)AlertDialog(onDismissRequest={sharingInfo=false},title={Text("AI ile paylaşılanlar")},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {

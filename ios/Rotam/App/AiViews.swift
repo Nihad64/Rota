@@ -3,7 +3,9 @@ import SwiftUI
 struct AiView:View {
  @EnvironmentObject var model:RotamModel
  @Environment(\.dismiss) private var dismiss
+ @Environment(\.accessibilityReduceMotion) private var reduced
  @StateObject private var speech=SpeechInput()
+ @FocusState private var composing:Bool
  @State private var manual=false
  @State private var editing:DraftEdit?
  @State private var memoryChoice:MemoryChoice?
@@ -15,7 +17,7 @@ struct AiView:View {
    if model.asking{HStack(spacing:12){ProgressView();Text("Planını düşünüyorum…").brandFont(15);Spacer();Button("Durdur"){model.cancelAi()}}.surfaceCard()}
    Color.clear.frame(height:1).id("bottom")
   }.padding(24).frame(maxWidth:760)}
-  .onChange(of:model.messages.count){_,_ in withAnimation{proxy.scrollTo("bottom",anchor:.bottom)}}
+  .onChange(of:model.messages.count){_,_ in if reduced || !model.motion{proxy.scrollTo("bottom",anchor:.bottom)}else{withAnimation(.easeOut(duration:0.2)){proxy.scrollTo("bottom",anchor:.bottom)}}}
   .onChange(of:model.asking){_,_ in proxy.scrollTo("bottom",anchor:.bottom)}
  }.background(Brand.background).navigationTitle("Rotam AI").navigationBarTitleDisplayMode(.inline)
  .toolbar{ToolbarItem(placement:.topBarLeading){Button("Kapat"){speech.stop();dismiss()}};ToolbarItem(placement:.topBarTrailing){Button("Elle ekle"){manual=true}}}
@@ -30,14 +32,14 @@ struct AiView:View {
   VStack(alignment:.leading,spacing:16){
    HStack(alignment:.top){if !message.user{Diamond().padding(.top,4)};Text(message.text).brandFont(17).textSelection(.enabled).fixedSize(horizontal:false,vertical:true)}.padding(message.user ? 18:0).background(message.user ? Brand.raised:Color.clear,in:RoundedRectangle(cornerRadius:24))
    if !message.user && !message.error{Button{if speaker.isSpeaking{speaker.stopSpeaking(at:.immediate)}else{let utterance=AVSpeechUtterance(string:message.text);utterance.voice=AVSpeechSynthesisVoice(language:"tr-TR");speaker.speak(utterance)}}label:{Label("Dinle",systemImage:"speaker.wave.2")}.buttonStyle(QuietButton())}
-   ForEach(message.plans){draft in if let p=try? PortablePlan(draft.plan){HStack(alignment:.top,spacing:16){Image(systemName:Brand.icon(p.category)).font(.title);VStack(alignment:.leading,spacing:7){Text(p.title).brandFont(23,weight:800);Text(p.date+" · "+p.scheduleLabel).brandFont(15).foregroundStyle(Brand.muted);if draft.before != nil{Text("Mevcut planı güncelleyecek").brandFont(13).foregroundStyle(Brand.orange)}};Spacer();if draft.saved{Image(systemName:"checkmark.circle.fill").foregroundStyle(Brand.orange).accessibilityLabel("Kaydedildi")}else{Button{editing=DraftEdit(message:message.id,draft:draft.id,plan:draft.plan)}label:{Image(systemName:"slider.horizontal.3").frame(width:48,height:48)}.accessibilityLabel("\(p.title) taslağını düzenle")}}.surfaceCard()}}
+   ForEach(message.plans){draft in if let p=try? PortablePlan(draft.plan){HStack(alignment:.top,spacing:16){Image(systemName:Brand.icon(p.category)).font(.title);VStack(alignment:.leading,spacing:7){Text(p.title).brandFont(23,weight:800);Text(p.date+" · "+p.scheduleLabel).brandFont(15).foregroundStyle(Brand.muted);if let note=p.metadata["note"]?.string,!note.isEmpty{Text(note).brandFont(14).foregroundStyle(Brand.muted)};if let tasks=p.metadata["subtasks"]?.string,!tasks.isEmpty{Text(tasks).brandFont(14).foregroundStyle(Brand.muted)};if draft.before != nil{Text("Mevcut planı güncelleyecek").brandFont(13).foregroundStyle(Brand.orange)}};Spacer();if draft.saved{Image(systemName:"checkmark.circle.fill").foregroundStyle(Brand.orange).accessibilityLabel("Kaydedildi")}else{Button{editing=DraftEdit(message:message.id,draft:draft.id,plan:draft.plan)}label:{Image(systemName:"slider.horizontal.3").frame(width:48,height:48)}.accessibilityLabel("\(p.title) taslağını düzenle")}}.surfaceCard()}}
    if message.plans.contains(where:{!$0.saved}){Text("Onayını bekliyor").brandFont(14).foregroundStyle(Brand.muted);Button("Onayla ve ekle"){Task{await model.approveMessage(message.id)}}.buttonStyle(PrimaryButton()).disabled(model.busy)}
    ForEach(message.memories){draft in VStack(alignment:.leading,spacing:12){Label("Hatırlamamı ister misin?",systemImage:"brain").brandFont(16,weight:750);Text(draft.text).brandFont(16);if draft.saved{Label("Onayınla kaydedildi",systemImage:"checkmark.circle").foregroundStyle(Brand.orange)}else{Button("İncele ve hatırla"){memoryChoice=MemoryChoice(message:message.id,draft:draft.id)}.buttonStyle(QuietButton())}}.surfaceCard()}
   }
  }
  private var composer:some View{VStack(alignment:.leading,spacing:10){
   DisclosureGroup("AI ile paylaşılan bilgiler"){Toggle("Plan bağlamını paylaş",isOn:Binding(get:{model.sharePlans},set:{model.setSharePlans($0)}));Text("Açıksa en fazla 150 planın başlığı, günü, saatleri ve durumu gönderilir. Notların gönderilmez. Yazdığın mesaj ve seçili takvim günü her isteğin parçasıdır.").brandFont(13).foregroundStyle(Brand.muted);Toggle("Onayladığım hafızayı kullan",isOn:Binding(get:{model.useMemory},set:{model.setUseMemory($0)}))}.brandFont(13)
-  HStack(alignment:.bottom,spacing:8){TextField("Planını yaz…",text:Binding(get:{model.input},set:{model.setInput($0)}),axis:.vertical).lineLimit(1...5).brandFont(17).padding(.vertical,12).accessibilityIdentifier("ai-input");Button{Task{await speech.start{model.setInput($0)}}}label:{Image(systemName:speech.recording ? "stop.circle.fill":"mic").font(.title2).frame(width:48,height:48)}.accessibilityLabel(speech.recording ? "Kaydı bitir":"Sesle yaz");Button{speech.stop();model.send()}label:{Image(systemName:"arrow.up").font(.title2).foregroundStyle(Brand.background).frame(width:48,height:48).background(Brand.orange,in:Circle())}.disabled(model.asking||model.input.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty).accessibilityLabel("Rotam AI’ya gönder")}.padding(.horizontal,12).padding(.vertical,6).background(Brand.surface,in:RoundedRectangle(cornerRadius:25))
+  HStack(alignment:.bottom,spacing:8){TextField("Planını yaz…",text:Binding(get:{model.input},set:{model.setInput($0)}),axis:.vertical).lineLimit(1...5).focused($composing).brandFont(17).padding(.vertical,12).accessibilityIdentifier("ai-input");Button{Task{await speech.start{model.setInput($0)}}}label:{Image(systemName:speech.recording ? "stop.circle.fill":"mic").font(.title2).frame(width:48,height:48)}.accessibilityLabel(speech.recording ? "Kaydı bitir":"Sesle yaz");Button{speech.stop();composing=false;model.send()}label:{Image(systemName:"arrow.up").font(.title2).foregroundStyle(Brand.background).frame(width:48,height:48).background(Brand.orange,in:Circle())}.disabled(model.asking||model.input.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty).accessibilityLabel("Rotam AI’ya gönder")}.padding(.horizontal,12).padding(.vertical,6).background(Brand.surface,in:RoundedRectangle(cornerRadius:25))
  }.padding(16).background(Brand.background)}
 }
 import AVFoundation

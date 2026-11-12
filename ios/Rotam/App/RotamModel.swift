@@ -38,6 +38,8 @@ struct AiMessage:Identifiable,Sendable {let id=UUID();let user:Bool;let text:Str
  private var syncing=false,needsSync=false,profileSyncing=false
  private var pendingInput=""
  private var draftRevision:Int64=0
+ private var draftWritable=false
+ private var inputGeneration:Int64=0
  private var undoValue:(before:WireRecord,after:WireRecord)?
  let defaults=UserDefaults.standard
  let directory:URL
@@ -81,7 +83,7 @@ struct AiMessage:Identifiable,Sendable {let id=UUID();let user:Bool;let text:Str
  }
  private func accountChanged(_ value:RotamAccount?)async{
   let previous=account?.uid
-  if previous != value?.uid{saveDraft(owner:previous);requestTask?.cancel();asking=false;messages=[];pendingInput="";input="";defaults.set(false,forKey:"ai-share-plans")}
+  if previous != value?.uid{saveDraft(owner:previous);requestTask?.cancel();asking=false;draftWritable=false;inputGeneration+=1;messages=[];pendingInput="";input="";defaults.set(false,forKey:"ai-share-plans")}
   account=value
   if ready{await reload();if previous != value?.uid{await restoreDraft()};await configureSync()}
  }
@@ -166,7 +168,7 @@ struct AiMessage:Identifiable,Sendable {let id=UUID();let user:Bool;let text:Str
   }
  }
  private func changed(_ message:String?)async{await reload();if let message{toast=message};requestSync();await publishWidgets();await ReminderService.shared.reschedule();WidgetCenter.shared.reloadAllTimelines();Feedback.shared.success(prefValues)}
- func perform(_ action:()async throws->Void)async{if busy{return};busy=true;defer{busy=false};do{try await action()}catch is CancellationError{}catch{report(error)}}
+ func perform(_ action:@MainActor ()async throws->Void)async{if busy{return};busy=true;defer{busy=false};do{try await action()}catch is CancellationError{}catch{report(error)}}
  func report(_ error:Error){self.error=friendly(error)}
  func friendly(_ error:Error)->String{
   if error is RotamDataError{return error.localizedDescription}
@@ -177,15 +179,16 @@ struct AiMessage:Identifiable,Sendable {let id=UUID();let user:Bool;let text:Str
   return "Bağlantı veya işlem tamamlanamadı. Yeniden deneyebilirsin. Yerel kayıtların korunuyor."
  }
  private func draftURL(_ owner:String?)->URL{directory.appendingPathComponent("draft-"+PlanActions.ownerHash(owner ?? "local-guest")+".json")}
- func setInput(_ value:String){input=String(value.prefix(5000));if !asking{pendingInput=""};saveDraft(owner:account?.uid)}
+ func setInput(_ value:String){inputGeneration+=1;input=String(value.prefix(5000));if !asking{pendingInput=""};saveDraft(owner:account?.uid)}
  private func saveDraft(owner:String?){
+  guard draftWritable else{return}
   draftRevision+=1;let revision=draftRevision;let text=input,pending=pendingInput,url=draftURL(owner)
   Task{do{try await store?.saveDraft(url:url,input:text,pending:pending,revision:revision)}catch{report(error)}}
  }
  private func restoreDraft()async{
-  guard let store else{return};let owner=account?.uid
-  do{let draft=try await store.loadDraft(url:draftURL(owner));guard account?.uid==owner else{return};input=draft.input.isEmpty ? draft.pending:draft.input}
-  catch{report(error)}
+  guard let store else{return};let owner=account?.uid,generation=inputGeneration
+  do{let draft=try await store.loadDraft(url:draftURL(owner));guard account?.uid==owner else{return};draftWritable=true;if inputGeneration==generation{input=draft.input.isEmpty ? draft.pending:draft.input}else{saveDraft(owner:owner)}}
+  catch{draftWritable=false;self.error="Önceki AI taslağı okunamadı. Dosya korundu; üzerine yazılmayacak. Yeni metin bu oturumda ekranda korunur. Uygulamayı yeniden açıp tekrar deneyebilirsin."}
  }
 }
 
@@ -197,12 +200,16 @@ extension RotamModel {
   let local=LocalSearch.search(text,plans:plans)
   if let answer=local.answer,!local.needsAI{messages.append(AiMessage(user:true,text:text));messages.append(AiMessage(user:false,text:answer));input="";saveDraft(owner:account?.uid);return}
   guard let owner=account?.uid else{error="Rotam AI için Google hesabınla giriş yap. Elle plan eklemek için hesap gerekmez.";return}
+  guard draftWritable else{error="AI taslağı güvenle saklanamadı. Metnin ekranda korunuyor; önce taslak dosyası hatasını çözmeliyiz.";return}
   pendingInput=text;input="";saveDraft(owner:owner);messages.append(AiMessage(user:true,text:text));asking=true
   let context=sharePlans ? plans:[],memoryContext=useMemory ? memory:[],day=selectedDay
+  let requestDraftRevision=draftRevision,requestDraftURL=draftURL(owner)
   let conversation=messages.suffix(12).map{($0.user ? "Kullanıcı: ":"Rotam: ")+$0.text},existing=records
   requestTask=Task {
    defer{if account?.uid==owner{asking=false}}
    do{
+    guard let store else{throw RotamDataError.invalid("Taslak deposu henüz hazır değil. Metnin korundu.")}
+    try await store.saveDraft(url:requestDraftURL,input:"",pending:text,revision:requestDraftRevision)
     let raw=try await gateway.ask(messages:conversation,plans:context,memories:memoryContext,owner:owner,day:day)
     try Task.checkCancellation();guard account?.uid==owner else{return}
     let parsed=try AiDraftParser.parse(raw,existing:sharePlans ? existing:[],memories:memoryContext)

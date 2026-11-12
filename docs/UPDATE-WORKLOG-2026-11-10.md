@@ -77,3 +77,11 @@ iOS için kullanıcı, başlangıç projesini benim oluşturmamı ve GitHub Mac 
 - Normal form ve AI üzerinden saat/gün değişikliği de eski plan zamanını hareket geçmişinde tutar; açık tamamlanma/kısmi sonucu sırf saat düzenlendi diye değiştirmez. Özel erteleme aynı olayı ikinci kez eklemez.
 - iOS birleşik arama için yerel Türkçe dönem/durum/kategori/sayım çözümlemesi eklendi. Tanınan dönem içinde bilinmeyen başlık sözcüğü düşürülmez; belirsiz/işlem isteyen istek AI taslak onayına gider.
 - Fiziksel telefonla veri denetiminin kişisel ayrıntıları yalnız özel yerel denetim kaydında tutulur; bu dosyaya veya GitHub test kanıtlarına eklenmez.
+
+## 12 Kasım — Önizleme durumu ve giriş alanı
+
+- 3331c6b / Apple core run 43250441155 başarılı. İlk native mimari sorunu giderildi; run 43250441025 derlemesi SwiftUI Section başlık/footer çağrısında bir hata buldu. Doğru native initializer ile düzeltilip yeniden test ediliyor; test atlanmadı.
+- AI modelinin onaylanmamış taslak için kayıt yapılmış gibi yazabilmesi önlendi: plan/hafıza taslağı yanındaki işlem durumu uygulama tarafından üretilir. Model açıklaması kayıt kanıtı sayılmaz. Her iki platformda regresyon testi bulunur.
+- AI gönderiminde klavye kapanır, önizleme için alan açılır. Android yazma alanı tek satırdan büyür; diğer çok satırlı form alanlarının davranışı korunur. Başlık ve not alanları ayrı erişilebilir etiket taşır.
+- Alışveriş malzemeleri ve saati belirsiz göreli ilişkiler not/alt adım olarak taşınır ve önizlemede gösterilir; yeni saat tahmin edilmez. Hatalı veya aşırı uzun ayrıntılar kayda dönüşmez. Mevcut notlar yalnız açık öneri varsa değiştirilir.
+- Önceki kayıtları olup bugün planı olmayan kullanıcıya yeniden ilk planını oluşturduğu söylenmez. iOS'ta bozuk taslak dosyası otomatik boş içerikle ezilmez; gecikmiş yükleme kullanıcının yeni metnini ezmez; istek öncesi taslak yazımı doğrulanır.
