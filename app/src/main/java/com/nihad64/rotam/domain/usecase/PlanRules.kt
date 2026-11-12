@@ -36,11 +36,18 @@ object PlanTime {
 }
 object Recurrence {
  fun occurs(p:Plan,anchor:LocalDate,day:LocalDate):Boolean {
- if(day<anchor||p.repeatUntil?.let{day>LocalDate.parse(it)}==true)return false
+ if(day<anchor||p.repeatUntil?.let{day>LocalDate.parse(it)}==true||RoutineState.suspendedOn(p,day))return false
  val days=ChronoUnit.DAYS.between(anchor,day)
  return when(p.repeatType){"daily"->true;"weekdays"->day.dayOfWeek.value<=5;"weekly"->day.dayOfWeek==anchor.dayOfWeek&&days/7%p.repeatEvery==0L
  "custom"->day.dayOfWeek.value in p.repeatDays.split(',').mapNotNull{it.toIntOrNull()};"interval"->days%p.repeatEvery==0L
  "monthly"->ChronoUnit.MONTHS.between(anchor.withDayOfMonth(1),day.withDayOfMonth(1))%p.repeatEvery==0L&&day.dayOfMonth==(if(p.monthLastDay)minOf(anchor.dayOfMonth,day.lengthOfMonth())else anchor.dayOfMonth)
  else->day==anchor}}
- fun dates(p:Plan,anchor:LocalDate,from:LocalDate,to:LocalDate):List<LocalDate>{val result=mutableListOf<LocalDate>();var d=maxOf(from,anchor);while(d<=to){if(occurs(p,anchor,d))result.add(d);d=d.plusDays(1)};return result}
+ fun dates(p:Plan,anchor:LocalDate,from:LocalDate,to:LocalDate):List<LocalDate>{
+  val first=maxOf(from,anchor);val last=minOf(to,p.repeatUntil?.let(LocalDate::parse)?:to)
+  if(first>last)return emptyList()
+  require(ChronoUnit.DAYS.between(first,last)<=3660){"Tek seferde çok uzun bir rutin dönemi istendi. Başlangıç veya bitiş gününü daralt."}
+  val result=mutableListOf<LocalDate>();var d=first
+  while(d<=last){if(occurs(p,anchor,d))result.add(d);if(d==last)break;d=d.plusDays(1)}
+  return result
+ }
 }

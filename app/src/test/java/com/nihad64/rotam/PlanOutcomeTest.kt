@@ -25,4 +25,13 @@ class PlanOutcomeTest {
   val reopened=PlanOutcome.record(skipped,PlanOutcome.Status.UNKNOWN);assertFalse(reopened.isSkipped);assertNull(PlanOutcome.fraction(reopened))
   assertEquals(3,JSONObject(reopened.extraData).getJSONArray("outcomeHistory").length())
  }
+ @Test fun ordinaryAndAiEditsRetainScheduleWithoutChangingExplicitOutcome(){
+  val done=PlanOutcome.record(p.copy(startTime="10:00",endTime="11:00"),PlanOutcome.Status.COMPLETED)
+  val moved=PlanOutcome.preserveSchedule(done,done.copy(date="2026-11-10",extraData=JSONObject(done.extraData).put("note","Yeni not").toString()))
+  assertTrue(moved.isCompleted);assertEquals("Yeni not",JSONObject(moved.extraData).getString("note"))
+  val history=JSONObject(moved.extraData).getJSONArray("outcomeHistory")
+  assertEquals(2,history.length());assertEquals("2026-11-01",history.getJSONObject(1).getString("date"))
+  val postponed=PlanTime.moved(PlanOutcome.record(p,PlanOutcome.Status.POSTPONED),LocalDate.parse("2026-11-10"))
+  assertEquals(1,JSONObject(PlanOutcome.preserveSchedule(p,postponed).extraData).getJSONArray("outcomeHistory").length())
+ }
 }

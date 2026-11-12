@@ -21,4 +21,8 @@ object RoutineState {
  fun suspendOccurrence(p:Plan)=p.copy(isDeleted=true,extraData=JSONObject(p.extraData).put(Removed,true).toString())
  fun resumeOccurrence(p:Plan):Plan {val extra=JSONObject(p.extraData);extra.remove(Removed);return p.copy(isDeleted=false,extraData=extra.toString())}
  fun deliberateDeletion(p:Plan):Plan {val extra=JSONObject(p.extraData);extra.remove(Removed);return p.copy(isDeleted=true,extraData=extra.toString())}
+ fun suspendedOn(p:Plan,day:LocalDate):Boolean {
+  val rows=JSONObject(p.extraData).optJSONArray("routinePauseHistory")?:return false
+  return (0 until rows.length()).any{i->val row=rows.getJSONObject(i);val from=LocalDate.parse(row.getString("from"));val to=if(row.has("to"))LocalDate.parse(row.getString("to"))else null;day>=from&&(to==null||day<to)}
+ }
 }

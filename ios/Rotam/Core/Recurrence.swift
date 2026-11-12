@@ -1,7 +1,7 @@
 import Foundation
 
 public enum RecurrenceRules {
- private static func freshMetadata(_ text:String)throws->String{
+ public static func freshMetadata(_ text:String)throws->String{
   guard var e=try JSONValue.parse(text).fields else{throw RotamDataError.invalid("Rutin bilgisi doğrulanamadı.")}
   let removed=["outcome","outcomeHistory","completedAmount","targetAmount","focusSegments","startedSchedule"]
   if removed.allSatisfy({e[$0]==nil}){return text}
@@ -32,7 +32,7 @@ public enum RecurrenceRules {
    case "monthly":let months=calendar.dateComponents([.month],from:calendar.dateInterval(of:.month,for:anchorDate)!.start,to:calendar.dateInterval(of:.month,for:date)!.start).month!;let target=template["monthLastDay"]?.boolean==true ? min(anchorDay,calendar.range(of:.day,in:.month,for:date)!.count):anchorDay;matches=months%every==0&&calendar.component(.day,from:date)==target
    default:matches=date==anchorDate
    }
-   if matches{
+   if try matches && !RoutineRules.suspendedOn(template,day:PlanDates.key(date,local:false)){
     let day=PlanDates.key(date,local:false);var d=template
     d["uid"] = .string("series:\(series.uid):\(day)");d["seriesUid"] = .string(series.uid);d["originalDate"] = .string(day);d["date"] = .string(day)
     d["isCompleted"] = .bool(false);d["isSkipped"] = .bool(false);d["isDeleted"] = .bool(false);d["focusSeconds"] = .integer(0);d["extraData"] = .string(metadata)

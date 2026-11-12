@@ -24,6 +24,18 @@ object PlanOutcome {
   history.put(event);extra.put("outcomeHistory",history).put("outcome",status.name)
   return p.copy(extraData=extra.toString(),isCompleted=status==Status.COMPLETED,isSkipped=status==Status.NOT_DONE)
  }
+ /** Editing through AI or the regular form must retain the previous schedule too. */
+ fun preserveSchedule(old:Plan,proposed:Plan,now:LocalDateTime=LocalDateTime.now()):Plan {
+  if(listOf(old.date,old.startTime,old.endTime,old.endDate)==listOf(proposed.date,proposed.startTime,proposed.endTime,proposed.endDate))return proposed
+  val extra=JSONObject(proposed.extraData);val prior=JSONObject(old.extraData).optJSONArray("outcomeHistory")?:JSONArray()
+  val history=extra.optJSONArray("outcomeHistory")?:JSONArray(prior.toString())
+  val last=history.optJSONObject(history.length()-1)
+  // Dedicated postponement has already appended this exact old schedule.
+  if(history.length()>prior.length()&&last?.optString("status")==Status.POSTPONED.name&&last.optString("date")==old.date)return proposed
+  history.put(JSONObject().put("status",Status.POSTPONED.name).put("at",now.toString()).put("date",old.date).put("startTime",old.startTime?:JSONObject.NULL).put("endTime",old.endTime?:JSONObject.NULL).put("endDate",old.endDate?:JSONObject.NULL))
+  extra.put("outcomeHistory",history)
+  return proposed.copy(extraData=extra.toString())
+ }
  fun fresh(p:Plan):Plan {
   val e=JSONObject(p.extraData)
   listOf("outcome","outcomeHistory","completedAmount","targetAmount","focusSegments","startedSchedule").forEach{e.remove(it)}

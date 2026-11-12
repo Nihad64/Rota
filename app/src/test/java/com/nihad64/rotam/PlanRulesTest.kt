@@ -61,4 +61,21 @@ class PlanRulesTest {
   val plans=LegacyParser.parse("""[{"id":1,"title":"Oku","date":"2026-11-02","type":"Saatsiz","time":"00:00"},{"id":2,"title":"İş","date":"2026-11-02","type":"Saatli","startTime":"22:00","endTime":"02:00","done":true}]""")
   assertNull(plans[0].startTime);assertNull(plans[0].endTime);assertEquals("2026-11-03",plans[1].endDate);assertTrue(plans[1].isCompleted)
  }
+ @Test fun recurrenceClampsEndedRuleBeforeCheckingHugeRange(){
+  val anchor=LocalDate.parse(p.date)
+  assertEquals(3,Recurrence.dates(p.copy(repeatType="daily",repeatUntil=anchor.plusDays(2).toString()),anchor,anchor,anchor.plusYears(100)).size)
+  assertThrows(IllegalArgumentException::class.java){Recurrence.dates(p.copy(repeatType="daily"),anchor,anchor,anchor.plusYears(100))}
+ }
+ @Test fun backupRejectsOrphanGoalInSeriesTemplateBeforeRestore(){
+  val template=p.copy(id=0,repeatType="daily",goalId=99)
+  val data=BackupData(emptyList(),emptyList(),listOf(PlanSeries(id=1,template=PlanJson.encode(template).toString(),anchor=p.date)))
+  assertThrows(IllegalArgumentException::class.java){BackupCodec.decode(BackupCodec.encode(data))}
+ }
+ @Test fun resumedRoutineDoesNotBackfillAnUnmaterializedPauseGap(){
+  val template=p.copy(repeatType="daily")
+  val paused=RoutineState.change(template,true,LocalDate.parse("2026-11-05"))
+  val resumed=RoutineState.change(paused,false,LocalDate.parse("2026-11-08"))
+  val days=Recurrence.dates(resumed,LocalDate.parse(p.date),LocalDate.parse("2026-11-02"),LocalDate.parse("2026-11-10"))
+  assertEquals(listOf("2026-11-02","2026-11-03","2026-11-04","2026-11-08","2026-11-09","2026-11-10"),days.map{it.toString()})
+ }
 }

@@ -24,7 +24,15 @@ class AiResponseParserTest {
  }
  @Test fun editKeepsExistingIdentityNotesAndFocus(){
   val p=Plan(id=10,title="Oku",date="2026-11-09",extraData="""{"note":"koru"}""",focusSeconds=60)
-  val r=AiResponseParser.parse(raw("""[{"planId":10,"title":"Yeni başlık","date":"2026-11-10"}]"""),listOf(p)).suggestions.single()
+  val r=AiResponseParser.parse(raw("""[{"planId":10,"title":"Yeni başlık","date":"2026-11-10","startTime":null,"endTime":null,"endDate":null}]"""),listOf(p)).suggestions.single()
   assertEquals(p,r.before);assertEquals(p.uid,r.plan.uid);assertEquals(p.extraData,r.plan.extraData);assertEquals(60L,r.plan.focusSeconds)
+ }
+ @Test fun existingPlanRequiresExplicitTimeFieldsAndExactNumericIdentity(){
+  val p=Plan(id=10,title="İş",date="2026-11-09",startTime="14:00",endTime="22:00")
+  for(row in listOf("""[{"planId":10,"title":"İş","date":"2026-11-10"}]""","""[{"planId":10.5,"title":"İş","date":"2026-11-10","startTime":null,"endTime":null,"endDate":null}]""")){
+   assertThrows(GeminiException::class.java){AiResponseParser.parse(raw(row),listOf(p))}
+  }
+  val r=AiResponseParser.parse(raw("""[{"planId":10,"title":"İş","date":"2026-11-10","startTime":"14:00","endTime":"22:00","endDate":null}]"""),listOf(p)).suggestions.single()
+  assertEquals("14:00",r.plan.startTime);assertEquals("22:00",r.plan.endTime)
  }
 }

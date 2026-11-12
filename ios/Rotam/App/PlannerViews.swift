@@ -42,7 +42,7 @@ struct CalendarView:View {
    let rows=filtered
    if rows.isEmpty{EmptyState(symbol:"calendar",title:"Gününe yer var.",detail:"Plan eklediğinde burada görebilirsin.")}
    ForEach(rows){p in Button{path.append(.plan(p.id))}label:{VStack(alignment:.leading,spacing:0){if mode==1||mode==3{Text(p.date).brandFont(13).foregroundStyle(Brand.orange)};PlanRow(plan:p)}}.buttonStyle(.plain);Divider()}
-  }.padding(24).frame(maxWidth:760)}.background(Brand.background).toolbar(.hidden,for:.navigationBar).onChange(of:date){_,d in model.selectedDay=PlanDates.key(d)}
+  }.padding(24).frame(maxWidth:760)}.background(Brand.background).toolbar(.hidden,for:.navigationBar).onChange(of:date){_,d in model.selectedDay=PlanDates.key(d);Task{let c=Calendar.current,interval=c.dateInterval(of:mode==3 ? .year:mode==1 ? .weekOfYear:.month,for:d)!;await model.ensureRange(from:PlanDates.key(interval.start),to:PlanDates.key(interval.end.addingTimeInterval(-1)))}}
  }
  private var filtered:[PortablePlan]{let key=PlanDates.key(date),cal=Calendar.current
   if mode==3{return model.plans.filter{$0.date.prefix(7)==key.prefix(7)}}
@@ -55,11 +55,15 @@ struct RoutinesView:View {
  @EnvironmentObject var model:RotamModel
  @Binding var path:[Route]
  @Binding var adding:Bool
- var series:[WireRecord]{model.records.filter{$0.kind == .series && (try? $0.fields()["isDeleted"]?.boolean) != true}}
+ @State private var showPast=false
+ var series:[WireRecord]{model.records.filter{$0.kind == .series && (try? $0.fields()["isDeleted"]?.boolean) != true && (showPast || ((try? $0.fields()["untilDate"]?.string) ?? "9999-12-31")>=PlanDates.key(Date()))}}
  var body:some View{ScrollView{VStack(alignment:.leading,spacing:24){Text("Rutinler").brandFont(38,weight:800);Text("Günlerine yerleşen küçük düzenler.").brandFont(17).foregroundStyle(Brand.muted);Button{adding=true}label:{Label("Yeni rutinini yaz veya söyle",systemImage:"sparkles")}.buttonStyle(QuietButton())
    if series.isEmpty{EmptyState(symbol:"repeat",title:"Küçük bir düzenle başla.",detail:"Örneğin: Her pazartesi, perşembe ve cumartesi spor.")}
+   Toggle("Önceki rutinleri de göster",isOn:$showPast)
    ForEach(series,id:\.uid){r in let children=model.plans.filter{$0.seriesUID==r.uid},next=children.first{!$0.completed && !$0.skipped && $0.date>=PlanDates.key(Date())},template=(try? r.fields()["template"]?.fields) ?? [:]
-    VStack(alignment:.leading,spacing:14){HStack{Image(systemName:Brand.icon(template["category"]?.string ?? "")).font(.title);Text(template["title"]?.string ?? "Rutin").brandFont(25,weight:800);Spacer()};Text(routineLabel(template)).brandFont(16).foregroundStyle(Brand.muted);let week=children.filter{isCurrentWeek($0.date)},done=week.filter(\.completed).count
+    VStack(alignment:.leading,spacing:14){HStack{Image(systemName:Brand.icon(template["category"]?.string ?? "")).font(.title);Text(template["title"]?.string ?? "Rutin").brandFont(25,weight:800);Spacer()};Text(routineLabel(template)).brandFont(16).foregroundStyle(Brand.muted);let metadata=(try? JSONValue.parse(template["extraData"]?.string ?? "{}").fields) ?? [:],paused=metadata["routinePaused"]?.boolean==true
+     Button(paused ? "Devam et":"Ara ver"){Task{await model.setRoutinePaused(r.uid,paused:!paused)}}.buttonStyle(QuietButton())
+     let week=children.filter{isCurrentWeek($0.date)},done=week.filter(\.completed).count
      if !week.isEmpty{ProgressView(value:Double(done),total:Double(week.count)).tint(Brand.orange);Text("Bu hafta \(done) / \(week.count) tamamlandı").brandFont(14).foregroundStyle(Brand.muted)}
      if let next{Text("Sıradaki · \(next.date) · \(next.scheduleLabel)").brandFont(14).foregroundStyle(Brand.muted);Button("Ayrıntıları gör"){path.append(.plan(next.id))}.buttonStyle(QuietButton())}
     }.surfaceCard()
@@ -72,11 +76,14 @@ struct SearchView:View {
  @EnvironmentObject var model:RotamModel
  @Binding var path:[Route]
  @State private var text=""
- var body:some View{ScrollView{LazyVStack(alignment:.leading,spacing:12){let normalized=text.folding(options:[.caseInsensitive,.diacriticInsensitive],locale:Locale(identifier:"tr_TR")),rows=model.plans.filter{p in text.isEmpty || (p.title+" "+p.date+" "+(p.metadata["note"]?.string ?? "")).folding(options:[.caseInsensitive,.diacriticInsensitive],locale:Locale(identifier:"tr_TR")).contains(normalized)}
+ @State private var ai=false
+ var body:some View{ScrollView{LazyVStack(alignment:.leading,spacing:12){let result=LocalSearch.search(text,plans:model.plans),rows=result.plans
+   if let answer=result.answer{Text(answer).brandFont(17).surfaceCard()}
+   if result.needsAI{Button("İsteğini Rotam AI ile incele"){model.setInput(text);ai=true}.buttonStyle(PrimaryButton());Text("Bir değişiklik yapılmadan önce taslağını onaylayacaksın.").brandFont(14).foregroundStyle(Brand.muted)}
    Text("\(rows.count) plan").brandFont(14).foregroundStyle(Brand.muted)
    ForEach(rows){p in Button{path.append(.plan(p.id))}label:{VStack(alignment:.leading,spacing:0){Text(p.date).brandFont(13).foregroundStyle(Brand.orange);PlanRow(plan:p)}}.buttonStyle(.plain);Divider()}
    if rows.isEmpty{EmptyState(symbol:"magnifyingglass",title:"Eşleşen plan yok.",detail:"Başlık, not veya tarih ile arayabilirsin.")}
-  }.padding(24)}.background(Brand.background).navigationTitle("Planlarında ara").searchable(text:$text,prompt:"Başlık, not veya tarih")}
+  }.padding(24)}.background(Brand.background).navigationTitle("Planlarında ara").searchable(text:$text,prompt:"Başlık, tarih veya bir soru").sheet(isPresented:$ai){NavigationStack{AiView()}}}
 }
 struct InsightsView:View {
  @EnvironmentObject var model:RotamModel

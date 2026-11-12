@@ -52,4 +52,24 @@ import XCTest
   let draft=try await store.loadDraft(url:url);XCTAssertEqual("Yeni",draft.input);XCTAssertEqual("Gönderilen",draft.pending)
   let fresh=try RecordStore(directory:root),same=try await fresh.loadDraft(url:url);XCTAssertEqual(draft.input,same.input)
  }
+ func testPausedGapCannotBeBackfilledAfterResume()async throws{
+  let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  defer{try? FileManager.default.removeItem(at:root)}
+  let store=try RecordStore(directory:root),p=try PortablePlan.make(title:"Oku",date:"2026-11-02").changing(["repeatType":.string("daily")])
+  let batch=try RecurrenceRules.make(p,through:"2026-11-04"),series=batch.first{$0.kind == .series}!
+  try await store.replaceMany(batch);try await store.pauseRoutine(series.uid,paused:true,day:"2026-11-05");try await store.pauseRoutine(series.uid,paused:false,day:"2026-11-08");try await store.ensure(from:"2026-11-02",to:"2026-11-10")
+  let rows=await store.all(),plans=try rows.filter{$0.kind == .plan}.map(PortablePlan.init)
+  XCTAssertFalse(plans.contains{$0.date>="2026-11-05"&&$0.date<"2026-11-08" && !$0.deleted})
+  XCTAssertTrue(plans.contains{$0.date=="2026-11-08" && !$0.deleted})
+ }
+ func testNaturalSearchKeepsUnknownKeywordInsideKnownPeriod()throws{
+  let now=try PlanDates.instant(day:"2026-11-12",time:"12:00")
+  let market=try PortablePlan(PortablePlan.make(title:"Market",date:"2026-11-03")),work=try PortablePlan(PortablePlan.make(title:"İş",date:"2026-11-04",category:"is"))
+  XCTAssertEqual([market.id],LocalSearch.search("Bu ay market",plans:[market,work],now:now).plans.map(\.id))
+  let count=LocalSearch.search("Bu ay market kaç kere yaptım",plans:[market,work],now:now)
+  XCTAssertEqual(0,count.plans.count);XCTAssertNotNil(count.answer)
+  let complete=try PortablePlan(PlanActions.outcome(market.record,status:"COMPLETED"))
+  XCTAssertEqual(1,LocalSearch.search("Kasım 2026 market kaç kere yaptım",plans:[complete,work],now:now).plans.count)
+  XCTAssertTrue(LocalSearch.search("İşi yarına taşı",plans:[market,work],now:now).needsAI)
+ }
 }

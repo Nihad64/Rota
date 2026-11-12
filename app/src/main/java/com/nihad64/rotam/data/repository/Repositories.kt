@@ -68,7 +68,7 @@ class PlanRepository(private val db:AppDatabase){
  suspend fun edit(old:Plan,proposed:Plan,scope:EditScope)=lock.withLock{db.withTransaction{
   val current=dao.byId(old.id) ?: error("Plan bulunamadı.")
   check(current.copy(focusSeconds=old.focusSeconds,extraData=FocusLedger.withoutLedger(current.extraData))==old.copy(extraData=FocusLedger.withoutLedger(old.extraData))){"Plan öneriden sonra değişmiş. Güncel bilgileri kontrol edip yeniden dene."}
-  val p=FocusLedger.retainLedger(proposed,current)
+  val p=PlanOutcome.preserveSchedule(current,FocusLedger.retainLedger(proposed,current))
   require(PlanTime.validate(p)==null){PlanTime.validate(p).orEmpty()}
   if(scope!=EditScope.THIS&&p.repeatUntil!=null)require(p.repeatUntil>=p.date){"Tekrar bitişi yeni ilk günden önce olamaz."}
   val s=if(old.seriesId==0L)null else db.seriesDao().byId(old.seriesId)

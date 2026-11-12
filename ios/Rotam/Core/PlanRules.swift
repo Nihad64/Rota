@@ -55,6 +55,7 @@ public enum CoreValidator {
     guard (0...10080).contains(d["reminderMinutes"]?.integer ?? 15),(1...365).contains(d["repeatEvery"]?.integer ?? 1),(d["focusSeconds"]?.integer ?? 0)>=0 else{throw RotamDataError.invalid("Plan süresi veya tekrar kuralı geçerli değil.")}
     guard ["none","daily","weekdays","weekly","custom","interval","monthly"].contains(d["repeatType"]?.string ?? "none")else{throw RotamDataError.invalid("Tekrar türü desteklenmiyor.")}
     if let until=d["repeatUntil"]?.string{_ = try PlanDates.day(until)}
+    if d["repeatType"]?.string=="custom"{guard (d["repeatDays"]?.string ?? "").split(separator:",").contains(where:{Int($0).map{(1...7).contains($0)} ?? false})else{throw RotamDataError.invalid("En az bir tekrar günü seç.")}}
     guard let extra=try JSONValue.parse(d["extraData"]?.string ?? "{}").fields else{throw RotamDataError.invalid("Plan notları doğrulanamadı.")};_ = extra
     if let sid=d["seriesUid"]?.string{
      guard index[WireKey(.series,sid)] != nil,let original=d["originalDate"]?.string,r.uid=="series:\(sid):\(original)"else{throw RotamDataError.invalid("Rutin bağlantısı veya örnek kimliği eksik.")};_ = try PlanDates.day(original)
@@ -63,6 +64,8 @@ public enum CoreValidator {
    case .series:
     guard let anchor=d["anchor"]?.string,let t=d["template"]?.fields,t["date"]?.string==anchor,let title=t["title"]?.string,!title.isEmpty else{throw RotamDataError.invalid("Rutin kuralı doğrulanamadı.")};_ = try PlanDates.day(anchor)
     if let until=d["untilDate"]?.string{_ = try PlanDates.day(until)}
+    var independent=t;independent.removeValue(forKey:"seriesUid");independent.removeValue(forKey:"originalDate")
+    try validate([WireRecord(kind:.plan,fields:independent)]+records.filter{$0.kind == .goal})
    case .goal:
     guard let title=d["title"]?.string,!title.isEmpty,let due=d["dueDate"]?.string,(d["targetCount"]?.integer ?? 0)>0,(d["currentCount"]?.integer ?? 0)>=0 else{throw RotamDataError.invalid("Hedef kaydı doğrulanamadı.")};_ = try PlanDates.day(due)
    case .memory:

@@ -16,7 +16,7 @@ func encode(_ v:Any,_ depth:Int=0)->String{
 func configs(_ n:Int,_ values:[String:Any])->String{
  let children=["Debug","Release"].enumerated().map{i,name->String in
   var s=values;s["SWIFT_OPTIMIZATION_LEVEL"]=i==0 ? "-Onone":"-O"
-  if i==0{s["SWIFT_ACTIVE_COMPILATION_CONDITIONS"]="$(inherited) DEBUG"}
+  if i==0{s["SWIFT_ACTIVE_COMPILATION_CONDITIONS"]="$(inherited) DEBUG";s["ONLY_ACTIVE_ARCH"]="YES";s["ENABLE_TESTABILITY"]="YES"}
   return add(n+i,["isa":"XCBuildConfiguration","name":name,"buildSettings":s])
  }
  return add(n+2,["isa":"XCConfigurationList","buildConfigurations":children,"defaultConfigurationIsVisible":0,"defaultConfigurationName":"Release"])

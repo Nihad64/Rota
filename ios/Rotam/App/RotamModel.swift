@@ -68,7 +68,7 @@ struct AiMessage:Identifiable,Sendable {let id=UUID();let user:Bool;let text:Str
     if !FileManager.default.fileExists(atPath:root.appendingPathComponent("records.json").path){defaults.set(false,forKey:"welcome-completed")}
    }
    let opened=try await Task.detached{try RecordStore(directory:root)}.value
-   store=opened;preferenceStore=try PreferenceStore(directory:directory);try Data("1".utf8).write(to:marker,options:[.atomic,.completeFileProtectionUntilFirstUserAuthentication]);ready=true;await reload();await restoreDraft();await publishWidgets()
+   store=opened;try await opened.ensure(from:PlanDates.addDays(PlanDates.key(Date()),-7),to:PlanDates.addDays(PlanDates.key(Date()),400));preferenceStore=try PreferenceStore(directory:directory);try Data("1".utf8).write(to:marker,options:[.atomic,.completeFileProtectionUntilFirstUserAuthentication]);ready=true;await reload();await restoreDraft();await publishWidgets()
    showWelcome = !defaults.bool(forKey:"welcome-completed")&&plans.isEmpty
    notificationStep=account != nil
    await configureSync()
@@ -99,13 +99,13 @@ struct AiMessage:Identifiable,Sendable {let id=UUID();let user:Bool;let text:Str
  func setSharePlans(_ value:Bool){defaults.set(value,forKey:"ai-share-plans");objectWillChange.send()}
  func setUseMemory(_ value:Bool){defaults.set(value,forKey:"ai-use-memory");objectWillChange.send()}
  func create(_ plan:WireRecord)async{await perform{guard let store=self.store else{return};try await store.createPlan(plan);await self.changed("Plan kaydedildi")}}
- func edit(_ proposal:WireRecord,before:WireRecord)async{await perform{guard let store=self.store else{return};try await store.updatePlan(proposal,before:before);await self.changed("Plan güncellendi")}}
+ func edit(_ proposal:WireRecord,before:WireRecord,future:Bool=false)async{await perform{guard let store=self.store else{return};if future{try await store.editFuture(proposal,before:before)}else{try await store.updatePlan(proposal,before:before)};await self.changed("Plan güncellendi")}}
  func outcome(_ plan:PortablePlan,_ status:String,amount:Double?=nil,target:Double?=nil)async{
   await perform{guard let store=self.store else{return};let next=try PlanActions.outcome(plan.record,status:status,amount:amount,target:target);try await store.replace(next,expected:plan.record);self.undoValue=(plan.record,next);await self.changed("Plan durumu kaydedildi")}
  }
- func delete(_ plan:PortablePlan)async{await perform{guard let store=self.store else{return};let next=try plan.record.changing(["isDeleted":.bool(true)]);try await store.replace(next,expected:plan.record);self.undoValue=(plan.record,next);await self.changed("Plan silindi")}}
+ func delete(_ plan:PortablePlan)async{await perform{guard let store=self.store else{return};var e=plan.metadata;e.removeValue(forKey:"pausedByRoutine");let next=try plan.record.changing(["isDeleted":.bool(true),"extraData":.string(JSONValue.object(e).canonical())]);try await store.replace(next,expected:plan.record);self.undoValue=(plan.record,next);await self.changed("Plan silindi")}}
  func undo()async{await perform{guard let pair=self.undoValue,let store=self.store else{return};try await store.replace(pair.before,expected:pair.after);self.undoValue=nil;await self.changed("İşlem geri alındı")}}
- func postpone(_ plan:PortablePlan,date:String,time:String?)async{await perform{guard let store=self.store else{return};let next=try PlanActions.postpone(plan.record,date:date,time:time);try await store.replace(next,expected:plan.record);self.undoValue=(plan.record,next);await self.changed("Plan ertelendi")}}
+ func postpone(_ plan:PortablePlan,date:String,time:String?,future:Bool=false)async{await perform{guard let store=self.store else{return};let next=try PlanActions.postpone(plan.record,date:date,time:time);if future{try await store.editFuture(next,before:plan.record);self.undoValue=nil}else{try await store.replace(next,expected:plan.record);self.undoValue=(plan.record,next)};await self.changed("Plan ertelendi")}}
  func toggleSubtask(_ plan:PortablePlan,task:String,done:Bool)async{await perform{guard let store=self.store else{return};try await store.replace(PlanActions.subtask(plan.record,task:task,done:done),expected:plan.record);await self.changed(nil)}}
  func remember(_ text:String,cloud:Bool,before:WireRecord?=nil)async{await perform{guard let uid=self.account?.uid,let store=self.store else{throw RotamDataError.invalid("Önce Google hesabınla giriş yap.")};try await store.saveMemory(owner:uid,text:text,cloud:cloud,uid:before?.uid,expected:before);await self.changed("Hafızaya kaydedildi")}}
  func forget(_ record:WireRecord)async{await perform{guard let uid=self.account?.uid,let store=self.store else{return};try await store.forgetMemory(owner:uid,record:record);await self.changed("Bu bilgi unutuldu")}}
@@ -194,6 +194,8 @@ extension RotamModel {
  func send() {
   let text=input.trimmingCharacters(in:.whitespacesAndNewlines)
   guard !text.isEmpty,!asking else{return}
+  let local=LocalSearch.search(text,plans:plans)
+  if let answer=local.answer,!local.needsAI{messages.append(AiMessage(user:true,text:text));messages.append(AiMessage(user:false,text:answer));input="";saveDraft(owner:account?.uid);return}
   guard let owner=account?.uid else{error="Rotam AI için Google hesabınla giriş yap. Elle plan eklemek için hesap gerekmez.";return}
   pendingInput=text;input="";saveDraft(owner:owner);messages.append(AiMessage(user:true,text:text));asking=true
   let context=sharePlans ? plans:[],memoryContext=useMemory ? memory:[],day=selectedDay
@@ -270,5 +272,13 @@ extension RotamModel {
    guard self.prefValues==before,self.account?.uid==current.uid,self.defaults.string(forKey:"active-preferences-uid")==current.uid else{self.review=nil;throw RotamDataError.invalid("Yeni cihaz tercihi korundu. Yeniden eşitle.")}
    self.applyPreferences(values);try await self.preferenceStore?.checkpoint(SyncEnvelope(revision:revision,records:rows),uid:current.uid);self.review=nil;self.preferencesStatus="Tercihlerin güncel."
   }
+ }
+}
+
+
+extension RotamModel {
+ func setRoutinePaused(_ uid:String,paused:Bool)async{await perform{try await self.store?.pauseRoutine(uid,paused:paused);await self.changed(paused ? "Rutine ara verildi":"Rutin devam ediyor")}}
+ func ensureRange(from:String,to:String)async{
+  do{if try await store?.ensure(from:from,to:to)==true{await reload();requestSync();await publishWidgets();await ReminderService.shared.reschedule()}}catch{report(error)}
  }
 }

@@ -67,3 +67,13 @@ iOS için kullanıcı, başlangıç projesini benim oluşturmamı ve GitHub Mac 
 - Swift'in yeni saatsiz planı Android'de tekrar paketlenince bilinen nullable alanların yazım farkı bulundu; yalnız bilinen null alanlar normalize edilir, bilinmeyen alanlar korunur. İki yönlü fikstür native oluşturulmuş yeni planı da içerir.
 - Rutin örnekleri kanonik UID kullanır; bitiş günü kayması korunur. AI güncellemesinde eksik saat alanı eski saatleri silemez. Onay topluca ve eski kayıt kontrolüyle uygulanır. Özel taslak son yazım sırasına göre saklanır; eski asenkron yazım yeni metni ezmez.
 - Bu aşama native uygulamanın ilk CI derlemesine gönderimidir; iOS derlemesi, simülatör arayüz testi veya gerçek iPhone bağlantısı geçmiş sayılmaz. Fiziksel iOS dağıtımı ve App Attest için Apple imzalama yapılandırması henüz tamamlanmadı. Android gerçek cihaz son yükseltmesi ve son ürün denetimi de bekliyor.
+
+## 12 Kasım — İlk native CI bulguları ve kayıt koruması
+
+- 57e7ea6 / Apple core run 43247761274: 12 XCTest başarılı. Android run 43247761254 verify/backend/rules ve emülatör adımı başarılı; son iş kapanışı izleniyor.
+- iOS native run 43247761251 ilk derlemede ses girdisi closure sözdizimi ve Debug simülatör mimarisi uyumsuzluğu buldu. Swift proje API'siyle Debug aktif mimari ve testability tanımlanıyor; ses closure'ı açık MainActor/Sendable türüyle düzeltiliyor. Testler atlanmaz, Release mimarileri daraltılmaz.
+- AI güncellemesinde tüm saat alanları zorunlu; kesirli/uydurulmuş yerel plan kimliği reddedilir. Yedekte rutin şablonunun eksik hedef bağlantısı içe aktarmadan reddedilir. Tekrarlama üretimi önce bitişe kırpılır ve tek çağrıda sınırlıdır.
+- Rutin ara verme geçmişindeki günler, devam ettikten sonra geçmiş takvim açılınca yeniden üretilmez. Android ve Apple aynı gün aralığı kuralını uygular. iOS'ta tek örnek/sonraki tekrar düzenleme, erteleme, ara verme/devam etme ve dönem açılınca eksik kanonik örnekleri tamamlama eklendi; tamamlanmış sonuçlar ve silinen istisnalar korunur.
+- Normal form ve AI üzerinden saat/gün değişikliği de eski plan zamanını hareket geçmişinde tutar; açık tamamlanma/kısmi sonucu sırf saat düzenlendi diye değiştirmez. Özel erteleme aynı olayı ikinci kez eklemez.
+- iOS birleşik arama için yerel Türkçe dönem/durum/kategori/sayım çözümlemesi eklendi. Tanınan dönem içinde bilinmeyen başlık sözcüğü düşürülmez; belirsiz/işlem isteyen istek AI taslak onayına gider.
+- Fiziksel telefonla veri denetiminin kişisel ayrıntıları yalnız özel yerel denetim kaydında tutulur; bu dosyaya veya GitHub test kanıtlarına eklenmez.

@@ -2,7 +2,7 @@ import SwiftUI
 import UserNotifications
 import AVFoundation
 import AudioToolbox
-import Speech
+@preconcurrency import Speech
 
 @MainActor final class ReminderService:NSObject,UNUserNotificationCenterDelegate {
  static let shared=ReminderService()
@@ -56,7 +56,7 @@ import Speech
  private var request:SFSpeechAudioBufferRecognitionRequest?
  private var task:SFSpeechRecognitionTask?
  private var hasTap=false
- func start(update:@escaping @MainActor(String)->Void)async {
+ func start(update:@escaping @MainActor @Sendable (String)->Void)async {
   guard !recording else{stop();return}
   let status=await withCheckedContinuation{continuation in SFSpeechRecognizer.requestAuthorization{continuation.resume(returning:$0)}}
   let microphone=await AVAudioApplication.requestRecordPermission()

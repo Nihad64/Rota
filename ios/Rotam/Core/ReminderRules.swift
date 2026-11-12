@@ -24,7 +24,7 @@ public enum ReminderRules {
     let base:Date?
     if let t=p.fields["reminderTime"]?.string{base=try PlanDates.instant(day:p.date,time:t)}
     else if p.fields["remindAtEnd"]?.boolean==true{base=end}else{base=start}
-    if let base{let at=quiet(base.addingTimeInterval(-Double(p.fields["reminderMinutes"]?.integer ?? 15)*60));if at>now{events.append(ReminderEvent(planID:p.id,signature:signature,key:"custom",at:at,custom:true))}}
+    if let base{let at=quiet(p.fields["reminderTime"]?.string != nil ? base:base.addingTimeInterval(-Double(p.fields["reminderMinutes"]?.integer ?? 15)*60));if at>now{events.append(ReminderEvent(planID:p.id,signature:signature,key:"custom",at:at,custom:true))}}
     continue
    }
    var raw:[(String,Date,Bool)]=[]

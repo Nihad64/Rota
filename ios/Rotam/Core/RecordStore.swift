@@ -130,7 +130,7 @@ extension RecordStore {
   try replace(PlanActions.focus(current,uid:segmentID,start:startedAt,seconds:seconds),expected:current)
  }
  public func updatePlan(_ proposed:WireRecord,before:WireRecord)throws {
-  guard let current=state.records.first(where:{$0.key==before.key})else{throw RotamDataError.invalid("Plan bulunamadı.")}
+  guard proposed.key==before.key,let current=state.records.first(where:{$0.key==before.key})else{throw RotamDataError.invalid("Plan bulunamadı.")}
   var currentFields=try current.fields(),oldFields=try before.fields()
   for key in ["focusSeconds"]{currentFields.removeValue(forKey:key);oldFields.removeValue(forKey:key)}
   func withoutFocus(_ field:JSONValue?)throws->JSONValue{
@@ -138,9 +138,10 @@ extension RecordStore {
   }
   currentFields["extraData"] = try withoutFocus(currentFields["extraData"]);oldFields["extraData"] = try withoutFocus(oldFields["extraData"])
   guard currentFields==oldFields else{throw RotamDataError.invalid("Plan başka bir işlemde değişti. Güncel bilgileri kontrol et.")}
-  var extra=try PortablePlan(proposed).metadata;let existing=try PortablePlan(current)
+  let scheduled=try PlanActions.preserveSchedule(current,proposed:proposed)
+  var extra=try PortablePlan(scheduled).metadata;let existing=try PortablePlan(current)
   extra["focusSegments"]=existing.metadata["focusSegments"]
-  let next=try proposed.changing(["extraData":.string(JSONValue.object(extra).canonical()),"focusSeconds":.integer(existing.focusSeconds)])
+  let next=try scheduled.changing(["extraData":.string(JSONValue.object(extra).canonical()),"focusSeconds":.integer(existing.focusSeconds)])
   try replace(next,expected:current)
  }
 }

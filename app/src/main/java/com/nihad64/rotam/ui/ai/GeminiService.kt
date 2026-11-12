@@ -66,8 +66,9 @@ internal object AiResponseParser {
   val obj=runCatching{JSONObject(text.trim().removePrefix("```json").removePrefix("```").removeSuffix("```"))}.getOrElse{throw GeminiException("Yanıtın biçimi doğrulanamadı. Hiçbir plan kaydedilmedi.")}
   val items=obj.optJSONArray("plans")?:JSONArray();val result=mutableListOf<PlanSuggestion>();var invalid=0
   for(i in 0 until minOf(items.length(),20))try{
-   val o=items.getJSONObject(i);val id=if(o.has("planId")&&!o.isNull("planId"))o.getLong("planId")else null
+   val o=items.getJSONObject(i);val id=if(o.has("planId")&&!o.isNull("planId"))o.get("planId").toString().toLongOrNull()?.takeIf{it>0}?:throw IllegalArgumentException("invalid plan identity")else null
    val before=id?.let{n->existing.firstOrNull{it.id==n}?:throw IllegalArgumentException("unknown plan")}
+   if(before!=null)require(listOf("startTime","endTime","endDate").all{o.has(it)}){"existing plan time fields missing"}
    fun optionalTime(k:String):String?=o.nullString(k)?.let{LocalTime.parse(it).toString()}
    val p=(before?:Plan(title=o.getString("title"),date=o.getString("date"))).copy(
     title=o.getString("title"),date=LocalDate.parse(o.getString("date")).toString(),category=Category.fromKey(o.optString("category")).key,

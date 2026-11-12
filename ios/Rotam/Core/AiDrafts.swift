@@ -45,7 +45,7 @@ extension RecordStore {
  public func approve(_ proposals:[PlanProposal])throws {
   let original=all();var result:[WireRecord]=[]
   for p in proposals{
-   if let before=p.before{guard original.first(where:{$0.key==before.key})==before else{throw RotamDataError.invalid("Önizlemeden sonra plan değişti. Güncel planla tekrar iste.")};result.append(p.plan)}
+   if let before=p.before{guard original.first(where:{$0.key==before.key})==before else{throw RotamDataError.invalid("Önizlemeden sonra plan değişti. Güncel planla tekrar iste.")};result.append(try PlanActions.preserveSchedule(before,proposed:p.plan))}
    else{
     if original.contains(where:{$0.key==p.plan.key}){continue}
     let fields=try p.plan.fields()

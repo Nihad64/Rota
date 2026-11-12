@@ -49,6 +49,8 @@ struct PlanEditorView:View {
  @Environment(\.dismiss) private var dismiss
  let record:WireRecord?
  let onSave:(WireRecord)async->Void
+ let onSaveFuture:((WireRecord)async->Void)?
+ @State private var future=false
  @State private var title:String
  @State private var date:Date
  @State private var startEnabled:Bool
@@ -62,17 +64,18 @@ struct PlanEditorView:View {
  @State private var repeatDays:String
  @State private var saving=false
  @State private var validation:String?
- init(record:WireRecord?=nil,day:String,onSave:@escaping(WireRecord)async->Void){
-  self.record=record;self.onSave=onSave;let p=record.flatMap{try? PortablePlan($0)},d=(try? PlanDates.instant(day:p?.date ?? day,time:"12:00")) ?? Date()
+ init(record:WireRecord?=nil,day:String,onSaveFuture:((WireRecord)async->Void)?=nil,onSave:@escaping(WireRecord)async->Void){
+  self.record=record;self.onSave=onSave;self.onSaveFuture=onSaveFuture;let p=record.flatMap{try? PortablePlan($0)},d=(try? PlanDates.instant(day:p?.date ?? day,time:"12:00")) ?? Date()
   _title=State(initialValue:p?.title ?? "");_date=State(initialValue:d);_startEnabled=State(initialValue:p?.start != nil);_endEnabled=State(initialValue:p?.end != nil)
   _start=State(initialValue:(try? PlanDates.instant(day:p?.date ?? day,time:p?.start ?? "09:00")) ?? d);_end=State(initialValue:(try? PlanDates.instant(day:p?.endDate ?? day,time:p?.end ?? "10:00")) ?? d);_finishDay=State(initialValue:(try? PlanDates.instant(day:p?.endDate ?? day,time:"12:00")) ?? d)
   _category=State(initialValue:p?.category ?? "kisisel");_note=State(initialValue:p?.metadata["note"]?.string ?? "");_repeatType=State(initialValue:p?.fields["repeatType"]?.string ?? "none");_repeatDays=State(initialValue:p?.fields["repeatDays"]?.string ?? "")
  }
  var body:some View{ScrollView{VStack(alignment:.leading,spacing:22){Text(record==nil ? "Gününe bir yer aç.":"Planını düzenle.").brandFont(32,weight:800);VStack(alignment:.leading,spacing:10){Text("Plan adı").brandFont(14,weight:700);TextField("Ne yapmak istiyorsun?",text:$title,axis:.vertical).brandFont(23,weight:750).padding(16).background(Brand.surface,in:RoundedRectangle(cornerRadius:18)).accessibilityIdentifier("plan-title")}
+   if onSaveFuture != nil{Picker("Değişiklik kapsamı",selection:$future){Text("Yalnız bu gün").tag(false);Text("Bu ve sonraki tekrarlar").tag(true)};Text("Geçmiş tamamlanmış sonuçlar ve silinmiş istisnalar korunur.").brandFont(14).foregroundStyle(Brand.muted)}
    DatePicker("Gün",selection:$date,displayedComponents:.date).frame(minHeight:48)
    VStack(spacing:16){Toggle("Başlangıç saati",isOn:$startEnabled);if startEnabled{DatePicker("Başlangıç",selection:$start,displayedComponents:.hourAndMinute)};Divider();Toggle("Bitiş / son teslim",isOn:$endEnabled);if endEnabled{DatePicker("Bitiş",selection:$end,displayedComponents:.hourAndMinute);DatePicker("Bitiş günü",selection:$finishDay,in:Calendar.current.startOfDay(for:date)...,displayedComponents:.date)};if !startEnabled && endEnabled{Text("Bu bir son teslim saati. Başlangıç eklenmez.").brandFont(14).foregroundStyle(Brand.muted)}}.surfaceCard()
    Picker("Kategori",selection:$category){ForEach([("kisisel","Kişisel"),("kitap","Okuma"),("is","İş"),("video","İçerik"),("spor","Spor"),("ibadet","İbadet"),("randevu","Randevu"),("yemek","Yemek"),("ogrenme","Öğrenme")],id:\.0){Text($0.1).tag($0.0)}}.frame(minHeight:48)
-   if (try? record.map{try PortablePlan($0).seriesUID}) == nil{Picker("Tekrar",selection:$repeatType){ForEach([("none","Tek sefer"),("daily","Her gün"),("weekdays","Hafta içi"),("weekly","Her hafta"),("custom","Seçili günler"),("monthly","Her ay")],id:\.0){Text($0.1).tag($0.0)}}.frame(minHeight:48);if repeatType=="custom"{TextField("Günler · 1=Pzt, 7=Paz (ör. 1,4,6)",text:$repeatDays).keyboardType(.numbersAndPunctuation).padding(14).background(Brand.surface,in:RoundedRectangle(cornerRadius:16))}}
+   if record.flatMap({try? PortablePlan($0).seriesUID}) == nil || future{Picker("Tekrar",selection:$repeatType){ForEach([("none","Tek sefer"),("daily","Her gün"),("weekdays","Hafta içi"),("weekly","Her hafta"),("custom","Seçili günler"),("monthly","Her ay")],id:\.0){Text($0.1).tag($0.0)}}.frame(minHeight:48);if repeatType=="custom"{TextField("Günler · 1=Pzt, 7=Paz (ör. 1,4,6)",text:$repeatDays).keyboardType(.numbersAndPunctuation).padding(14).background(Brand.surface,in:RoundedRectangle(cornerRadius:16))}}
    VStack(alignment:.leading,spacing:8){Text("Not · isteğe bağlı").brandFont(14,weight:700);TextField("Eklemek istediğin ayrıntılar",text:$note,axis:.vertical).lineLimit(3...8).padding(16).background(Brand.surface,in:RoundedRectangle(cornerRadius:18))}
    if let validation{Label(validation,systemImage:"exclamationmark.circle").brandFont(15).foregroundStyle(Brand.orange)}
    Button{save()}label:{HStack{Text("Kaydet");if saving{ProgressView()}}}.buttonStyle(PrimaryButton()).disabled(saving||title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty).accessibilityIdentifier("save-plan")
@@ -86,6 +89,6 @@ struct PlanEditorView:View {
   if try PortablePlan(base).seriesUID==nil{changes["repeatType"] = .string(repeatType);changes["repeatDays"] = .string(repeatDays)}
   let plan=try base.changing(changes);var graph=model.records.filter{$0.key != plan.key};graph.append(plan);try CoreValidator.validate(graph)
   validation=nil;saving=true;model.error=nil
-  Task{await onSave(plan);saving=false;if model.error==nil{dismiss()}}
+  Task{if future,let onSaveFuture{await onSaveFuture(plan)}else{await onSave(plan)};saving=false;if model.error==nil{dismiss()}}
  }catch{validation=error.localizedDescription}}
 }

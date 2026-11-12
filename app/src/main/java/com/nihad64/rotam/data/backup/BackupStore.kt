@@ -45,7 +45,7 @@ object BackupCodec {
         val keys=plans.mapNotNull{it.occurrenceKey};require(keys.distinct().size==keys.size){"Yedekte yinelenen tekrar var."}
         require(goals.map{it.id}.distinct().size==goals.size && series.map{it.id}.distinct().size==series.size)
         goals.forEach { require(it.id>0 && it.title.isNotBlank() && it.targetCount>0 && it.currentCount>=0);LocalDate.parse(it.dueDate) }
-        series.forEach { s->require(s.id>0);val p=PlanJson.decode(JSONObject(s.template));require(PlanTime.validate(p)==null);require(LocalDate.parse(s.anchor)==LocalDate.parse(p.date));s.untilDate?.let{LocalDate.parse(it)} }
+        series.forEach { s->require(s.id>0);val p=PlanJson.decode(JSONObject(s.template));require(PlanTime.validate(p)==null);require(p.focusSeconds>=0);JSONObject(p.extraData);require(p.goalId==null || goals.any{it.id==p.goalId}){"Yedekte rutin şablonunun hedefi eksik."};require(LocalDate.parse(s.anchor)==LocalDate.parse(p.date));s.untilDate?.let{LocalDate.parse(it)} }
         plans.forEach { p->require(p.id>0 && p.uid.isNotBlank() && p.focusSeconds>=0);require(PlanTime.validate(p)==null){"Yedekte geçersiz bir plan var."};JSONObject(p.extraData)
             require(p.seriesId==0L || series.any{it.id==p.seriesId}){"Yedekte bir tekrar kuralı eksik."}
             require(p.goalId==null || goals.any{it.id==p.goalId}){"Yedekte bir hedef eksik."}

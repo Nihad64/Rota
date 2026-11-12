@@ -14,6 +14,14 @@ public enum PlanActions {
   history.append(.object(event));e["outcomeHistory"] = .array(history);e["outcome"] = .string(status)
   return try record.changing(["extraData":.string(JSONValue.object(e).canonical()),"isCompleted":.bool(status=="COMPLETED"),"isSkipped":.bool(status=="NOT_DONE")])
  }
+ public static func preserveSchedule(_ old:WireRecord,proposed:WireRecord,now:Date=Date())throws->WireRecord {
+  let old=try PortablePlan(old),new=try PortablePlan(proposed)
+  guard old.date != new.date || old.start != new.start || old.end != new.end || old.endDate != new.endDate else{return proposed}
+  let prior=old.metadata["outcomeHistory"]?.items ?? [];var e=new.metadata,history=e["outcomeHistory"]?.items ?? prior
+  if history.count>prior.count,let last=history.last?.fields,last["status"]?.string=="POSTPONED",last["date"]?.string==old.date{return proposed}
+  history.append(.object(["status":.string("POSTPONED"),"at":.string(localTimestamp(now)),"date":.string(old.date),"startTime":old.start.map(JSONValue.string) ?? .null,"endTime":old.end.map(JSONValue.string) ?? .null,"endDate":old.fields["endDate"] ?? .null]))
+  e["outcomeHistory"] = .array(history);return try proposed.changing(["extraData":.string(JSONValue.object(e).canonical())])
+ }
  public static func postpone(_ record:WireRecord,date:String,time:String?,now:Date=Date())throws->WireRecord{
   let p=try PortablePlan(record);let moved=try outcome(record,status:"POSTPONED",now:now)
   let oldDay=try PlanDates.day(p.date),newDay=try PlanDates.day(date)
