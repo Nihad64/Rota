@@ -1,4 +1,11 @@
 package com.nihad64.rotam.ui
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.foundation.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -46,12 +53,28 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
  val c=RotamApp.container;val ready by c.ready.collectAsStateWithLifecycle();val error by c.startupError.collectAsStateWithLifecycle();val scope=rememberCoroutineScope()
  if(!ready){Box(Modifier.fillMaxSize().background(Background).safeDrawingPadding().padding(28.dp),contentAlignment=Alignment.Center){if(error==null)CircularProgressIndicator()else Column(verticalArrangement=Arrangement.spacedBy(20.dp)){Text(error!!);PrimaryButton("Yeniden dene",{scope.launch{runCatching{c.initialize()}}})}};return}
  var welcome by remember{mutableStateOf<Boolean?>(null)}
+ var welcomeStage by rememberSaveable{mutableIntStateOf(0)}
+ var welcomeBusy by remember{mutableStateOf(false)}
+ var welcomeError by remember{mutableStateOf<String?>(null)}
  var privacy by remember{mutableStateOf(false)}
- LaunchedEffect(Unit){welcome=!c.settings.current().welcomeCompleted&&c.account.account.value==null&&c.db.planDao().all().isEmpty()}
+ LaunchedEffect(Unit){welcome=!c.settings.current().welcomeCompleted&&c.db.planDao().all().isEmpty();if(welcome==true&&c.account.account.value!=null)welcomeStage=1}
  if(welcome==null){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()};return}
  if(welcome==true){
+  fun finishWelcome(enable:Boolean){
+   welcomeBusy=true;welcomeError=null
+   scope.launch{try{if(enable)c.settings.setReminders(true);c.settings.completeWelcome();welcome=false
+    try{c.scheduler.rescheduleAll()}catch(_:Exception){c.scheduler.reportFailure()}
+   }catch(_:Exception){welcomeError="Tercihin kaydedilemedi. Yeniden deneyebilirsin."}finally{welcomeBusy=false}}
+  }
+  val requestNotifications=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->finishWelcome(granted)}
+  val motionWelcome=rememberMotionEnabled()
   Box(Modifier.fillMaxSize().background(Background).safeDrawingPadding()){
-   com.nihad64.rotam.ui.welcome.WelcomeScreen(viewModel{SettingsViewModel(c)},onContinue={scope.launch{c.settings.completeWelcome();welcome=false}},onPrivacy={privacy=true})
+   AnimatedContent(welcomeStage,transitionSpec={fadeIn(tween(if(motionWelcome)RotamMotion.Navigate else 0)) togetherWith fadeOut(tween(if(motionWelcome)RotamMotion.Exit else 0))},label="welcome-step"){step->
+    if(step==0)com.nihad64.rotam.ui.welcome.WelcomeScreen(viewModel{SettingsViewModel(c)},onContinue={welcomeStage=1},onPrivacy={privacy=true})
+    else com.nihad64.rotam.ui.welcome.ReminderWelcomeScreen(welcomeBusy,welcomeError,onEnable={
+     if(Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(c.app,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){welcomeBusy=true;requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)}else finishWelcome(true)
+    },onSkip={finishWelcome(false)})
+   }
   }
   if(privacy)AlertDialog(onDismissRequest={privacy=false},title={Text("Verilerin senin kontrolünde")},text={Text("Planların cihazında saklanır. Rotam AI’ya gönderdiğin mesajlar yanıt üretmek için Google Gemini tarafından işlenir. Mevcut planlarını paylaşmak ayrıca senin tercihine bağlıdır. Cihazlar arası eşitleme, Verilerim bölümünden ayrıca onaylayarak açılabilir.")},confirmButton={TextButton(onClick={privacy=false}){Text("Anladım")}})
   return

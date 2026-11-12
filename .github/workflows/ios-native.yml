@@ -1,0 +1,44 @@
+name: iOS native app
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  simulator:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify directory-synchronized project
+        run: swift scripts/ios/verify_project.swift
+      - uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/RotamCI/SourcePackages
+          key: ios-spm-firebase13.1.1-google10.1.0-v1
+      - name: Select an available iPhone simulator
+        run: |
+          xcodebuild -version
+          python3 - <<'PY'
+          import json,subprocess,os
+          devices=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))['devices']
+          selected=next(d for version,rows in devices.items() if 'iOS' in version for d in rows if 'iPhone' in d['name'])
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('ROTAM_SIMULATOR='+selected['udid']+'\n')
+          PY
+      - name: Build the app and widget; test offline planner with synthetic data
+        run: |
+          set -o pipefail
+          xcodebuild -project ios/Rotam.xcodeproj -scheme Rotam -destination "platform=iOS Simulator,id=$ROTAM_SIMULATOR" -derivedDataPath "$HOME/Library/Developer/Xcode/DerivedData/RotamCI" -resultBundlePath "$RUNNER_TEMP/Rotam.xcresult" CODE_SIGNING_ALLOWED=NO test | tee "$RUNNER_TEMP/ios-native.log"
+      - name: Upload synthetic simulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-native-test-results
+          path: |
+            ${{ runner.temp }}/Rotam.xcresult
+            ${{ runner.temp }}/ios-native.log
+          retention-days: 7

@@ -14,6 +14,7 @@ public actor RecordStore {
  private let directory:URL
  private let file:URL
  private var state:LocalDataset
+ private var draftRevisions:[URL:Int64]=[:]
  public init(directory:URL)throws {
   self.directory=directory;file=directory.appendingPathComponent("records.json")
   try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
@@ -88,5 +89,58 @@ public actor RecordStore {
   let d=try record.fields();guard d["ownerUid"]?.string==owner else{throw RotamDataError.invalid("Hafıza başka bir hesaba ait.")}
   let tombstone=try record.changing(["text":.string(""),"isDeleted":.bool(true),"updatedAt":.integer(Int64(Date().timeIntervalSince1970*1000))])
   if state.records.contains(where:{$0.key==record.key}){try replace(tombstone,expected:record)}else{var next=state;next.privateMemories.removeAll{$0.key==record.key};next.privateMemories.append(tombstone);try commit(next)}
+ }
+}
+
+public struct LocalDraft:Codable,Sendable {
+ public var input:String
+ public var pending:String
+}
+extension RecordStore {
+ public func saveDraft(url:URL,input:String,pending:String,revision:Int64)throws {
+  guard url.deletingLastPathComponent().standardizedFileURL==directory.standardizedFileURL else{throw RotamDataError.invalid("Taslak konumu geçerli değil.")}
+  guard revision>(draftRevisions[url] ?? -1)else{return}
+  guard input.utf16.count<=10000,pending.utf16.count<=10000 else{throw RotamDataError.invalid("Taslak çok uzun.")}
+  let data=try JSONEncoder().encode(LocalDraft(input:input,pending:pending))
+  #if os(iOS)
+  try data.write(to:url,options:[.atomic,.completeFileProtectionUntilFirstUserAuthentication])
+  #else
+  try data.write(to:url,options:.atomic)
+  #endif
+  draftRevisions[url]=revision
+ }
+ public func loadDraft(url:URL)throws->LocalDraft {
+  guard url.deletingLastPathComponent().standardizedFileURL==directory.standardizedFileURL else{throw RotamDataError.invalid("Taslak konumu geçerli değil.")}
+  guard FileManager.default.fileExists(atPath:url.path)else{return LocalDraft(input:"",pending:"")}
+  let data=try Data(contentsOf:url);guard data.count<=100000 else{throw RotamDataError.invalid("Taslak okunamadı. Dosya korundu.")}
+  return try JSONDecoder().decode(LocalDraft.self,from:data)
+ }
+}
+
+extension RecordStore {
+ public func createPlan(_ plan:WireRecord)throws {
+  if state.records.contains(where:{$0.key==plan.key}){return}
+  if state.records.contains(where:{$0.kind == .series && (try? $0.fields()["template"]?.fields?["uid"]?.string)==plan.uid}){return}
+  let p=try PortablePlan(plan)
+  let created=try p.fields["repeatType"]?.string == "none" || p.fields["repeatType"]==nil ? [plan]:RecurrenceRules.make(plan,through:max(PlanDates.addDays(PlanDates.key(Date()),400),PlanDates.addDays(p.date,60)))
+  try replaceMany(created)
+ }
+ public func measuredFocus(uid:String,segmentID:String,startedAt:Int64,seconds:Int64)throws {
+  guard let current=state.records.first(where:{$0.kind == .plan&&$0.uid==uid}),try !PortablePlan(current).deleted else{return}
+  try replace(PlanActions.focus(current,uid:segmentID,start:startedAt,seconds:seconds),expected:current)
+ }
+ public func updatePlan(_ proposed:WireRecord,before:WireRecord)throws {
+  guard let current=state.records.first(where:{$0.key==before.key})else{throw RotamDataError.invalid("Plan bulunamadı.")}
+  var currentFields=try current.fields(),oldFields=try before.fields()
+  for key in ["focusSeconds"]{currentFields.removeValue(forKey:key);oldFields.removeValue(forKey:key)}
+  func withoutFocus(_ field:JSONValue?)throws->JSONValue{
+   var e=try JSONValue.parse(field?.string ?? "{}").fields ?? [:];e.removeValue(forKey:"focusSegments");return .string(try JSONValue.object(e).canonical())
+  }
+  currentFields["extraData"] = try withoutFocus(currentFields["extraData"]);oldFields["extraData"] = try withoutFocus(oldFields["extraData"])
+  guard currentFields==oldFields else{throw RotamDataError.invalid("Plan başka bir işlemde değişti. Güncel bilgileri kontrol et.")}
+  var extra=try PortablePlan(proposed).metadata;let existing=try PortablePlan(current)
+  extra["focusSegments"]=existing.metadata["focusSegments"]
+  let next=try proposed.changing(["extraData":.string(JSONValue.object(extra).canonical()),"focusSeconds":.integer(existing.focusSeconds)])
+  try replace(next,expected:current)
  }
 }

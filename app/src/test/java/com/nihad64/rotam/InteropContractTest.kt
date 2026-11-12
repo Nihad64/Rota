@@ -28,6 +28,10 @@ class InteropContractTest {
   assertEquals(expected,SyncEnvelopeCodec.decode(bytes));assertEquals(4,expected.size)
   val apple=javaClass.getResourceAsStream("/apple-wire.bin")?.use{it.readBytes()}?:java.io.File("src/test/resources/apple-wire.bin").readBytes()
   val changed=CloudRecords.encode(BackupData(listOf(plan.copy(title="Swift'ten gelen plan",focusSeconds=75)),listOf(goal),listOf(series),listOf(memory)))
-  assertEquals(changed,SyncEnvelopeCodec.decode(apple))
+  val imported=SyncEnvelopeCodec.decode(apple)
+  assertEquals(changed,imported.filterKeys{it in changed.keys})
+  assertEquals(5,imported.size)
+  assertEquals("Swift yeni saatsiz plan",JSONObject(imported.getValue(RecordKey(RecordKind.PLAN,"contract-native-new")).body).getString("title"))
+  assertEquals(imported,CloudRecords.encode(CloudRecords.decode(imported)))
  }
 }

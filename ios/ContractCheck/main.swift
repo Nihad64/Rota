@@ -18,7 +18,8 @@ func rejects(_ action:()throws->Void)throws{do{try action()}catch{return};throw 
   try rejects{_ = try SyncCodec.decode(input.dropLast())}
   var corrupt=input;corrupt[corrupt.count-5]^=0x7f;try rejects{_ = try SyncCodec.decode(corrupt)}
   let changed=try p.record.changing(["title":.string("Swift'ten gelen plan"),"focusSeconds":.integer(75)])
-  let edited=rows.map{$0.key==changed.key ? changed:$0};try CoreValidator.validate(edited,owner:"contract-owner")
+  let native=try PortablePlan.make(title:"Swift yeni saatsiz plan",date:"2026-11-13",uid:"contract-native-new",createdAt:123456789)
+  let edited=rows.map{$0.key==changed.key ? changed:$0}+[native];try CoreValidator.validate(edited,owner:"contract-owner")
   try SyncCodec.encode(edited).write(to:URL(fileURLWithPath:CommandLine.arguments[2]),options:.atomic)
   if CommandLine.arguments.count==4{
    let golden=try SyncCodec.decode(Data(contentsOf:URL(fileURLWithPath:CommandLine.arguments[3])))

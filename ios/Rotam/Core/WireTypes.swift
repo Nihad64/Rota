@@ -43,7 +43,12 @@ public struct WireRecord:Hashable,Codable,Sendable {
   guard !uid.isEmpty,uid.utf16.count<=512,body.utf8.count<=256*1024,let d=try JSONValue.parse(body).fields,d["uid"]?.string==uid else{throw RotamDataError.invalid("Kayıt kimliği veya biçimi doğrulanamadı.")}
   self.kind=kind;self.uid=uid;self.body=body
  }
- public init(kind:WireKind,fields:[String:JSONValue])throws{try self.init(kind:kind,uid:fields["uid"]?.string ?? "",body:JSONValue.object(fields).canonical())}
+ public init(kind:WireKind,fields:[String:JSONValue])throws{
+  var normalized=fields
+  let nullable:Set<String>=kind == .plan ? ["startTime","endTime","endDate","reminderTime","repeatUntil","originalDate","goalUid","seriesUid"]:kind == .series ? ["untilDate"]:[]
+  for key in nullable where normalized[key] == .null{normalized.removeValue(forKey:key)}
+  try self.init(kind:kind,uid:normalized["uid"]?.string ?? "",body:JSONValue.object(normalized).canonical())
+ }
  public func fields()throws->[String:JSONValue]{guard let d=try JSONValue.parse(body).fields else{throw RotamDataError.invalid("Kayıt biçimi desteklenmiyor.")};return d}
  public func changing(_ changes:[String:JSONValue])throws->WireRecord{var d=try fields();for(k,v)in changes{d[k]=v};return try WireRecord(kind:kind,fields:d)}
 }

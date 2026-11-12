@@ -2,6 +2,7 @@ import Foundation
 import CryptoKit
 
 public enum PlanActions {
+ public static func ownerHash(_ uid:String)->String{SHA256.hash(data:Data(uid.utf8)).map{String(format:"%02x",$0)}.joined()}
  private static func localTimestamp(_ date:Date)->String{let f=DateFormatter();f.locale=Locale(identifier:"en_US_POSIX");f.dateFormat="yyyy-MM-dd'T'HH:mm:ss";return f.string(from:date)}
  public static func outcome(_ record:WireRecord,status:String,amount:Double?=nil,target:Double?=nil,now:Date=Date())throws->WireRecord{
   guard ["UNKNOWN","COMPLETED","PARTIAL","NOT_DONE","POSTPONED"].contains(status)else{throw RotamDataError.invalid("Plan durumu desteklenmiyor.")}
