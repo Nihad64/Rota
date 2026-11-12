@@ -35,7 +35,7 @@ import com.nihad64.rotam.ui.theme.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 private data class Tab(val route:String,val label:String,val icon:ImageVector)
-private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar","Takvim",Icons.Outlined.CalendarMonth),Tab("routines","Rutinler",Icons.Outlined.Repeat),Tab("settings","Ayarlar",Icons.Outlined.Settings))
+private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar","Takvim",Icons.Outlined.CalendarMonth),Tab("routines","Rutinler",Icons.Outlined.Layers),Tab("settings","Ayarlar",Icons.Outlined.Settings))
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun RotamRoot(){
  val settings by RotamApp.container.settings.settings.collectAsStateWithLifecycle(initialValue=com.nihad64.rotam.data.prefs.Settings())
@@ -65,11 +65,11 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
  LaunchedEffect(route){focusManager.clearFocus();keyboard?.hide()}
  val context=LocalContext.current
  LaunchedEffect(Unit){val id=(context as? android.app.Activity)?.intent?.getLongExtra("planId",-1)?:-1;if(id>0)nav.navigate("detail/$id")else if((context as? android.app.Activity)?.intent?.getBooleanExtra("newPlan",false)==true)nav.navigate("plan?date=")}
- LaunchedEffect(Unit){for(n in c.notices){val result=snackbar.showSnackbar(n.text,if(n.undo!=null)"Geri al"else null,duration=SnackbarDuration.Long);if(result==SnackbarResult.ActionPerformed)runCatching{n.undo?.invoke()}}}
+ LaunchedEffect(Unit){for(n in c.notices){val result=snackbar.showSnackbar(n.text,if(n.undo!=null)"Geri al"else null,withDismissAction=true,duration=SnackbarDuration.Long);if(result==SnackbarResult.ActionPerformed)runCatching{n.undo?.invoke()}}}
  fun manual(date:LocalDate?=null){nav.navigate("new?date=${date?:""}&copy=-1")}
  fun new(date:LocalDate?=null){nav.navigate("plan?date=${date?:""}")}
  Scaffold(containerColor=Background,contentWindowInsets=WindowInsets.safeDrawing,
-  snackbarHost={SnackbarHost(snackbar,modifier=Modifier.padding(bottom=if(planEditor)160.dp else 0.dp))},bottomBar={if(showBar)Row(Modifier.fillMaxWidth().background(Background).navigationBarsPadding().padding(vertical=10.dp)){
+  snackbarHost={SnackbarHost(snackbar,modifier=Modifier.padding(bottom=when{planEditor->160.dp;route.orEmpty().startsWith("plan?")->112.dp;else->0.dp})){data->Snackbar(data,containerColor=SurfaceVariant,contentColor=Primary,actionColor=Accent,dismissActionContentColor=SubtleText,shape=RoundedCornerShape(20.dp))}},bottomBar={if(showBar)Row(Modifier.fillMaxWidth().background(Background).navigationBarsPadding().padding(vertical=10.dp)){
    tabs.forEach{t->val selected=t.route==route;Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable{nav.navigate(t.route){popUpTo(nav.graph.findStartDestination().id){saveState=true};launchSingleTop=true;restoreState=true}}.padding(vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(t.icon,t.label,tint=if(selected)Accent else SubtleText,modifier=Modifier.size(25.dp));Text(t.label,style=MaterialTheme.typography.labelSmall,color=if(selected)Primary else SubtleText,modifier=Modifier.padding(top=5.dp));Spacer(Modifier.height(7.dp));Box(Modifier.size(4.dp).clip(CircleShape).background(if(selected)Accent else Background))}}
   }}){padding->
   NavHost(nav,startDestination="home",modifier=Modifier.padding(padding).consumeWindowInsets(padding),enterTransition={fadeIn(tween(if(motion)RotamMotion.Navigate else 0))+slideInHorizontally(tween(if(motion)RotamMotion.Navigate else 0)){it/14}},exitTransition={fadeOut(tween(if(motion)RotamMotion.Exit else 0))},popEnterTransition={fadeIn(tween(if(motion)RotamMotion.Replace else 0))},popExitTransition={fadeOut(tween(if(motion)RotamMotion.Exit else 0))+slideOutHorizontally(tween(if(motion)RotamMotion.Exit else 0)){it/14}}){

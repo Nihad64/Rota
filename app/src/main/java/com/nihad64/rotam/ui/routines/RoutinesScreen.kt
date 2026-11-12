@@ -20,6 +20,7 @@ import org.json.JSONObject
 import java.time.LocalDate
 
 @Composable fun RoutinesScreen(c:AppContainer,onNew:()->Unit,onEdit:(Long)->Unit,onGoals:()->Unit) {
+ val goals by remember(c){c.goalRepo.observeAll()}.collectAsStateWithLifecycle(emptyList())
  val series by remember(c){c.db.seriesDao().observeAll()}.collectAsStateWithLifecycle(emptyList())
  val plans by remember(c){c.planRepo.observeAll()}.collectAsStateWithLifecycle(emptyList())
  val today=LocalDate.now();val monday=today.minusDays((today.dayOfWeek.value-1).toLong());val sunday=monday.plusDays(6)
@@ -69,7 +70,7 @@ import java.time.LocalDate
       val completed=week.count{it.isCompleted}
       Text("Bu hafta $completed / ${week.size} tamamlandı",color=SubtleText)
       Spacer(Modifier.height(10.dp))
-      LinearProgressIndicator(progress={completed.toFloat()/week.size},modifier=Modifier.fillMaxWidth().height(6.dp),color=Accent,trackColor=Outline)
+      SegmentedProgress(completed,week.size)
       Spacer(Modifier.height(16.dp))
      }
      Text(if(next!=null)"Sıradaki · ${next.date} · ${PlanTime.label(next)}"else"Yaklaşan plan yok",color=SubtleText,style=MaterialTheme.typography.bodyMedium)
@@ -78,9 +79,9 @@ import java.time.LocalDate
     if(busy==s.id)LinearProgressIndicator(Modifier.fillMaxWidth())
    }
   }
-  item{Text("Günü gelen rutinler, Bugün ekranında da görünür.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)}
+  if(series.isNotEmpty())item{Text("Günü gelen rutinler, Bugün ekranında da görünür.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)}
   if(series.any{it.untilDate!=null&&it.untilDate<today.toString()})item{TextButton(onClick={archive=!archive}){Text(if(archive)"Geçmiş rutinleri gizle"else"Geçmiş rutinleri göster")}}
-  item{TextButton(onClick=onGoals){Text("Önceki hedeflerim")}}
+  if(goals.isNotEmpty())item{TextButton(onClick=onGoals){Text("Önceki hedeflerim")}}
  }
  pausing?.let{s->AlertDialog(onDismissRequest={pausing=null},title={Text("Bu rutine ara verilsin mi?")},text={Text("Bugünden itibaren bekleyen örnekler ve hatırlatmaları durur. Tamamlanan, kısmen yapılan ve geçmiş kayıtların korunur. Yeniden devam ettiğinde aradaki günler başarısız sayılmaz.")},confirmButton={TextButton(onClick={pausing=null;pause(s,true)}){Text("Ara ver")}},dismissButton={TextButton(onClick={pausing=null}){Text("Vazgeç")}})}
 }

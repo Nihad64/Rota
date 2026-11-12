@@ -7,14 +7,22 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.ExperimentalTextApi
+import com.nihad64.rotam.R
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val Sans = FontFamily.SansSerif
+@OptIn(ExperimentalTextApi::class)
+private val Sans = FontFamily(listOf(400,500,600,700,800).map{weight->Font(R.font.manrope,weight=FontWeight(weight),variationSettings=FontVariation.Settings(FontVariation.weight(weight)))})
 
 val RotamTypography = Typography(
+    displayLarge = TextStyle(fontFamily=Sans,fontWeight=FontWeight.Bold,fontSize=52.sp,lineHeight=58.sp),
+    displayMedium = TextStyle(fontFamily=Sans,fontWeight=FontWeight.Bold,fontSize=44.sp,lineHeight=50.sp),
+    headlineLarge = TextStyle(fontFamily=Sans,fontWeight=FontWeight.SemiBold,fontSize=30.sp,lineHeight=36.sp),
     displaySmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Bold, fontSize = 38.sp, letterSpacing = (-0.5).sp),
     headlineMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Bold, fontSize = 26.sp, letterSpacing = (-0.3).sp),
     headlineSmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
@@ -53,6 +61,9 @@ private val DarkColors = darkColorScheme(
     surfaceContainerHigh = SurfaceVariant,
     outline = Outline,
     outlineVariant = Outline,
+    inverseSurface = SurfaceVariant,
+    inverseOnSurface = Primary,
+    inversePrimary = Accent,
     error = Danger
 )
 

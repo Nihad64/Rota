@@ -47,7 +47,7 @@ import java.time.LocalDate
    Spacer(Modifier.height(12.dp));Text("${s.totalDone} / ${s.total}",style=MaterialTheme.typography.displaySmall)
    Text("plan tamamlandı",color=SubtleText)
    Spacer(Modifier.height(18.dp))
-   LinearProgressIndicator(progress={if(s.total==0)0f else s.totalDone.toFloat()/s.total},modifier=Modifier.fillMaxWidth().height(6.dp),color=Accent,trackColor=Outline)
+   SegmentedProgress(s.totalDone,s.total)
    Spacer(Modifier.height(14.dp))
    Text("${s.pending} sırada · ${s.awaiting} yanıt bekliyor",color=SubtleText,style=MaterialTheme.typography.bodyMedium)
    if(s.partial>0||s.notDone>0)Text("${s.partial} kısmen yapıldı · ${s.notDone} yapılmadı bildirildi",color=SubtleText,style=MaterialTheme.typography.bodySmall)
@@ -57,7 +57,7 @@ import java.time.LocalDate
    Text("Rutinlerim",style=MaterialTheme.typography.titleLarge)
    s.routines.forEach{r->
     Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Outlined.Repeat,null,tint=Accent);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(r.title,style=MaterialTheme.typography.titleMedium);if(r.paused)Text("Ara verildi",color=SubtleText,style=MaterialTheme.typography.bodySmall)};Text("${r.done} / ${r.total}")}
-    LinearProgressIndicator(progress={r.done.toFloat()/r.total.coerceAtLeast(1)},modifier=Modifier.fillMaxWidth().height(5.dp),color=Accent,trackColor=Outline)
+    LinearBar(r.done.toFloat()/r.total.coerceAtLeast(1),height=5.dp)
    }
   }
   HorizontalDivider(color=Outline)

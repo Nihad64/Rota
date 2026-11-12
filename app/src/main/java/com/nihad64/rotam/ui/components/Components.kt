@@ -24,7 +24,14 @@ fun Category.icon():ImageVector=when(this){Category.KITAP->Icons.AutoMirrored.Ou
 @Composable fun CategoryIcon(category:Category,size:Dp=40.dp,modifier:Modifier=Modifier){Box(modifier.size(size),contentAlignment=Alignment.Center){Icon(category.icon(),category.label,tint=SubtleText,modifier=Modifier.size(size*.55f))}}
 @Composable fun RotamCard(modifier:Modifier=Modifier,onClick:(()->Unit)?=null,highlight:Boolean=false,content:@Composable ColumnScope.()->Unit){Column(modifier.clip(RoundedCornerShape(28.dp)).background(Surface).then(if(onClick!=null)Modifier.clickable(onClick=onClick)else Modifier).padding(22.dp),content=content)}
 @Composable fun ProgressRing(progress:Float,modifier:Modifier=Modifier,size:Dp=110.dp,stroke:Dp=10.dp,center:@Composable ()->Unit={}){Box(modifier.size(size),contentAlignment=Alignment.Center){Canvas(Modifier.fillMaxSize()){drawArc(Outline,-90f,360f,false,style=Stroke(stroke.toPx(),cap=StrokeCap.Round));drawArc(Primary,-90f,360f*progress.coerceIn(0f,1f),false,style=Stroke(stroke.toPx(),cap=StrokeCap.Round))};center()}}
-@Composable fun LinearBar(progress:Float,modifier:Modifier=Modifier){LinearProgressIndicator(progress={progress.coerceIn(0f,1f)},modifier=modifier.fillMaxWidth().height(4.dp).clip(CircleShape),color=Primary,trackColor=Outline)}
+@Composable fun LinearBar(progress:Float,modifier:Modifier=Modifier,color:Color=Accent,height:Dp=6.dp){
+ val enabled=rememberMotionEnabled()
+ val value by androidx.compose.animation.core.animateFloatAsState(progress.coerceIn(0f,1f),androidx.compose.animation.core.tween(if(enabled)RotamMotion.Navigate else 0),label="progress")
+ Canvas(modifier.fillMaxWidth().height(height)){
+  drawRoundRect(Outline,cornerRadius=androidx.compose.ui.geometry.CornerRadius(size.height/2))
+  if(value>0f)drawRoundRect(color,size=androidx.compose.ui.geometry.Size(size.width*value,size.height),cornerRadius=androidx.compose.ui.geometry.CornerRadius(size.height/2))
+ }
+}
 @Composable fun PlanCard(plan:Plan,onToggle:()->Unit,onLongPress:()->Unit={},modifier:Modifier=Modifier){
  Row(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(onClick=onLongPress).padding(vertical=14.dp),verticalAlignment=Alignment.CenterVertically){
   Column(Modifier.width(65.dp)){Text(plan.startTime?:plan.endTime?:"Gün içi",style=MaterialTheme.typography.titleMedium,color=if(plan.isCompleted)SubtleText else Primary);if(plan.startTime==null&&plan.endTime!=null)Text("son teslim",style=MaterialTheme.typography.labelSmall,color=SubtleText)}
