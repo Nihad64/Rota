@@ -49,3 +49,12 @@ Manrope variable font çevrimdışı kaynak olarak eklendi (164700 bayt). SIL OF
 Yeni görsel revizyonun CI görüntüleri; kalan ekran/erişilebilirlik ve bildirim yükseltme doğrulaması; iOS uygulama/iki platform sözleşmesi; son veri korumalı yükseltme ve tek açık isimli final APK.
 
 iOS için kullanıcı, başlangıç projesini benim oluşturmamı ve GitHub Mac ortamında test etmemi açıkça onayladı. Yerel Swift doğrulandı; büyük Xcode/Simulator indirmesi yapılmadı. FS-synchronized native app/test/widget hedefleri oluşturuluyor. Resmî Swift kurulum aracıyla güncel Firebase ve Google Sign-In paketleri bağlandı; -ObjC mevcut. Bu, iOS derlemesi/testi geçti anlamına gelmez. Ücretsiz mevcut proje korunur, Android uygulama kaydı değiştirilmez.
+
+
+## 12 Kasım — Apple veri çekirdeği ve iki yönlü sözleşme
+
+- 846fea8 / Android run 43235250025: dört iş başarılı. Yeni font/snackbar ve diğer görsel değişiklikler emülatör testlerinden geçti; son görüntüler ayrıca inceleniyor. Tercih kuralları demo CI sonrasında dağıtıldı ve uzak kurallarda ayrı yol/16 KiB sınırı/default deny tekrar doğrulandı.
+- Swift çekirdeği: sınırlı gzip/JSON, taşınabilir UID, plan/rutin/hedef/hafıza doğrulama, üç yönlü çakışma, atomik özel dosya deposu, hesap bağlama, eski ağ yanıtını uygulamama ve buluta çıkmayan özel hafıza. Silme/unutma metni redakte eder. Bilinmeyen plan metadata'sı korunur.
+- Android'in ürettiği sentetik ortak paket Swift'te açıldı; Swift başlık/odak alanlarını değiştirip yeniden paketledi; Android aynı kayıtları alan ve byte düzeyindeki kanonik gövdelerle doğruladı. JSON slash kaçış farkı bulunup düzeltildi; aksi hâlde semantik olarak aynı kayıt gereksiz çakışma çıkarabilirdi. İki gzip dosyası da yalnız sentetik test fikstürüdür.
+- Yerel Android 88 JVM testi/lint/app-test APK derlemeleri başarılı. Swift çekirdeği derlendi ve çalışan sözleşme kontrolü UID/not/metadata/bozuk gzip/ters paket/özel hafıza/eskimiş import senaryolarını doğruladı. Yerelde XCTest modülü eksik olduğundan XCTest geçmiş denmiyor; testler GitHub Mac/Xcode işinde çalışacak. Büyük yerel Xcode indirmesi yapılmadı.
+- Bu commit yalnız taşınabilir Apple çekirdeği ve CI sözleşmesidir. Native iOS ekranları, platform servisleri ve simülatör testi devam ediyor; iOS uygulaması bitmiş olarak sunulmaz.

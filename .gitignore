@@ -16,3 +16,9 @@ dist/
 .toolchain/
 
 __pycache__/
+
+ios/.build/
+ios/.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
