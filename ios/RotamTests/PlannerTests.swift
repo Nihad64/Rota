@@ -43,6 +43,21 @@ import XCTest
   let rows=try PortableSettings.encode(PortableSettings.defaults);XCTAssertEqual(PortableSettings.defaults,try PortableSettings.decode(SyncCodec.decode(SyncCodec.encode(rows))))
   var values=PortableSettings.defaults;values["ai-share-plans"] = .bool(true);XCTAssertThrowsError(try PortableSettings.validate(values));XCTAssertThrowsError(try CoreValidator.validate(rows))
  }
+ func testNotificationDismissAndSnoozePersistButDoNotAlterPlan()throws{
+  let now=try PlanDates.instant(day:"2026-11-11",time:"12:00")
+  let p=try PortablePlan(PortablePlan.make(title:"Oku",date:"2026-11-12",uid:"local-delivery"))
+  var state=ReminderDeliveryState(signature:PlanActions.reminderSignature(p));state.muted=true
+  let saved=try JSONDecoder().decode(ReminderDeliveryState.self,from:JSONEncoder().encode(state))
+  XCTAssertTrue(try ReminderRules.events([p],settings:PortableSettings.defaults,now:now,delivery:[p.id:saved]).isEmpty)
+  let moved=try PortablePlan(PlanActions.postpone(p.record,date:"2026-11-13",time:nil))
+  XCTAssertFalse(try ReminderRules.events([moved],settings:PortableSettings.defaults,now:now,delivery:[p.id:saved]).isEmpty)
+  state.muted=false;state.snooze(now:now)
+  let snoozed=try ReminderRules.events([p],settings:PortableSettings.defaults,now:now,delivery:[p.id:state])
+  XCTAssertEqual(1,snoozed.count);XCTAssertEqual(now.addingTimeInterval(1800),snoozed.first?.at)
+  state.snooze(now:now);state.snooze(now:now);state.snooze(now:now)
+  XCTAssertEqual(3,state.snoozeCount);XCTAssertTrue(state.muted)
+  XCTAssertEqual("UNKNOWN",p.outcome);XCTAssertFalse(p.completed)
+ }
  func testDraftRevisionPreventsLateWriteAndReopensPendingInput()async throws{
   let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
   defer{try? FileManager.default.removeItem(at:root)}

@@ -109,3 +109,10 @@ iOS için kullanıcı, başlangıç projesini benim oluşturmamı ve GitHub Mac 
 Yeni test turu: native SDK katmanını yalnız gerçek SDK ile, kişisel projeye yazmadan doğrulamak için iki bağımsız Apple Auth/Firestore istemcili emülatör testi eklendi. Ortak plan paketi, ters yönde güncelleme, eski revizyonun reddi, ayrı tercih izni ve farklı hesabın erişememesi kontrol edilir. Test yardımcısı yalnız DEBUG'da derlenir ve demo proje kimliğini doğrulamadan kullanıcı oluşturmaz. Test-host arayüzü senkronizasyon iznini arka planda değiştirmez; normal uygulama ve UI testinin başlatılması korunur. Bu yeni test henüz geçmiş sayılmaz.
 
 Plan formunun boş başlangıç/bitiş kontrolleri “Saat” satırından açılır; saatsiz kaydetme tek adımda kalır. Android 3.1.0 (51) uygulama ve release APK'sı, 99 JVM testi ve lint ile yerelde derlendi. Nihai cihaz/CI doğrulaması tamamlanmadan final paket teslim edilmiş sayılmaz.
+
+## 13 Kasım — Paket ve platform doğrulaması
+
+- Release APK, PNG maskesini AAPT optimizasyonuyla RGBA'dan palet biçimine dönüştürür. Eski dosya hash kontrolü bu eşdeğer dosyayı reddediyordu. Yeni denetim boyut/renk/alfa piksellerini karşılaştırır; görünmez RGB dışında farkı kabul etmez. Dört negatif/pozitif test ve release normal/yuvarlak/temalı kaynak grafiği geçti. Saf beyazın kremle değiştirilmesi negatif testi reddedilir. CI tek imzalı release APK üretir.
+- Saat kontrollerini açma ekran testine eklendi; açmak saatsiz plana otomatik saat yazmamalı.
+- iOS run 43457060094 geçmiş metni derleme engelini geçti; şimdi Firebase transaction closure'ının Swift 6 eşzamanlılık sınırında Sendable olmaması bulundu. İki closure açık Sendable yapıldı, denetim kapatılmadı. Yeni native test turu gerekli.
+- iOS bildirim kapatma ve erteleme tercihi cihazda imza bağlı saklanır; yeniden zamanlama kapatılmış bildirimi canlandırmaz. Üç kullanıcı ertelemesi sınırı, sessiz saat ve tarih/saat değişince yeni sözleşme test edilir. Plan sonucu/bulut kaydı değiştirilmez. Yeniden zamanlama işlemleri sıraya alınır.

@@ -66,6 +66,9 @@ class PlanFlowTest {
         ui.waitUntil(10000){ui.onNode(hasSetTextAction()).isDisplayed()}
         ui.onNode(hasSetTextAction()).assertIsDisplayed()
         ui.onNodeWithText("Zaman").performScrollTo().assertIsDisplayed()
+        // Optional endpoints stay collapsed until requested. Opening them must
+        // not assign a default time to an otherwise untimed plan.
+        ui.onNodeWithText("Saat").performScrollTo().performClick()
         ui.onAllNodesWithText("Saat yok").onFirst().performScrollTo().assertIsDisplayed()
         shot("03-optional-times")
         ui.onNodeWithText("Planı kaydet").performClick()

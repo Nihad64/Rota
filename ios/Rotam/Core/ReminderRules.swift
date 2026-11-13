@@ -1,10 +1,22 @@
 import Foundation
+/// Device-local delivery choices. They never change a plan's outcome or sync.
+public struct ReminderDeliveryState:Codable,Equatable,Sendable {
+ public let signature:String
+ public var muted=false
+ public var snoozeCount=0
+ public var snoozeUntil:Date?
+ public init(signature:String){self.signature=signature}
+ public mutating func snooze(now:Date){
+  guard snoozeCount<3 else{muted=true;snoozeUntil=nil;return}
+  snoozeCount+=1;snoozeUntil=now.addingTimeInterval(1800)
+ }
+}
 public struct ReminderEvent:Sendable,Identifiable {
  public var id:String{planID+"|"+signature+"|"+key}
  public let planID:String;public let signature:String;public let key:String;public var at:Date;public let custom:Bool
 }
 public enum ReminderRules {
- public static func events(_ plans:[PortablePlan],settings:[String:JSONValue],now:Date=Date())throws->[ReminderEvent] {
+ public static func events(_ plans:[PortablePlan],settings:[String:JSONValue],now:Date=Date(),delivery:[String:ReminderDeliveryState]=[:])throws->[ReminderEvent] {
   try PortableSettings.validate(settings);guard settings["reminders"]?.boolean==true else{return []}
   var calendar=Calendar(identifier:.gregorian);calendar.timeZone = .current
   func quiet(_ date:Date)->Date{
@@ -19,6 +31,12 @@ public enum ReminderRules {
    let mode=p.metadata["reminderMode"]?.string ?? (p.fields["reminderEnabled"]?.boolean==true ? "custom":"off")
    if mode=="off"{continue}
    let signature=PlanActions.reminderSignature(p)
+   if let local=delivery[p.id],local.signature==signature{
+    if local.muted{continue}
+    if let until=local.snoozeUntil,until>now{
+     events.append(ReminderEvent(planID:p.id,signature:signature,key:"snooze\(local.snoozeCount)",at:quiet(until),custom:true));continue
+    }
+   }
    let start=try p.start.map{try PlanDates.instant(day:p.date,time:$0)},end=try p.end.map{try PlanDates.instant(day:p.endDate,time:$0)}
    if mode=="custom"{
     let base:Date?

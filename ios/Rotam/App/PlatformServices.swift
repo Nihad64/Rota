@@ -8,43 +8,55 @@ import AudioToolbox
  static let shared=ReminderService()
  weak var model:RotamModel?
  var openPlan:((String)->Void)?
+ private var rescheduling=false
+ private var needsReschedule=false
+ private var delivery:[String:ReminderDeliveryState]{
+  get{guard let data=UserDefaults.standard.data(forKey:"reminder-delivery-v1")else{return [:]};return (try? JSONDecoder().decode([String:ReminderDeliveryState].self,from:data)) ?? [:]}
+  set{if let data=try? JSONEncoder().encode(newValue){UserDefaults.standard.set(data,forKey:"reminder-delivery-v1")}}
+ }
  func configure(_ model:RotamModel){
   self.model=model;let center=UNUserNotificationCenter.current();center.delegate=self
   center.setNotificationCategories([UNNotificationCategory(identifier:"rotam-plan",actions:[UNNotificationAction(identifier:"started",title:"Başladım"),UNNotificationAction(identifier:"done",title:"Tamamladım"),UNNotificationAction(identifier:"snooze",title:"30 dakika sonra")],intentIdentifiers:[],options:.customDismissAction)])
  }
  func request()async->Bool{do{return try await UNUserNotificationCenter.current().requestAuthorization(options:[.alert,.sound,.badge])}catch{model?.report(error);return false}}
  func reschedule()async {
+  needsReschedule=true;guard !rescheduling else{return}
+  rescheduling=true;defer{rescheduling=false}
+  while needsReschedule{needsReschedule=false;await applySchedule()}
+ }
+ private func applySchedule()async {
   guard let model else{return}
   do{
    let center=UNUserNotificationCenter.current(),settings=await center.notificationSettings()
    guard settings.authorizationStatus == .authorized||settings.authorizationStatus == .provisional else{return}
-   let events=try ReminderRules.events(model.plans,settings:model.prefValues)
+   let events=try ReminderRules.events(model.plans,settings:model.prefValues,delivery:delivery)
    let old=await center.pendingNotificationRequests();center.removePendingNotificationRequests(withIdentifiers:old.filter{$0.identifier.hasPrefix("rotam|")}.map(\.identifier))
    for event in events{
     guard let plan=model.plans.first(where:{$0.id==event.planID})else{continue}
     let content=UNMutableNotificationContent();content.title=plan.title;content.body=["after","last","checkin"].contains(event.key) ? "Yapabildin mi? Yanıtını bekliyor; yapılmadı sayılmadı.":event.key=="before" ? "\(plan.scheduleLabel) · Hazırlanmak için küçük bir adım.":"Zamanı geldi. Hazırsan başlayalım."
     content.categoryIdentifier="rotam-plan";content.sound = .default
-    content.userInfo=["uid":plan.id,"signature":event.signature,"snoozeCount":0]
+    content.userInfo=["uid":plan.id,"signature":event.signature]
     let trigger=UNCalendarNotificationTrigger(dateMatching:Calendar.current.dateComponents([.year,.month,.day,.hour,.minute,.second],from:event.at),repeats:false)
     try await center.add(UNNotificationRequest(identifier:"rotam|"+PlanActions.ownerHash(event.id),content:content,trigger:trigger))
    }
   }catch{model.report(error)}
  }
  nonisolated func userNotificationCenter(_ center:UNUserNotificationCenter,didReceive response:UNNotificationResponse)async{
-  let info=response.notification.request.content.userInfo,uid=info["uid"] as? String,signature=info["signature"] as? String,count=info["snoozeCount"] as? Int ?? 0,action=response.actionIdentifier
-  await handle(uid:uid,signature:signature,action:action,count:count)
+  let info=response.notification.request.content.userInfo,uid=info["uid"] as? String,signature=info["signature"] as? String,action=response.actionIdentifier
+  await handle(uid:uid,signature:signature,action:action)
  }
- private func handle(uid:String?,signature:String?,action:String,count:Int)async{
+ private func handle(uid:String?,signature:String?,action:String)async{
   guard let uid,let model,let p=model.plans.first(where:{$0.id==uid}),signature==PlanActions.reminderSignature(p),!p.completed,!p.skipped else{return}
   if action==UNNotificationDefaultActionIdentifier{openPlan?(uid);return}
   if action=="done"{await model.outcome(p,"COMPLETED")}
   else if action=="started"{await model.perform{try await model.store?.replace(PlanActions.markStarted(p),expected:p.record);await model.reload()}}
-  else if action=="snooze",count<3{
-   let c=UNMutableNotificationContent();c.title=p.title;c.body="Biraz sonra demiştin. Şimdi uygun mu?";c.categoryIdentifier="rotam-plan";c.sound = .default;c.userInfo=["uid":uid,"signature":signature ?? "","snoozeCount":count+1]
-   do{try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier:"rotam|snooze|"+PlanActions.ownerHash(uid),content:c,trigger:UNTimeIntervalNotificationTrigger(timeInterval:1800,repeats:false)))}catch{model.report(error)}
+  else if action=="snooze"||action==UNNotificationDismissActionIdentifier{
+   let current=PlanActions.reminderSignature(p)
+   var states=delivery,local=states[uid].flatMap{$0.signature==current ? $0:nil} ?? ReminderDeliveryState(signature:current)
+   if action=="snooze"{local.snooze(now:Date())}else{local.muted=true;local.snoozeUntil=nil}
+   states[uid]=local;delivery=states
   }
-  let pending=await UNUserNotificationCenter.current().pendingNotificationRequests()
-  if action != UNNotificationDefaultActionIdentifier{UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers:pending.filter{($0.content.userInfo["uid"] as? String)==uid && !$0.identifier.contains("|snooze|")}.map(\.identifier))}
+  await reschedule()
  }
  nonisolated func userNotificationCenter(_ center:UNUserNotificationCenter,willPresent notification:UNNotification)async->UNNotificationPresentationOptions{[.banner,.sound]}
 }

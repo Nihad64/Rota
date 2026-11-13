@@ -28,7 +28,7 @@ extension FirebaseGateway {
   let ref=db.document("users/\(owner)/sync/snapshot"),remote=try await ref.getDocument(source:.server)
   guard let bytes=remote.data()?["payload"] as? Data,try SyncCodec.decode(bytes)==[seed]else{throw RotamDataError.invalid("İkinci SDK aynı planı okuyamadı.")}
   let edited=try seed.changing(["title":.string("İkinci SDK düzenledi")]),payload=try SyncCodec.encode([edited])
-  _ = try await db.runTransaction{tx,errorPointer->Any? in
+  _ = try await db.runTransaction{@Sendable tx,errorPointer->Any? in
    do{
     let snapshot=try tx.getDocument(ref);guard (snapshot.data()?["revision"] as? NSNumber)?.intValue==1 else{throw RotamDataError.invalid("İkinci istemcinin sürümü değişti.")}
     tx.setData(["schema":1,"revision":2,"writer":"synthetic-apple-client","updatedAt":FieldValue.serverTimestamp(),"payload":payload],forDocument:ref)
