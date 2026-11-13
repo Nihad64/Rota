@@ -1,7 +1,10 @@
 package com.nihad64.rotam
 
 import androidx.compose.ui.test.*
-import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -24,14 +27,15 @@ class RoutineUsabilityTest {
  private fun shot(name:String){
   ui.waitForIdle();val device=InstrumentationRegistry.getInstrumentation()
   val file=File(device.targetContext.getExternalFilesDir(null),"$name.png")
-  val bitmap=ui.onAllNodes(isRoot()).onLast().captureToImage().asAndroidBitmap();file.outputStream().use{bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
+  // Include the separate dialog window, not an arbitrarily ordered Compose root.
+  val bitmap=checkNotNull(device.uiAutomation.takeScreenshot());file.outputStream().use{bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
   for(command in listOf("mkdir -p /sdcard/Download/rotam-test-screenshots","cp ${file.absolutePath} /sdcard/Download/rotam-test-screenshots/$name.png")){android.os.ParcelFileDescriptor.AutoCloseInputStream(device.uiAutomation.executeShellCommand(command)).use{it.readBytes()}}
  }
  @Test fun aYearOfSchoolIsOneCollapsedSearchResult(){
   val c=RotamApp.container;val day=LocalDate.now()
   val rows=runBlocking{c.initialize();c.planRepo.create(Plan(title="Sentetik okul grubu",date=day.toString(),repeatType="daily",repeatUntil=day.plusDays(123).toString()))}
   try{
-   ui.setContent{RotamTheme{SearchScreen(c,{}, {})}}
+   ui.setContent{RotamTheme{Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background,contentColor=MaterialTheme.colorScheme.onBackground){SearchScreen(c,{}, {})}}}
    ui.onNode(hasSetTextAction()).performTextInput("Sentetik okul grubu")
    ui.waitUntil(10000){ui.onAllNodesWithText("1 rutin").fetchSemanticsNodes().isNotEmpty()}
    ui.onNodeWithText("1 rutin").assertExists();ui.onNodeWithText("124 plan").assertDoesNotExist()
@@ -46,7 +50,7 @@ class RoutineUsabilityTest {
   val rows=runBlocking{c.initialize();c.planRepo.create(Plan(title="Sentetik evden çıkış",date=LocalDate.now().toString(),repeatType="daily",repeatUntil=LocalDate.now().plusDays(3).toString()))}
   val sid=rows.first().seriesId
   try{
-   ui.setContent{RotamTheme{RoutinesScreen(c,{}, {}, {})}}
+   ui.setContent{RotamTheme{Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background,contentColor=MaterialTheme.colorScheme.onBackground){RoutinesScreen(c,{}, {}, {})}}}
    ui.waitUntil(10000){ui.onAllNodesWithText("Sentetik evden çıkış").fetchSemanticsNodes().isNotEmpty()}
    ui.onNodeWithTag("routines-list").performScrollToNode(hasTestTag("routine-menu-$sid"))
    ui.onNodeWithTag("routine-menu-$sid").performClick()

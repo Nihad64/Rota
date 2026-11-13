@@ -94,7 +94,8 @@ class PlanFlowTest {
         shot("04-focus-summary")
         ui.onNodeWithText("Sonra devam edeceğim").performScrollTo().performClick()
         ui.waitUntil(10000){ui.onAllNodesWithText("Plan detayı").fetchSemanticsNodes().isNotEmpty()}
-        ui.onNodeWithText("Düzenle").performClick()
+        // Detail retains its previous scroll after returning from Focus.
+        ui.onNodeWithText("Düzenle").performScrollTo().assertIsDisplayed().performClick()
         ui.waitUntil(10000){ui.onAllNodesWithText("Planını düzenle").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithText("Planını düzenle").assertIsDisplayed()
         ui.onNodeWithText("Değişiklikleri kaydet").assertIsDisplayed()

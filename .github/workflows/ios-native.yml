@@ -47,7 +47,20 @@ jobs:
       - name: Build the app and widget; test offline planner with synthetic data
         run: |
           set -o pipefail
-          xcodebuild -project ios/Rotam.xcodeproj -scheme Rotam -destination "platform=iOS Simulator,id=$ROTAM_SIMULATOR" -derivedDataPath "$HOME/Library/Developer/Xcode/DerivedData/RotamCI" -resultBundlePath "$RUNNER_TEMP/Rotam.xcresult" CODE_SIGNING_ALLOWED=NO test | tee "$RUNNER_TEMP/ios-native.log"
+          xcodebuild -quiet -project ios/Rotam.xcodeproj -scheme Rotam -destination "platform=iOS Simulator,id=$ROTAM_SIMULATOR" -derivedDataPath "$HOME/Library/Developer/Xcode/DerivedData/RotamCI" -resultBundlePath "$RUNNER_TEMP/Rotam.xcresult" -test-timeouts-enabled YES -default-test-execution-time-allowance 180 -maximum-test-execution-time-allowance 300 CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test | tee "$RUNNER_TEMP/ios-native.log"
+      - name: Export synthetic UI screenshots and inspect simulator signature
+        if: always()
+        run: |
+          app="$HOME/Library/Developer/Xcode/DerivedData/RotamCI/Build/Products/Debug-iphonesimulator/Rotam.app"
+          if [ -d "$app" ]; then codesign -d --entitlements - "$app"; fi
+          if [ -d "$RUNNER_TEMP/Rotam.xcresult" ]; then xcrun xcresulttool export attachments --path "$RUNNER_TEMP/Rotam.xcresult" --output-path "$RUNNER_TEMP/native-screenshots"; fi
+      - name: Upload small synthetic UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-native-screenshots
+          path: ${{ runner.temp }}/native-screenshots/
+          retention-days: 7
       - name: Upload synthetic simulator evidence
         if: always()
         uses: actions/upload-artifact@v4
