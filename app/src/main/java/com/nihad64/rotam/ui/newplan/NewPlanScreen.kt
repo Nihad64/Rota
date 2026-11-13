@@ -1,6 +1,12 @@
 package com.nihad64.rotam.ui.newplan
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -93,12 +99,23 @@ import java.time.LocalDate
  Category.OGRENME->listOf("subject" to "Konu / ders","source" to "Kaynak / çalışma hedefi")
  Category.KISISEL->emptyList()};fields.filter{e.optString(it.first).isNotBlank()}.forEach{(key,label)->RotamField(e.optString(key),{set(key,it)},"$label · isteğe bağlı",Modifier.fillMaxWidth())};if(e.optString("legacyDetails").isNotBlank())RotamField(e.optString("legacyDetails"),{set("legacyDetails",it)},"Önceki ayrıntılar",Modifier.fillMaxWidth(),singleLine=false)}
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun TimingFields(p:Plan,change:((Plan)->Plan)->Unit){var dateTarget by remember{mutableStateOf<String?>(null)};var timeTarget by remember{mutableStateOf<String?>(null)}
- Text("Zaman",style=MaterialTheme.typography.titleMedium);DetailRow("Gün",TrFormat.full(LocalDate.parse(p.date))){dateTarget="date"}
-
- DetailRow("Başlangıç",p.startTime?:"Saat yok"){timeTarget="start"};DetailRow("Bitiş / son teslim",p.endTime?:"Saat yok"){timeTarget="end"}
- if(p.endTime!=null){FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){SelectChip("Aynı gün",p.endDate==null||p.endDate==p.date,{change{it.copy(endDate=null)}});SelectChip("Ertesi gün",p.endDate==LocalDate.parse(p.date).plusDays(1).toString(),{change{it.copy(endDate=LocalDate.parse(it.date).plusDays(1).toString())}})};DetailRow("Bitiş tarihi",p.endDate?:p.date){dateTarget="end"}}
-
+@Composable private fun TimingFields(p:Plan,change:((Plan)->Plan)->Unit){
+ var dateTarget by remember{mutableStateOf<String?>(null)};var timeTarget by remember{mutableStateOf<String?>(null)}
+ var expanded by remember(p.uid){mutableStateOf(p.startTime!=null||p.endTime!=null)}
+ val motion=rememberMotionEnabled()
+ Text("Zaman",style=MaterialTheme.typography.titleMedium)
+ DetailRow("Gün",TrFormat.full(LocalDate.parse(p.date))){dateTarget="date"}
+ DetailRow("Saat",if(expanded)"Saat seçenekleri"else PlanTime.label(p)){expanded=!expanded}
+ AnimatedVisibility(expanded,enter=expandVertically(tween(if(motion)180 else 0))+fadeIn(tween(if(motion)180 else 0)),exit=shrinkVertically(tween(if(motion)160 else 0))+fadeOut(tween(if(motion)160 else 0))){
+  Column{
+   DetailRow("Başlangıç",p.startTime?:"Saat yok"){timeTarget="start"}
+   DetailRow("Bitiş / son teslim",p.endTime?:"Saat yok"){timeTarget="end"}
+   if(p.endTime!=null){
+    FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){SelectChip("Aynı gün",p.endDate==null||p.endDate==p.date,{change{it.copy(endDate=null)}});SelectChip("Ertesi gün",p.endDate==LocalDate.parse(p.date).plusDays(1).toString(),{change{it.copy(endDate=LocalDate.parse(it.date).plusDays(1).toString())}})}
+    DetailRow("Bitiş tarihi",p.endDate?:p.date){dateTarget="end"}
+   }
+  }
+ }
  if(dateTarget!=null)DateChooser(if(dateTarget=="end")p.endDate?:p.date else p.date,{dateTarget=null}){value->if(dateTarget=="end")change{it.copy(endDate=value)}else change{PlanTime.moved(it,LocalDate.parse(value))}}
  if(timeTarget!=null)TimeChooser(if(timeTarget=="start")p.startTime else p.endTime,if(timeTarget=="start")"Başlangıç"else"Bitiş / son teslim",{timeTarget=null}){v->if(timeTarget=="start")change{it.copy(startTime=v,reminderTime=null)}else change{it.copy(endTime=v,endDate=if(v==null)null else it.endDate,reminderTime=null)}}
 }

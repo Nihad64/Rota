@@ -8,7 +8,7 @@ import java.time.LocalDate
 sealed interface SearchEntry {
  val key:String
  data class Single(val plan:Plan):SearchEntry {override val key get()="plan:${plan.uid}"}
- data class Routine(val seriesId:Long,val template:Plan,val occurrences:List<Plan>,val representative:Plan):SearchEntry {override val key get()="routine:$seriesId"}
+ data class Routine(val seriesId:Long,val template:Plan,val occurrences:List<Plan>,val representative:Plan,val archived:Boolean=false):SearchEntry {override val key get()="routine:$seriesId"}
 }
 /** Presentation groups a rule once; factual count answers still use individual occurrences. */
 object SearchPresentation {
@@ -21,7 +21,7 @@ object SearchPresentation {
    if(query.isBlank()&&(RoutineState.deleted(template)||rule?.untilDate?.let{it<today.toString()}==true))continue
    val children=plans.filter{it.seriesId==p.seriesId}.sortedWith(compareBy<Plan>{it.date}.thenBy{it.startTime?:it.endTime?:"99:99"})
    val representative=children.firstOrNull{it.date>=today.toString()&&!it.isCompleted&&!it.isSkipped}?:children.last()
-   result+=SearchEntry.Routine(p.seriesId,template,children,representative)
+   result+=SearchEntry.Routine(p.seriesId,template,children,representative,RoutineState.deleted(template)||rule?.untilDate?.let{it<today.toString()}==true)
   }
   return result
  }

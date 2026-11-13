@@ -42,7 +42,7 @@ import java.time.LocalDate
   }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){error=e.message?:"Rutin silinemedi. Kayıtların korundu."}finally{busy=null}}
  }
  val visibleSeries=series.filter{runCatching{!RoutineState.deleted(PlanJson.decode(JSONObject(it.template)))}.getOrDefault(true)}
- LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp,20.dp,24.dp,48.dp),verticalArrangement=Arrangement.spacedBy(22.dp)) {
+ LazyColumn(Modifier.fillMaxSize().testTag("routines-list"),contentPadding=PaddingValues(24.dp,20.dp,24.dp,48.dp),verticalArrangement=Arrangement.spacedBy(22.dp)) {
   item{PageHeader("Rutinler","Günlerine yerleşen küçük düzenler.")}
   item{PrimaryButton("Yeni rutin oluştur",onNew,Modifier.fillMaxWidth(),icon=Icons.Outlined.Add)}
   if(visibleSeries.isEmpty())item{EmptyState("Tekrar eden şeylere yer aç.","Yaz veya söyle: ‘Haftada üç gün spor yapacağım.’ Günü gelen rutinler Bugün ve Takvim’de görünür.",null,{})}

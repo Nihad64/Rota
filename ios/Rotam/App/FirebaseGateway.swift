@@ -23,7 +23,7 @@ final class RotamAppCheckFactory:NSObject,AppCheckProviderFactory {
    FirebaseConfiguration.shared.setLoggerLevel(.error);AppCheck.setAppCheckProviderFactory(RotamAppCheckFactory())
    #if DEBUG
    if ProcessInfo.processInfo.arguments.contains("-ui-testing")||ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil{
-    let options=FirebaseOptions(googleAppID:"1:123456789:ios:synthetic",gcmSenderID:"123456789");options.projectID="demo-rotam";options.apiKey="demo-api-key";FirebaseApp.configure(options:options)
+    let options=FirebaseOptions(googleAppID:"1:123456789:ios:abcdef0123456789",gcmSenderID:"123456789");options.projectID="demo-rotam";options.apiKey="demo-api-key";FirebaseApp.configure(options:options)
     Auth.auth().useEmulator(withHost:"127.0.0.1",port:9099);Firestore.firestore().useEmulator(withHost:"127.0.0.1",port:8080)
    }else{FirebaseApp.configure()}
    #else

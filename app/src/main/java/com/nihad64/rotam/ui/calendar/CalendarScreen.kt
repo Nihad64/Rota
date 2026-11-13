@@ -9,6 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nihad64.rotam.data.model.Category
@@ -30,8 +33,8 @@ import java.time.LocalDate
   val count=if(s.mode==CalendarMode.MONTH)42 else 7
   Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
    Row{TrFormat.dayShort.forEach{Text(it,style=MaterialTheme.typography.labelSmall,color=SubtleText,modifier=Modifier.weight(1f),textAlign=androidx.compose.ui.text.style.TextAlign.Center)}}
-   repeat(count/7){week->Row{repeat(7){off->val d=start.plusDays((week*7+off).toLong());val selected=d==s.selected
-    Column(Modifier.weight(1f).heightIn(min=48.dp).clip(RoundedCornerShape(16.dp)).background(if(selected)Accent else if(d==LocalDate.now())Surface else Background).clickable{vm.select(d)}.padding(vertical=9.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(d.dayOfMonth.toString(),color=if(selected)Background else if(d.month!=s.anchor.month)SubtleText else Primary,style=MaterialTheme.typography.bodyMedium);Spacer(Modifier.height(4.dp));Box(Modifier.size(3.dp).clip(CircleShape).background(if(d in s.plannedDays)Accent else androidx.compose.ui.graphics.Color.Transparent))}
+   repeat(count/7){week->Row{repeat(7){off->val d=start.plusDays((week*7+off).toLong());val isSelected=d==s.selected
+    Column(Modifier.weight(1f).heightIn(min=48.dp).clip(RoundedCornerShape(16.dp)).background(if(isSelected)Accent else if(d==LocalDate.now())Surface else Background).clickable{vm.select(d)}.semantics(mergeDescendants=true){contentDescription=TrFormat.full(d)+(if(d in s.plannedDays)", tek seferlik plan var"else"");selected=isSelected}.padding(vertical=9.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(d.dayOfMonth.toString(),color=if(isSelected)Background else if(d.month!=s.anchor.month)SubtleText else Primary,style=MaterialTheme.typography.bodyMedium);Spacer(Modifier.height(4.dp));Box(Modifier.size(3.dp).clip(CircleShape).background(if(d in s.plannedDays){if(isSelected)Background else Accent}else androidx.compose.ui.graphics.Color.Transparent))}
    }}}
   }
  }

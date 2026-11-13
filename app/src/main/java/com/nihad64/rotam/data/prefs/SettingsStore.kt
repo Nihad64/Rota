@@ -35,7 +35,6 @@ class SettingsStore(private val context:Context,private val store:androidx.datas
  suspend fun setAnimations(v:Boolean)=store.edit{it[b("animations")]=v}
  suspend fun setSharePlans(v:Boolean)=store.edit{it[b("share_plans")]=v;it[i("ai_context_version")]=if(v)2 else 0}
  suspend fun setUseMemory(v:Boolean)=store.edit{it[b("use_memory")]=v}
- suspend fun setTheme(v:String)=Unit
  suspend fun setGeminiKey(v:String){vault.write(v.trim());store.edit{it[longPreferencesKey("key_version")]=System.currentTimeMillis();it.remove(s("gemini_key"))}}
  suspend fun setGeminiModel(v:String){require(v.matches(Regex("[a-zA-Z0-9._-]{1,100}")));store.edit{it[s("gemini_model")]=v}}
  suspend fun migrate(){

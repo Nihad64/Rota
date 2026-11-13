@@ -115,7 +115,7 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
             SettingsGroup("TERCİHLER") {
                 SettingsLink(Icons.Outlined.NotificationsActive,"Hatırlatmalar","Bildirimler ve sessiz saatler"){page="Hatırlatmalar"}
                 HorizontalDivider(color=Outline)
-                SettingsLink(Icons.Outlined.Palette,"Görünüm ve ses","Animasyonlar, ses ve titreşim"){page="Görünüm ve ses"}
+                SettingsLink(Icons.Outlined.Palette,"Ses ve hareket","Onay sesi, titreşim ve animasyonlar"){page="Ses ve hareket"}
             }
             SettingsGroup("VERİLER VE GİZLİLİK") {
                 SettingsLink(Icons.Outlined.CloudQueue,"Verilerim","Eşitleme ve yedekleme"){page="Verilerim"}
@@ -174,7 +174,7 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         reminderError?.let { Text(it,color=Danger);TextButton(onClick=vm::retryReminders){Text("Yeniden planla")} }
 
         }
-        if(page=="Görünüm ve ses") {
+        if(page=="Ses ve hareket") {
         Section("Geri bildirim")
         SwitchRow(Icons.Outlined.VolumeUp, "Onay sesleri", "Başarılı kayıtta kısa ses; telefonun sessiz modu korunur.", s.uiSounds, vm::setSounds)
         SwitchRow(Icons.Outlined.Vibration, "Titreşim", "Hafif dokunsal geri bildirim.", s.haptics, vm::setHaptics)

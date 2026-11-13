@@ -3,7 +3,7 @@ import GoogleSignIn
 
 @main struct RotamApp:App {
  @StateObject private var model=RotamModel()
- var body:some Scene{WindowGroup{RootView().environmentObject(model).preferredColorScheme(.dark).tint(Brand.orange).task{await model.start();ReminderService.shared.configure(model);await ReminderService.shared.reschedule()}.onOpenURL{url in if !GIDSignIn.sharedInstance.handle(url){NotificationCenter.default.post(name:.rotamLink,object:url)}}}}
+ var body:some Scene{WindowGroup{RootView().environmentObject(model).preferredColorScheme(.dark).tint(Brand.orange).task{if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil && !ProcessInfo.processInfo.arguments.contains("-ui-testing"){return};await model.start();ReminderService.shared.configure(model);await ReminderService.shared.reschedule()}.onOpenURL{url in if !GIDSignIn.sharedInstance.handle(url){NotificationCenter.default.post(name:.rotamLink,object:url)}}}}
 }
 extension Notification.Name{static let rotamLink=Notification.Name("rotamLink")}
 enum Route:Hashable{case plan(String),focus(String),insights,search,account,reminders,privacy,data,about}

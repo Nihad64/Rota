@@ -22,7 +22,7 @@ struct PlanDetailView:View {
    Button{model.setInput("Bu planı düzenlemek istiyorum: "+p.title);model.setSharePlans(true);ai=true}label:{Label("Rotam AI ile düzenle",systemImage:"sparkles")}.buttonStyle(QuietButton())
    Button(p.completed ? "Tamamlanmayı geri al":"Tamamladım"){Task{await model.outcome(p,p.completed ? "UNKNOWN":"COMPLETED")}}.buttonStyle(PrimaryButton()).disabled(model.busy)
    ViewThatFits{HStack{secondary(p)};VStack{secondary(p)}}
-   if let history=p.metadata["outcomeHistory"]?.items,!history.isEmpty{DisclosureGroup("Geçmiş hareketler"){ForEach(Array(history.enumerated()),id:\.offset){_,value in let d=value.fields ?? [:];Text((d["at"]?.string ?? "")+" · "+historyLabel(d["status"]?.string ?? "")+" · "+(d["date"]?.string ?? "")).brandFont(13).foregroundStyle(Brand.muted).frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,8)}}}
+   if let history=p.metadata["outcomeHistory"]?.items,!history.isEmpty{PlanHistoryView(items:history)}
   }.padding(24).frame(maxWidth:760)}}else{ContentUnavailableView("Plan bulunamadı",systemImage:"calendar.badge.exclamationmark",description:Text("Silinmiş veya başka bir cihazda değiştirilmiş olabilir."))}}.background(Brand.background).foregroundStyle(Brand.ink).navigationTitle("Plan detayı").navigationBarTitleDisplayMode(.inline)
  .toolbar{ToolbarItem(placement:.topBarTrailing){Button(role:.destructive){deletion=true}label:{Image(systemName:"trash").frame(width:44,height:44)}.accessibilityLabel("Planı sil")}}
  .sheet(isPresented:$editing){if let p=plan{editor(p)}}
@@ -36,7 +36,7 @@ struct PlanDetailView:View {
   else{NavigationStack{PlanEditorView(record:p.record,day:p.date){next in await model.edit(next,before:p.record)}}}
  }
  @ViewBuilder private func secondary(_ p:PortablePlan)->some View{Button("Kısmen yaptım"){partial=true}.buttonStyle(QuietButton());Button("Ertele"){postpone=true}.buttonStyle(QuietButton());Button(p.skipped ? "Yanıtı geri al":"Yapmadım"){Task{await model.outcome(p,p.skipped ? "UNKNOWN":"NOT_DONE")}}.buttonStyle(QuietButton())}
- private func historyLabel(_ value:String)->String{["COMPLETED":"Tamamlandı","PARTIAL":"Kısmen yapıldı","UNKNOWN":"Yanıt geri alındı","NOT_DONE":"Yapılmadı","POSTPONED":"Ertelendi"][value] ?? value}
+
 }
 struct PartialView:View {
  @EnvironmentObject var model:RotamModel
@@ -54,4 +54,18 @@ struct PostponeView:View {
  @State private var time=Date()
  @State private var future=false
  var body:some View{ScrollView{VStack(alignment:.leading,spacing:24){Text("\(plan.title) ne zamana taşınsın?").brandFont(30,weight:800);Text("Şu an · \(plan.date) · \(plan.scheduleLabel)").brandFont(16).foregroundStyle(Brand.muted);DatePicker("Yeni gün",selection:$date,displayedComponents:.date);if plan.start != nil||plan.end != nil{DatePicker(plan.start != nil ? "Başlangıç":"Son teslim",selection:$time,displayedComponents:.hourAndMinute)};Text(plan.start != nil && plan.end != nil ? "Süre ve varsa ertesi güne uzanan bitiş korunur.":plan.start==nil && plan.end==nil ? "Saati olmayan plana saat eklenmez.":"Diğer saat alanı boş kalır.").brandFont(15).foregroundStyle(Brand.muted);if plan.seriesUID != nil{Picker("Değişiklik kapsamı",selection:$future){Text("Yalnız bu gün").tag(false);Text("Bu ve sonraki tekrarlar").tag(true)};Text("Tamamlanmış geçmişin korunur.").brandFont(15).foregroundStyle(Brand.muted)};Button("Ertelemeyi onayla"){let c=Calendar.current.dateComponents([.hour,.minute],from:time),clock=String(format:"%02d:%02d",c.hour!,c.minute!);Task{model.error=nil;await model.postpone(plan,date:PlanDates.key(date),time:clock,future:future);if model.error==nil{dismiss()}}}.buttonStyle(PrimaryButton())}.padding(24)}.background(Brand.background).navigationTitle("Ertele").toolbar{ToolbarItem(placement:.cancellationAction){Button("Vazgeç"){dismiss()}}}.onAppear{time=(try? PlanDates.instant(day:plan.date,time:plan.start ?? plan.end ?? "12:00")) ?? Date();date=(try? PlanDates.instant(day:PlanDates.addDays(plan.date,1),time:"12:00")) ?? Date()}}
+}
+
+
+private struct PlanHistoryView:View {
+ let items:[JSONValue]
+ private var lines:[String]{items.map{item in
+  let d:[String:JSONValue]=item.fields ?? [:]
+  let date:String=d["date"]?.string ?? ""
+  let at:String=d["at"]?.string ?? ""
+  let status:String=d["status"]?.string ?? ""
+  let labels:[String:String]=["COMPLETED":"Tamamlandı","PARTIAL":"Kısmen yapıldı","UNKNOWN":"Yanıt geri alındı","NOT_DONE":"Yapılmadı","POSTPONED":"Ertelendi"]
+  return [at,labels[status] ?? status,date].filter{!$0.isEmpty}.joined(separator:" · ")
+ }}
+ var body:some View{DisclosureGroup("Geçmiş hareketler"){ForEach(lines.indices,id:\.self){index in Text(lines[index]).brandFont(13).foregroundStyle(Brand.muted).frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,8)}}}
 }

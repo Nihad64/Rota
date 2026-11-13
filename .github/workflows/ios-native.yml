@@ -29,6 +29,21 @@ jobs:
           selected=next(d for version,rows in devices.items() if 'iOS' in version for d in rows if 'iPhone' in d['name'])
           with open(os.environ['GITHUB_ENV'],'a') as f:f.write('ROTAM_SIMULATOR='+selected['udid']+'\n')
           PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firestore-emulator-1.22.0
+      - name: Start synthetic Firebase for two independent Apple SDK clients
+        run: |
+          npx --yes firebase-tools@15.35.0 emulators:start --only auth,firestore --project demo-rotam --config firebase.test.json > "$RUNNER_TEMP/firebase-demo.log" 2>&1 &
+          python3 tests/firestore/wait_ready.py
       - name: Build the app and widget; test offline planner with synthetic data
         run: |
           set -o pipefail
@@ -41,4 +56,11 @@ jobs:
           path: |
             ${{ runner.temp }}/Rotam.xcresult
             ${{ runner.temp }}/ios-native.log
+            ${{ runner.temp }}/firebase-demo.log
           retention-days: 7
+      - name: Cache downloaded Apple package sources
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/RotamCI/SourcePackages
+          key: ios-spm-firebase13.1.1-google10.1.0-v1

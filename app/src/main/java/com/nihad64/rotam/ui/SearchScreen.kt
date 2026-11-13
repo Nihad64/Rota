@@ -64,7 +64,7 @@ import java.util.Locale
 @Composable private fun RoutineSearchCard(entry:SearchEntry.Routine,onEdit:(Long)->Unit){
  var expanded by rememberSaveable(entry.seriesId){mutableStateOf(false)};var limit by rememberSaveable(entry.seriesId){mutableIntStateOf(15)}
  RotamCard(Modifier.fillMaxWidth()){
-  Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Outlined.Repeat,null,tint=Accent);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(entry.template.title,style=MaterialTheme.typography.titleLarge);Text("Rutin · "+com.nihad64.rotam.ui.routines.routineSchedule(entry.template),color=SubtleText,style=MaterialTheme.typography.bodyMedium)}}
+  Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Outlined.Repeat,null,tint=Accent);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(entry.template.title,style=MaterialTheme.typography.titleLarge);Text((if(entry.archived)"Geçmiş rutin · "else"Rutin · ")+com.nihad64.rotam.ui.routines.routineSchedule(entry.template),color=SubtleText,style=MaterialTheme.typography.bodyMedium)}}
   Spacer(Modifier.height(12.dp));Text("Bir rutin · ${entry.occurrences.size} tekrar",color=SubtleText,style=MaterialTheme.typography.bodySmall)
   val next=entry.representative
   Text("${TrFormat.full(LocalDate.parse(next.date))} · ${PlanTime.label(next)}",color=SubtleText,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=8.dp))
