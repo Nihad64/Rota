@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nihad64.rotam.AppContainer
@@ -24,7 +25,7 @@ import java.time.LocalDate
  val series by remember(c){c.db.seriesDao().observeAll()}.collectAsStateWithLifecycle(emptyList())
  val plans by remember(c){c.planRepo.observeAll()}.collectAsStateWithLifecycle(emptyList())
  val today=LocalDate.now();val monday=today.minusDays((today.dayOfWeek.value-1).toLong());val sunday=monday.plusDays(6)
- val scope=rememberCoroutineScope();var busy by remember{mutableStateOf<Long?>(null)};var error by remember{mutableStateOf<String?>(null)};var pausing by remember{mutableStateOf<PlanSeries?>(null)};var archive by remember{mutableStateOf(false)}
+ val scope=rememberCoroutineScope();var busy by remember{mutableStateOf<Long?>(null)};var error by remember{mutableStateOf<String?>(null)};var pausing by remember{mutableStateOf<PlanSeries?>(null)};var archive by remember{mutableStateOf(false)};var deleting by remember{mutableStateOf<PlanSeries?>(null)}
  fun pause(s:PlanSeries,value:Boolean){if(busy!=null)return;busy=s.id;error=null
   scope.launch{try{
    val active=c.focus.active.value?.let{c.planRepo.byId(it)}
@@ -32,12 +33,21 @@ import java.time.LocalDate
    c.planRepo.setRoutinePaused(s.id,value);c.scheduler.rescheduleAll()
   }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){error=e.message?:"Rutin güncellenemedi. Kayıtların korundu."}finally{busy=null}}
  }
+ fun delete(s:PlanSeries){if(busy!=null)return;busy=s.id;error=null
+  scope.launch{try{
+   val active=c.focus.active.value?.let{c.planRepo.byId(it)};if(active?.seriesId==s.id)c.focus.pauseIf(active.id)
+   val snapshot=c.planRepo.deleteRoutine(s.id)
+   c.scheduler.rescheduleAll()
+   if(snapshot!=null)c.notices.send(com.nihad64.rotam.Notice("Rutin silindi"){c.planRepo.undoRoutineDeletion(snapshot);c.scheduler.rescheduleAll()})
+  }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){error=e.message?:"Rutin silinemedi. Kayıtların korundu."}finally{busy=null}}
+ }
+ val visibleSeries=series.filter{runCatching{!RoutineState.deleted(PlanJson.decode(JSONObject(it.template)))}.getOrDefault(true)}
  LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp,20.dp,24.dp,48.dp),verticalArrangement=Arrangement.spacedBy(22.dp)) {
   item{PageHeader("Rutinler","Günlerine yerleşen küçük düzenler.")}
   item{PrimaryButton("Yeni rutin oluştur",onNew,Modifier.fillMaxWidth(),icon=Icons.Outlined.Add)}
-  if(series.isEmpty())item{EmptyState("Tekrar eden şeylere yer aç.","Yaz veya söyle: ‘Haftada üç gün spor yapacağım.’ Günü gelen rutinler Bugün ve Takvim’de görünür.",null,{})}
+  if(visibleSeries.isEmpty())item{EmptyState("Tekrar eden şeylere yer aç.","Yaz veya söyle: ‘Haftada üç gün spor yapacağım.’ Günü gelen rutinler Bugün ve Takvim’de görünür.",null,{})}
   error?.let{message->item{Text(message,color=Danger)}}
-  items(series.filter{archive||it.untilDate==null||it.untilDate>=today.toString()},key={it.uid}){s->
+  items(visibleSeries.filter{archive||it.untilDate==null||it.untilDate>=today.toString()},key={it.uid}){s->
    val template=remember(s.template){runCatching{PlanJson.decode(JSONObject(s.template))}.getOrNull()}
    val paused=template?.let{RoutineState.paused(it)}?:false
    val instances=plans.filter{it.seriesId==s.id}
@@ -51,10 +61,11 @@ import java.time.LocalDate
       Text(template?.title?:"Rutin bilgisi okunamadı",style=MaterialTheme.typography.titleLarge)
       if(template!=null)Text(routineSchedule(template),color=SubtleText,style=MaterialTheme.typography.bodyMedium)
      }
-     Box{IconButton(onClick={menu=true},enabled=busy==null){Icon(Icons.Outlined.MoreHoriz,"Rutin seçenekleri")}
+     Box{IconButton(onClick={menu=true},enabled=busy==null,modifier=Modifier.testTag("routine-menu-${s.id}")){Icon(Icons.Outlined.MoreHoriz,"Rutin seçenekleri")}
       DropdownMenu(expanded=menu,onDismissRequest={menu=false}){
        if(target!=null)DropdownMenuItem(text={Text("Plan ayrıntısını aç")},onClick={menu=false;onEdit(target.id)})
        if(template!=null)DropdownMenuItem(text={Text(if(paused)"Rutine devam et"else"Rutine ara ver")},onClick={menu=false;if(paused)pause(s,false)else pausing=s})
+       DropdownMenuItem(text={Text("Rutini sil",color=Danger)},onClick={menu=false;deleting=s})
       }
      }
     }
@@ -79,13 +90,14 @@ import java.time.LocalDate
     if(busy==s.id)LinearProgressIndicator(Modifier.fillMaxWidth())
    }
   }
-  if(series.isNotEmpty())item{Text("Günü gelen rutinler, Bugün ekranında da görünür.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)}
-  if(series.any{it.untilDate!=null&&it.untilDate<today.toString()})item{TextButton(onClick={archive=!archive}){Text(if(archive)"Geçmiş rutinleri gizle"else"Geçmiş rutinleri göster")}}
+  if(visibleSeries.isNotEmpty())item{Text("Günü gelen rutinler, Bugün ekranında da görünür.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)}
+  if(visibleSeries.any{it.untilDate!=null&&it.untilDate<today.toString()})item{TextButton(onClick={archive=!archive}){Text(if(archive)"Geçmiş rutinleri gizle"else"Geçmiş rutinleri göster")}}
   if(goals.isNotEmpty())item{TextButton(onClick=onGoals){Text("Önceki hedeflerim")}}
  }
+ deleting?.let{s->AlertDialog(onDismissRequest={deleting=null},title={Text("Rutin silinsin mi?")},text={Text("Yanıtlanmamış tekrarlar ve hatırlatmaları kaldırılır. Tamamlanmış, kısmen yapılmış ve yapılmadı bildirdiğin kayıtların korunur. İşlemi geri alabilirsin.")},confirmButton={TextButton(onClick={deleting=null;delete(s)}){Text("Rutini sil",color=Danger)}},dismissButton={TextButton(onClick={deleting=null}){Text("Vazgeç")}})}
  pausing?.let{s->AlertDialog(onDismissRequest={pausing=null},title={Text("Bu rutine ara verilsin mi?")},text={Text("Bugünden itibaren bekleyen örnekler ve hatırlatmaları durur. Tamamlanan, kısmen yapılan ve geçmiş kayıtların korunur. Yeniden devam ettiğinde aradaki günler başarısız sayılmaz.")},confirmButton={TextButton(onClick={pausing=null;pause(s,true)}){Text("Ara ver")}},dismissButton={TextButton(onClick={pausing=null}){Text("Vazgeç")}})}
 }
-private fun routineSchedule(p:Plan):String {
+internal fun routineSchedule(p:Plan):String {
  val days=listOf("Pzt","Sal","Çar","Per","Cum","Cmt","Paz")
  val repeat=when(p.repeatType){
   "custom"->p.repeatDays.split(',').mapNotNull{it.toIntOrNull()?.takeIf{d->d in 1..7}?.let{d->days[d-1]}}.joinToString(" · ")

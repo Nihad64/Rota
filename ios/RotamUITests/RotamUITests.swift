@@ -5,7 +5,7 @@ import XCTest
   let app=XCUIApplication();app.launchArguments=["-ui-testing"];app.launch()
   if app.buttons["Hesapsız devam et"].waitForExistence(timeout:15){app.buttons["Hesapsız devam et"].tap();app.buttons["Şimdi değil"].tap()}
   XCTAssertTrue(app.tabBars.buttons["Bugün"].waitForExistence(timeout:10))
-  app.buttons["Plan ekle"].firstMatch.tap();app.buttons["Elle ekle"].tap()
+  app.buttons["Plan ekle"].firstMatch.tap();app.buttons["Kendin oluştur"].tap()
   let title=app.textFields["plan-title"]
   if title.waitForExistence(timeout:5){title.tap();title.typeText("iOS test plani")}
   else{let multiline=app.textViews["plan-title"];XCTAssertTrue(multiline.waitForExistence(timeout:5));multiline.tap();multiline.typeText("iOS test plani")}

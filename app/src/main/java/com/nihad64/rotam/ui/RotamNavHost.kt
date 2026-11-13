@@ -81,18 +81,18 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
  }
  val motion=rememberMotionEnabled()
  val nav=rememberNavController();val entry by nav.currentBackStackEntryAsState();val route=entry?.destination?.route
- var aiOpen by remember{mutableStateOf(false)};var draftDate by remember{mutableStateOf<LocalDate?>(null)};val ai:AiViewModel=viewModel{AiViewModel(c)}
+ val ai:AiViewModel=viewModel{AiViewModel(c)}
  val snackbar=remember{SnackbarHostState()};val showBar=route in tabs.map{it.route}
  val planEditor=route.orEmpty().startsWith("new?")||route.orEmpty().startsWith("edit/")
  val focusManager=LocalFocusManager.current;val keyboard=LocalSoftwareKeyboardController.current
  LaunchedEffect(route){focusManager.clearFocus();keyboard?.hide()}
  val context=LocalContext.current
  LaunchedEffect(Unit){val id=(context as? android.app.Activity)?.intent?.getLongExtra("planId",-1)?:-1;if(id>0)nav.navigate("detail/$id")else if((context as? android.app.Activity)?.intent?.getBooleanExtra("newPlan",false)==true)nav.navigate("plan?date=")}
- LaunchedEffect(Unit){for(n in c.notices){val result=snackbar.showSnackbar(n.text,if(n.undo!=null)"Geri al"else null,withDismissAction=true,duration=SnackbarDuration.Long);if(result==SnackbarResult.ActionPerformed)runCatching{n.undo?.invoke()}}}
+ LaunchedEffect(Unit){for(n in c.notices){val result=snackbar.showSnackbar(n.text,if(n.undo!=null)"Geri al"else null,withDismissAction=true,duration=SnackbarDuration.Long);if(result==SnackbarResult.ActionPerformed)try{n.undo?.invoke()}catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){snackbar.showSnackbar(e.message?:"İşlem geri alınamadı. Güncel kayıtların korundu.",withDismissAction=true)}}}
  fun manual(date:LocalDate?=null){nav.navigate("new?date=${date?:""}&copy=-1")}
  fun new(date:LocalDate?=null){nav.navigate("plan?date=${date?:""}")}
  Scaffold(containerColor=Background,contentWindowInsets=WindowInsets.safeDrawing,
-  snackbarHost={SnackbarHost(snackbar,modifier=Modifier.padding(bottom=when{planEditor->160.dp;route.orEmpty().startsWith("plan?")->112.dp;else->0.dp})){data->Snackbar(data,containerColor=SurfaceVariant,contentColor=Primary,actionColor=Accent,dismissActionContentColor=SubtleText,shape=RoundedCornerShape(20.dp))}},bottomBar={if(showBar)Row(Modifier.fillMaxWidth().background(Background).navigationBarsPadding().padding(vertical=10.dp)){
+  snackbarHost={SnackbarHost(snackbar,modifier=Modifier.padding(bottom=when{planEditor->80.dp;route.orEmpty().startsWith("plan?")->112.dp;else->0.dp})){data->Snackbar(data,containerColor=SurfaceVariant,contentColor=Primary,actionColor=Accent,dismissActionContentColor=SubtleText,shape=RoundedCornerShape(20.dp))}},bottomBar={if(showBar)Row(Modifier.fillMaxWidth().background(Background).navigationBarsPadding().padding(vertical=10.dp)){
    tabs.forEach{t->val selected=t.route==route;Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable{nav.navigate(t.route){popUpTo(nav.graph.findStartDestination().id){saveState=true};launchSingleTop=true;restoreState=true}}.padding(vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(t.icon,t.label,tint=if(selected)Accent else SubtleText,modifier=Modifier.size(25.dp));Text(t.label,style=MaterialTheme.typography.labelSmall,color=if(selected)Primary else SubtleText,modifier=Modifier.padding(top=5.dp));Spacer(Modifier.height(7.dp));Box(Modifier.size(4.dp).clip(CircleShape).background(if(selected)Accent else Background))}}
   }}){padding->
   NavHost(nav,startDestination="home",modifier=Modifier.padding(padding).consumeWindowInsets(padding),enterTransition={fadeIn(tween(if(motion)RotamMotion.Navigate else 0))+slideInHorizontally(tween(if(motion)RotamMotion.Navigate else 0)){it/14}},exitTransition={fadeOut(tween(if(motion)RotamMotion.Exit else 0))},popEnterTransition={fadeIn(tween(if(motion)RotamMotion.Replace else 0))},popExitTransition={fadeOut(tween(if(motion)RotamMotion.Exit else 0))+slideOutHorizontally(tween(if(motion)RotamMotion.Exit else 0)){it/14}}){
@@ -109,8 +109,8 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
    composable("settings"){SettingsScreen(viewModel{SettingsViewModel(c)},onStats={nav.navigate("stats")},onSearch={nav.navigate("search")})}
    composable("stats"){StatsScreen(viewModel{StatsViewModel(c)},onBack={nav.popBackStack()},onPlan={nav.navigate("detail/$it")})}
    composable("search"){SearchScreen(c,{nav.popBackStack()},{nav.navigate("detail/$it")},onAsk={question->ai.setEditingPlan(null);ai.setPlanningDate(null);ai.setInput(question);nav.navigate("plan?date=");ai.send(question)})}
-   composable("new?date={date}&copy={copy}",arguments=listOf(navArgument("date"){defaultValue=""},navArgument("copy"){type=NavType.LongType;defaultValue=-1L})){e->val d=e.arguments?.getString("date")?.let{runCatching{LocalDate.parse(it)}.getOrNull()};val id=e.arguments?.getLong("copy")?.takeIf{it>0};NewPlanScreen(viewModel{NewPlanViewModel(c,d,copyId=id)},{nav.popBackStack()},aiAction={SmallAiButton{aiOpen=true}})}
-   composable("edit/{id}",arguments=listOf(navArgument("id"){type=NavType.LongType})){e->NewPlanScreen(viewModel{NewPlanViewModel(c,editId=e.arguments!!.getLong("id"))},{nav.popBackStack()},{id->nav.navigate("new?date=&copy=$id")},aiAction={SmallAiButton{aiOpen=true}})}
+   composable("new?date={date}&copy={copy}",arguments=listOf(navArgument("date"){defaultValue=""},navArgument("copy"){type=NavType.LongType;defaultValue=-1L})){e->val d=e.arguments?.getString("date")?.let{runCatching{LocalDate.parse(it)}.getOrNull()};val id=e.arguments?.getLong("copy")?.takeIf{it>0};NewPlanScreen(viewModel{NewPlanViewModel(c,d,copyId=id)},{nav.popBackStack()})}
+   composable("edit/{id}",arguments=listOf(navArgument("id"){type=NavType.LongType})){e->NewPlanScreen(viewModel{NewPlanViewModel(c,editId=e.arguments!!.getLong("id"))},{nav.popBackStack()},{id->nav.navigate("new?date=&copy=$id")})}
    composable("detail/{id}",arguments=listOf(navArgument("id"){type=NavType.LongType})){e->
     val id=e.arguments!!.getLong("id")
     PlanDetailScreen(viewModel{PlanDetailViewModel(c,id)},{nav.popBackStack()},{nav.navigate("edit/$id")},{nav.navigate("focus/$id")},{nav.navigate("postpone/$id")},{nav.navigate("plan?date=&edit=$id")})
@@ -119,7 +119,4 @@ private val tabs=listOf(Tab("home","Bugün",Icons.Outlined.Home),Tab("calendar",
    composable("focus/{id}",arguments=listOf(navArgument("id"){type=NavType.LongType})){e->FocusScreen(viewModel{FocusViewModel(c,e.arguments!!.getLong("id"))},{nav.popBackStack()})}
   }
  }
- LaunchedEffect(aiOpen,draftDate){ai.setPlanningDate(draftDate)}
- if(aiOpen)ModalBottomSheet(onDismissRequest={aiOpen=false},sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),containerColor=Background,contentColor=Primary){Box(Modifier.fillMaxHeight(.9f)){AiScreen(ai,onManual={aiOpen=false;manual(draftDate)})}}
 }
-@Composable private fun SmallAiButton(onClick:()->Unit){Surface(onClick=onClick,shape=CircleShape,color=Surface,contentColor=Primary,shadowElevation=0.dp){Row(Modifier.padding(horizontal=18.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){Diamond();Spacer(Modifier.width(10.dp));Text("Rotam AI",style=MaterialTheme.typography.labelLarge)}}}

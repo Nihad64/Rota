@@ -38,6 +38,10 @@ public enum LocalSearch {
   if localQuestion{
    guard from != nil||category != nil||done||notDone||partial||awaiting||postponed else{return SearchResult(plans:rows,answer:nil,needsAI:true)}
    let answer=schedule ? (rows.isEmpty ? "Bu dönemde kayıtlı çalışma planı yok.":rows.map{$0.date+" · "+$0.scheduleLabel}.joined(separator:"\n")):"Kayıtlarına göre \(rows.count) plan bulundu."+(done ? " Yalnız tamamladıkların sayıldı.":" Gelecekteki ve yanıtsız planlar yapılmadı sayılmaz.")
+   if count && !done && !notDone && !partial && !awaiting && !postponed && !q.contains("kere") && !q.contains("kez"){
+    let routines=Set(rows.compactMap(\.seriesUID)).count
+    if routines>0{return SearchResult(plans:rows,answer:"Bu kapsamda \(rows.filter{$0.seriesUID==nil}.count) tek seferlik plan ve \(routines) rutin var. Rutinlerin \(rows.filter{$0.seriesUID != nil}.count) tekrarı bulunuyor.",needsAI:false)}
+   }
    return SearchResult(plans:rows,answer:answer,needsAI:false)
   }
   return SearchResult(plans:rows,answer:nil,needsAI:false)

@@ -9,6 +9,7 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.time.LocalDate
 import java.util.UUID
+data class RoutineDeletion(val before:PlanSeries,val after:PlanSeries,val beforePlans:List<Plan>,val afterPlans:List<Plan>)
 class PlanRepository(private val db:AppDatabase){
  private val dao=db.planDao();private val lock=Mutex()
  fun observeDay(d:LocalDate):Flow<List<Plan>> = flow{ensure(d.minusDays(7),d);emitAll(dao.observeByDate(d.toString()))}
@@ -47,13 +48,14 @@ class PlanRepository(private val db:AppDatabase){
  suspend fun ensure(f:LocalDate,t:LocalDate)=lock.withLock{db.withTransaction{db.seriesDao().all().forEach{generate(it,f,t)}}}
  private suspend fun generate(s:PlanSeries,f:LocalDate,t:LocalDate){
   val p=PlanOutcome.fresh(PlanJson.decode(JSONObject(s.template))).copy(repeatUntil=s.untilDate)
-  if(RoutineState.paused(p))return
+  if(RoutineState.deleted(p)||RoutineState.paused(p))return
   val days=Recurrence.dates(p,LocalDate.parse(s.anchor),f,t)
   dao.insertAll(days.map{d->val key="${s.id}:$d";PlanTime.moved(p,d).copy(id=0,uid=RecordIdentity.occurrence(s.uid,d.toString()),seriesId=s.id,occurrenceKey=key,originalDate=d.toString(),isCompleted=false,isSkipped=false,isDeleted=false,focusSeconds=0)})
  }
  suspend fun setRoutinePaused(id:Long,paused:Boolean,date:LocalDate=LocalDate.now())=lock.withLock{db.withTransaction{
   val series=db.seriesDao().byId(id)?:error("Rutin bulunamadı.")
   val template=PlanJson.decode(JSONObject(series.template))
+  check(!RoutineState.deleted(template)){"Bu rutin silinmiş. Önce silme işlemini geri al."}
   if(RoutineState.paused(template)==paused)return@withTransaction
   db.seriesDao().update(series.copy(template=PlanJson.encode(RoutineState.change(template,paused,date)).toString()))
   val instances=dao.bySeries(id)
@@ -64,6 +66,21 @@ class PlanRepository(private val db:AppDatabase){
    instances.filter{it.isDeleted&&RoutineState.suspended(it)&&it.date>=date.toString()}.forEach{dao.update(RoutineState.resumeOccurrence(it))}
    generate(db.seriesDao().byId(id)!!,date,date.plusDays(400))
   }
+ }}
+ suspend fun deleteRoutine(id:Long,date:LocalDate=LocalDate.now()):RoutineDeletion?=lock.withLock{db.withTransaction{
+  val before=db.seriesDao().byId(id)?:return@withTransaction null
+  val template=PlanJson.decode(JSONObject(before.template))
+  if(RoutineState.deleted(template))return@withTransaction null
+  val after=before.copy(template=PlanJson.encode(RoutineState.deletion(template,date)).toString(),untilDate=minOf(before.untilDate?:date.minusDays(1).toString(),date.minusDays(1).toString()))
+  val rows=dao.bySeries(id).filter{!it.isDeleted&&!it.isCompleted&&!it.isSkipped&&PlanOutcome.status(it)!=PlanOutcome.Status.PARTIAL}
+  val changed=rows.map{RoutineState.deliberateDeletion(it)}
+  db.seriesDao().update(after);changed.forEach{dao.update(it)}
+  RoutineDeletion(before,after,rows,changed)
+ }}
+ suspend fun undoRoutineDeletion(snapshot:RoutineDeletion)=lock.withLock{db.withTransaction{
+  check(db.seriesDao().byId(snapshot.before.id)==snapshot.after){"Rutin başka bir işlemde değişti. Eski silme işlemi geri alınamadı."}
+  check(snapshot.afterPlans.all{dao.byId(it.id)==it}){"Rutin kayıtları değişti. Güncel kayıtlar korunarak geri alma durdu."}
+  db.seriesDao().update(snapshot.before);snapshot.beforePlans.forEach{dao.update(it)}
  }}
  suspend fun edit(old:Plan,proposed:Plan,scope:EditScope)=lock.withLock{db.withTransaction{
   val current=dao.byId(old.id) ?: error("Plan bulunamadı.")

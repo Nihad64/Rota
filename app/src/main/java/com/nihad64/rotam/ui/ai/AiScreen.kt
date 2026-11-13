@@ -50,7 +50,7 @@ import java.util.Locale
  }
  DisposableEffect(context){var engine:TextToSpeech?=null;engine=TextToSpeech(context){status->if(status==TextToSpeech.SUCCESS){val result=engine?.setLanguage(Locale.forLanguageTag("tr-TR"));ttsReady=result!=TextToSpeech.LANG_MISSING_DATA&&result!=TextToSpeech.LANG_NOT_SUPPORTED}};tts=engine;onDispose{engine?.stop();engine?.shutdown()}}
  Column(Modifier.fillMaxSize().imePadding().padding(horizontal=24.dp)) {
-  PageHeader(if(selectedPlan)"Planı düzenle"else"Plan ekle",onBack=onBack,action={TextButton(onClick=onManual){Text("Elle ekle")}})
+  PageHeader(if(selectedPlan)"Planı düzenle"else"Plan ekle",onBack=onBack,action={TextButton(onClick=onManual){Text("Kendin oluştur")}})
   Row(verticalAlignment=Alignment.CenterVertically) {
    Icon(Icons.Outlined.Shield,null,Modifier.size(16.dp),tint=SubtleText)
    Text("Mesajların Gemini’ye gönderilir.",style=MaterialTheme.typography.bodySmall,color=SubtleText,modifier=Modifier.weight(1f).padding(start=6.dp))
@@ -81,6 +81,8 @@ import java.util.Locale
      Row(verticalAlignment=Alignment.CenterVertically) {
       Icon(item.plan.categoryEnum.icon(),null,tint=Primary,modifier=Modifier.size(28.dp));Spacer(Modifier.width(14.dp))
       Column(Modifier.weight(1f)){Text(item.plan.title,style=MaterialTheme.typography.titleLarge);Text("${TrFormat.full(LocalDate.parse(item.plan.date))} · ${PlanTime.label(item.plan)}",color=SubtleText,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=6.dp))}
+      if(i !in m.added){var menu by remember(m.id,i){mutableStateOf(false)};Box{IconButton(onClick={menu=true},enabled=!s.applying){Icon(Icons.Outlined.MoreHoriz,"Taslak seçenekleri")};DropdownMenu(expanded=menu,onDismissRequest={menu=false}){DropdownMenuItem(text={Text("Taslağı çıkar")},onClick={menu=false;vm.discardSuggestion(m.id,i)})}}}
+
      }
      val details=org.json.JSONObject(item.plan.extraData);val note=details.optString("note");val tasks=details.optString("subtasks")
      if(note.isNotBlank())Text(note,color=SubtleText,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.padding(top=12.dp))

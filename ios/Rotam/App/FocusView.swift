@@ -9,7 +9,7 @@ private struct FocusSession:Codable {
  var uptime=ProcessInfo.processInfo.systemUptime
  var focus:Int64=0
  var breaks:Int64=0
- var paused=false
+ var paused=true
  var breakUptime:Double?
  var segmentSeconds:Int64=0
 }
@@ -32,7 +32,7 @@ private struct FocusSession:Codable {
    guard let s=session else{return}
    guard s.planID==uid else{model.error="Başka bir planın açık odak oturumu var. Önce o planın Odaklan ekranına dönerek oturumu bitir.";session=nil;return}
    if abs(Date().timeIntervalSince1970-ProcessInfo.processInfo.systemUptime-s.bootEstimate)>5 || ProcessInfo.processInfo.systemUptime<s.uptime{session?.focus += session?.segmentSeconds ?? 0;session?.segmentSeconds=0;session?.paused=true;session?.breakUptime=nil;model.toast="Telefon yeniden başlatılmış. Ölçülen süre korundu; devam etmek için molayı bitir."}
-   if let p=model.plans.first(where:{$0.id==uid}){try await model.store?.replace(PlanActions.markStarted(p),expected:p.record);await model.reload()}
+
    try persist();await tick()
    ticker=Timer.publish(every:1,on:.main,in:.common).autoconnect().sink{[weak self]_ in Task{@MainActor [weak self] in await self?.tick()}}
   }catch{model.report(error)}
@@ -49,7 +49,7 @@ private struct FocusSession:Codable {
   guard var s=session,let model else{return}
   do{
    if !s.paused{let seconds=currentSegment();try await model.store?.measuredFocus(uid:s.planID,segmentID:s.segment,startedAt:s.wallStart,seconds:seconds);s.focus+=seconds;s.segmentSeconds=0;s.paused=true;s.breakUptime=ProcessInfo.processInfo.systemUptime}
-   else{s.breaks+=currentBreak();s.paused=false;s.breakUptime=nil;s.segment=UUID().uuidString.lowercased();s.wallStart=Int64(Date().timeIntervalSince1970*1000);s.uptime=ProcessInfo.processInfo.systemUptime;s.bootEstimate=Date().timeIntervalSince1970-s.uptime;s.segmentSeconds=0}
+   else{if let p=model.plans.first(where:{$0.id==s.planID}){try await model.store?.replace(PlanActions.markStarted(p),expected:p.record)};s.breaks+=currentBreak();s.paused=false;s.breakUptime=nil;s.segment=UUID().uuidString.lowercased();s.wallStart=Int64(Date().timeIntervalSince1970*1000);s.uptime=ProcessInfo.processInfo.systemUptime;s.bootEstimate=Date().timeIntervalSince1970-s.uptime;s.segmentSeconds=0}
    session=s;try persist();await model.reload();await tick()
   }catch{model.report(error)}
  }

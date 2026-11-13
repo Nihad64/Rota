@@ -14,7 +14,7 @@ struct HomeView:View {
    Text("Bugün,\nsenin ritmin.").brandFont(42,weight:800).fixedSize(horizontal:false,vertical:true)
    HStack{Text(today.isEmpty ? "Gününe yer aç.":"\(completed) / \(today.count) tamamlandı").brandFont(17).foregroundStyle(Brand.muted);Spacer();Button{path.append(.insights)}label:{Image(systemName:"chart.bar.fill").frame(width:48,height:44)}.accessibilityLabel("İlerlemem")}
    if !today.isEmpty{HStack(spacing:6){ForEach(0..<min(today.count,30),id:\.self){i in Capsule().fill(i<completed ? Brand.orange:Brand.raised).frame(height:7)}}.accessibilityElement(children:.ignore).accessibilityLabel("Bugün \(today.count) planın \(completed) tanesi tamamlandı")}
-   if let current{HeroCard{VStack(alignment:.leading,spacing:12){HStack{Diamond();Text("SIRADAKİ").brandFont(13,weight:800).tracking(2).foregroundStyle(Brand.muted)};Text(current.title).brandFont(31,weight:800);Text(current.scheduleLabel).brandFont(18).foregroundStyle(Brand.muted);Button("Ayrıntıları gör"){path.append(.plan(current.id))}.brandFont(15,weight:700)}}action:{Button{path.append(.focus(current.id))}label:{Image(systemName:"play.fill").font(.title2).foregroundStyle(Brand.background).frame(width:76,height:76).background(Brand.ink,in:Circle())}.accessibilityLabel("\(current.title) için odaklan")}}
+   if let current{HeroCard{VStack(alignment:.leading,spacing:12){HStack{Diamond();Text("SIRADAKİ").brandFont(13,weight:800).tracking(2).foregroundStyle(Brand.muted)};Text(current.title).brandFont(31,weight:800);Text(current.scheduleLabel).brandFont(18).foregroundStyle(Brand.muted);Button("Ayrıntıları gör"){path.append(.plan(current.id))}.brandFont(15,weight:700)}}action:{Button{path.append(.plan(current.id))}label:{Image(systemName:"arrow.up.right").font(.title2).foregroundStyle(Brand.background).frame(width:76,height:76).background(Brand.ink,in:Circle())}.accessibilityLabel("\(current.title) ayrıntılarını aç")}}
    else if today.isEmpty{HeroCard{VStack(alignment:.leading,spacing:15){Diamond();Text("İlk adım sana ait.").brandFont(29,weight:800);Text("Aklındakini yaz veya söyle. Önce birlikte inceleyelim.").brandFont(17).foregroundStyle(Brand.muted);Button("Plan ekle"){adding=true}.buttonStyle(QuietButton())}}action:{EmptyView()}}
    if !awaiting.isEmpty{let plan=awaiting[min(deckIndex,awaiting.count-1)]
     VStack(alignment:.leading,spacing:14){HStack{Text("Yanıtını bekliyor").brandFont(20,weight:800);Spacer();Text("\(min(deckIndex+1,awaiting.count)) / \(awaiting.count)").brandFont(13).foregroundStyle(Brand.muted)};Text(plan.title).brandFont(23,weight:800);Text(plan.date+" · "+plan.scheduleLabel).brandFont(14).foregroundStyle(Brand.muted);Text("Geçmiş olması yapılmadığı anlamına gelmez.").brandFont(14).foregroundStyle(Brand.muted);ViewThatFits{HStack{deckButtons(plan)};VStack{deckButtons(plan)}};if awaiting.count>1{Button("Diğer plan"){deckIndex=(deckIndex+1)%awaiting.count}.frame(minHeight:44)}}.surfaceCard().id(plan.id).transition(.opacity)
@@ -23,7 +23,7 @@ struct HomeView:View {
    let remainder=today.filter{$0.id != current?.id && !$0.awaiting()}
    if remainder.isEmpty{Text(today.isEmpty ? "İlk planın burada görünecek.":"Bugünün kalan akışı burada görünecek.").brandFont(16).foregroundStyle(Brand.muted)}
    ForEach(remainder){p in Button{path.append(.plan(p.id))}label:{PlanRow(plan:p)}.buttonStyle(.plain);Divider().overlay(Brand.line)}
-   Button{adding=true}label:{HStack{Diamond();Text("Rotam AI ile planla");Spacer();Image(systemName:"arrow.up.right")}.brandFont(17,weight:750).surfaceCard()}.buttonStyle(.plain).padding(.top,12)
+
   }.padding(24).padding(.bottom,24).frame(maxWidth:760)}.background(Brand.background).toolbar(.hidden,for:.navigationBar)
  }
  @ViewBuilder private func deckButtons(_ p:PortablePlan)->some View{Button("Yapmadım"){Task{await model.outcome(p,"NOT_DONE")}}.buttonStyle(QuietButton());Button("İncele"){path.append(.plan(p.id))}.buttonStyle(QuietButton());Button("Tamamladım"){Task{await model.outcome(p,"COMPLETED")}}.buttonStyle(QuietButton())}
@@ -56,19 +56,21 @@ struct RoutinesView:View {
  @Binding var path:[Route]
  @Binding var adding:Bool
  @State private var showPast=false
- var series:[WireRecord]{model.records.filter{$0.kind == .series && (try? $0.fields()["isDeleted"]?.boolean) != true && (showPast || ((try? $0.fields()["untilDate"]?.string) ?? "9999-12-31")>=PlanDates.key(Date()))}}
+ @State private var deleting:WireRecord?
+ var series:[WireRecord]{model.records.filter{$0.kind == .series && (try? $0.fields()["isDeleted"]?.boolean) != true && !routineDeleted($0) && (showPast || ((try? $0.fields()["untilDate"]?.string) ?? "9999-12-31")>=PlanDates.key(Date()))}}
  var body:some View{ScrollView{VStack(alignment:.leading,spacing:24){Text("Rutinler").brandFont(38,weight:800);Text("Günlerine yerleşen küçük düzenler.").brandFont(17).foregroundStyle(Brand.muted);Button{adding=true}label:{Label("Yeni rutinini yaz veya söyle",systemImage:"sparkles")}.buttonStyle(QuietButton())
    if series.isEmpty{EmptyState(symbol:"repeat",title:"Küçük bir düzenle başla.",detail:"Örneğin: Her pazartesi, perşembe ve cumartesi spor.")}
    Toggle("Önceki rutinleri de göster",isOn:$showPast)
    ForEach(series,id:\.uid){r in let children=model.plans.filter{$0.seriesUID==r.uid},next=children.first{!$0.completed && !$0.skipped && $0.date>=PlanDates.key(Date())},template=(try? r.fields()["template"]?.fields) ?? [:]
-    VStack(alignment:.leading,spacing:14){HStack{Image(systemName:Brand.icon(template["category"]?.string ?? "")).font(.title);Text(template["title"]?.string ?? "Rutin").brandFont(25,weight:800);Spacer()};Text(routineLabel(template)).brandFont(16).foregroundStyle(Brand.muted);let metadata=(try? JSONValue.parse(template["extraData"]?.string ?? "{}").fields) ?? [:],paused=metadata["routinePaused"]?.boolean==true
+    VStack(alignment:.leading,spacing:14){HStack{Image(systemName:Brand.icon(template["category"]?.string ?? "")).font(.title);Text(template["title"]?.string ?? "Rutin").brandFont(25,weight:800);Spacer();Menu{Button("Rutini sil",role:.destructive){deleting=r}}label:{Image(systemName:"ellipsis").frame(width:44,height:44)}.accessibilityLabel("Rutin seçenekleri")};Text(routineLabel(template)).brandFont(16).foregroundStyle(Brand.muted);let metadata=(try? JSONValue.parse(template["extraData"]?.string ?? "{}").fields) ?? [:],paused=metadata["routinePaused"]?.boolean==true
      Button(paused ? "Devam et":"Ara ver"){Task{await model.setRoutinePaused(r.uid,paused:!paused)}}.buttonStyle(QuietButton())
      let week=children.filter{isCurrentWeek($0.date)},done=week.filter(\.completed).count
      if !week.isEmpty{ProgressView(value:Double(done),total:Double(week.count)).tint(Brand.orange);Text("Bu hafta \(done) / \(week.count) tamamlandı").brandFont(14).foregroundStyle(Brand.muted)}
      if let next{Text("Sıradaki · \(next.date) · \(next.scheduleLabel)").brandFont(14).foregroundStyle(Brand.muted);Button("Ayrıntıları gör"){path.append(.plan(next.id))}.buttonStyle(QuietButton())}
     }.surfaceCard()
    };Text("Günü gelen rutinler Bugün ekranında da görünür.").brandFont(14).foregroundStyle(Brand.muted)
-  }.padding(24).frame(maxWidth:760)}.background(Brand.background).toolbar(.hidden,for:.navigationBar)}
+  }.padding(24).frame(maxWidth:760)}.background(Brand.background).toolbar(.hidden,for:.navigationBar).confirmationDialog("Rutin silinsin mi?",isPresented:Binding(get:{deleting != nil},set:{if !$0{deleting=nil}}),titleVisibility:.visible){Button("Rutini sil",role:.destructive){if let r=deleting{Task{await model.deleteRoutine(r.uid)}};deleting=nil};Button("Vazgeç",role:.cancel){deleting=nil}}message:{Text("Yanıtlanmamış tekrarlar kaldırılır. Tamamlanmış ve kısmen yapılmış sonuçların korunur.")}}
+ private func routineDeleted(_ r:WireRecord)->Bool{let t=(try? r.fields()["template"]?.fields) ?? [:];return (try? JSONValue.parse(t["extraData"]?.string ?? "{}").fields?["routineDeleted"]?.boolean)==true}
  private func isCurrentWeek(_ date:String)->Bool{guard let d=try? PlanDates.day(date)else{return false};return Calendar.current.isDate(d,equalTo:Date(),toGranularity:.weekOfYear)}
  private func routineLabel(_ d:[String:JSONValue])->String{let type=d["repeatType"]?.string ?? "none";return ["daily":"Her gün","weekdays":"Hafta içi","weekly":"Her hafta","custom":"Seçili günler","monthly":"Her ay","interval":"Belirli aralıklarla"][type] ?? "Rutin"}
 }
@@ -77,13 +79,28 @@ struct SearchView:View {
  @Binding var path:[Route]
  @State private var text=""
  @State private var ai=false
- var body:some View{ScrollView{LazyVStack(alignment:.leading,spacing:12){let result=LocalSearch.search(text,plans:model.plans),rows=result.plans
+ var body:some View{
+  let result=LocalSearch.search(text,plans:model.plans),rows=SearchPresentation.rows(result.plans,records:model.records,query:text)
+  ScrollView{LazyVStack(alignment:.leading,spacing:16){
    if let answer=result.answer{Text(answer).brandFont(17).surfaceCard()}
-   if result.needsAI{Button("İsteğini Rotam AI ile incele"){model.setInput(text);ai=true}.buttonStyle(PrimaryButton());Text("Bir değişiklik yapılmadan önce taslağını onaylayacaksın.").brandFont(14).foregroundStyle(Brand.muted)}
-   Text("\(rows.count) plan").brandFont(14).foregroundStyle(Brand.muted)
-   ForEach(rows){p in Button{path.append(.plan(p.id))}label:{VStack(alignment:.leading,spacing:0){Text(p.date).brandFont(13).foregroundStyle(Brand.orange);PlanRow(plan:p)}}.buttonStyle(.plain);Divider()}
-   if rows.isEmpty{EmptyState(symbol:"magnifyingglass",title:"Eşleşen plan yok.",detail:"Başlık, not veya tarih ile arayabilirsin.")}
-  }.padding(24)}.background(Brand.background).navigationTitle("Planlarında ara").searchable(text:$text,prompt:"Başlık, tarih veya bir soru").sheet(isPresented:$ai){NavigationStack{AiView()}}}
+   if result.needsAI{Button("İsteğini Rotam AI ile incele"){model.setInput(text);ai=true}.buttonStyle(PrimaryButton())}
+   Text(SearchPresentation.label(rows)).brandFont(14).foregroundStyle(Brand.muted)
+   ForEach(rows){row in switch row{
+    case .plan(let p):Button{path.append(.plan(p.id))}label:{VStack(alignment:.leading,spacing:0){Text(p.date).brandFont(13).foregroundStyle(Brand.orange);PlanRow(plan:p)}}.buttonStyle(.plain)
+    case .routine(_,let title,let children,let next):NativeRoutineSearchCard(title:title,children:children,next:next){path.append(.plan($0))}
+   };Divider()}
+   if rows.isEmpty{EmptyState(symbol:"magnifyingglass",title:"Eşleşen plan yok.",detail:"Başlık, not, tarih veya bir soruyla arayabilirsin.")}
+  }.padding(24)}.background(Brand.background).navigationTitle("Planlarında ara").searchable(text:$text,prompt:"Başlık, tarih veya bir soru").sheet(isPresented:$ai){NavigationStack{AiView()}}
+ }
+}
+private struct NativeRoutineSearchCard:View{
+ let title:String
+ let children:[PortablePlan]
+ let next:PortablePlan
+ let open:(String)->Void
+ @State private var expanded=false
+ @State private var limit=15
+ var body:some View{VStack(alignment:.leading,spacing:14){Label(title,systemImage:"repeat").brandFont(23,weight:800);Text("Bir rutin · \(children.count) tekrar").brandFont(14).foregroundStyle(Brand.muted);Text(next.date+" · "+next.scheduleLabel).brandFont(15).foregroundStyle(Brand.muted);Button("Ayrıntılar"){open(next.id)}.buttonStyle(QuietButton());DisclosureGroup("Günleri göster",isExpanded:$expanded){ForEach(Array(children.prefix(limit))){p in Button{open(p.id)}label:{HStack{Text(p.date+" · "+p.scheduleLabel).brandFont(14);Spacer();Image(systemName:"chevron.right")}.frame(minHeight:48)}.buttonStyle(.plain)};if children.count>limit{Button("Daha fazla gün göster"){limit+=15}}}}.surfaceCard()}
 }
 struct InsightsView:View {
  @EnvironmentObject var model:RotamModel

@@ -8,6 +8,8 @@ import java.time.LocalDate
 object RoutineState {
  private const val Paused="routinePaused"
  private const val Removed="pausedByRoutine"
+ fun deleted(template:Plan)=JSONObject(template.extraData).optBoolean("routineDeleted",false)
+ fun deletion(template:Plan,date:LocalDate)=template.copy(extraData=JSONObject(template.extraData).put("routineDeleted",true).put("routineDeletedAt",date.toString()).toString())
  fun paused(template:Plan)=JSONObject(template.extraData).optBoolean(Paused,false)
  fun change(template:Plan,paused:Boolean,date:LocalDate):Plan {
   val extra=JSONObject(template.extraData)

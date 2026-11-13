@@ -54,3 +54,26 @@ extension RecordStore {
   try replaceMany(updates,expected:original)
  }
 }
+
+public struct RoutineDeletionReceipt:Sendable {
+ public let before:[WireRecord]
+ public let after:[WireRecord]
+}
+extension RecordStore {
+ public func deleteRoutine(_ uid:String,day:String=PlanDates.key(Date()))throws->RoutineDeletionReceipt {
+  let original=all();guard let rule=original.first(where:{$0.kind == .series&&$0.uid==uid}),var fields=try rule.fields()["template"]?.fields else{throw RotamDataError.invalid("Rutin bulunamadı.")}
+  var e=try JSONValue.parse(fields["extraData"]?.string ?? "{}").fields ?? [:]
+  guard e["routineDeleted"]?.boolean != true else{return RoutineDeletionReceipt(before:[],after:[])}
+  e["routineDeleted"] = .bool(true);e["routineDeletedAt"] = .string(day);fields["extraData"] = .string(try JSONValue.object(e).canonical())
+  let yesterday=try PlanDates.addDays(day,-1)
+  let until=min((try rule.fields())["untilDate"]?.string ?? yesterday,yesterday)
+  var before=[rule],after=[try rule.changing(["template":.object(fields),"untilDate":.string(until)])]
+  for r in original where r.kind == .plan{let p=try PortablePlan(r);if p.seriesUID==uid && !p.deleted && !p.completed && !p.skipped && p.outcome != "PARTIAL"{var metadata=p.metadata;metadata.removeValue(forKey:"pausedByRoutine");before.append(r);after.append(try r.changing(["isDeleted":.bool(true),"extraData":.string(JSONValue.object(metadata).canonical())]))}}
+  try replaceMany(after,expected:original);return RoutineDeletionReceipt(before:before,after:after)
+ }
+ public func undoRoutineDeletion(_ receipt:RoutineDeletionReceipt)throws {
+  let original=all(),map=try SyncEnvelope(records:original).index()
+  guard receipt.after.allSatisfy({map[$0.key]==$0})else{throw RotamDataError.invalid("Rutin başka bir işlemde değişti. Güncel kayıtlar korunarak geri alma durdu.")}
+  try replaceMany(receipt.before,expected:original)
+ }
+}

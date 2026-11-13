@@ -10,7 +10,8 @@ public enum RecurrenceRules {
  public static func instances(series:WireRecord,from:String,to:String)throws->[WireRecord]{
   let s=try series.fields();guard series.kind == .series,let anchor=s["anchor"]?.string,let template=s["template"]?.fields else{throw RotamDataError.invalid("Rutin kuralı bulunamadı.")}
   let metadata=try freshMetadata(template["extraData"]?.string ?? "{}")
-  if (try? JSONValue.parse(metadata).fields?["routinePaused"]?.boolean)==true{return []}
+  let info=try JSONValue.parse(metadata).fields ?? [:]
+  if info["routinePaused"]?.boolean==true || info["routineDeleted"]?.boolean==true{return []}
   let first=try max(PlanDates.day(from),PlanDates.day(anchor));let last=min(try PlanDates.day(to),s["untilDate"]?.string.flatMap{try? PlanDates.day($0)} ?? .distantFuture)
   if first>last{return []};guard last.timeIntervalSince(first)<=3660*86400 else{throw RotamDataError.invalid("Tek seferde çok uzun bir rutin dönemi istendi. Başlangıç veya bitiş gününü daralt.")}
   var calendar=Calendar(identifier:.gregorian);calendar.timeZone=TimeZone(secondsFromGMT:0)!

@@ -67,7 +67,7 @@ object PlanSearch {
    words.any{it in setOf("yemek","ogun")}->Category.YEMEK
    else->null
   }
-  val filler=setOf("bu","gecen","gelecek","onumuzdeki","hafta","ay","bugun","yarin","dun","icin","kac","kere","kez","defa","tane","plan","planlar","planlarim","var","hangi","gun","gunler","gunlerde","yaptim","tamamladim","bitirdim","gittim","yaptiklarim","tamamlanan","bitirdiklerim","kismen","kismi","yarim","yapilan","yanitsiz","cevapsiz","ertelenen","ertelediklerim","yapmadiklarim","yapamadiklarim","yapmadim","yapamadim","yapilmayan","atlanan","spor","egzersiz","okuma","kitap","is","ibadet","namaz","yemek","ogun","mi","mu")
+  val filler=setOf("bu","gecen","gelecek","onumuzdeki","hafta","ay","bugun","yarin","dun","icin","kac","kere","kez","defa","tane","plan","planlar","planlarim","planim","rutin","rutinim","rutinler","rutinlerim","var","hangi","gun","gunler","gunlerde","yaptim","tamamladim","bitirdim","gittim","yaptiklarim","tamamlanan","bitirdiklerim","kismen","kismi","yarim","yapilan","yanitsiz","cevapsiz","ertelenen","ertelediklerim","yapmadiklarim","yapamadiklarim","yapmadim","yapamadim","yapilmayan","atlanan","spor","egzersiz","okuma","kitap","is","ibadet","namaz","yemek","ogun","mi","mu")
   val dateWords=span?.let{Regex("[a-z0-9]+").findAll(normalize(it.label)).map{m->m.value}.toSet()}?:emptySet()
   val terms=words.filter{it !in filler&&it !in dateWords&&!it.startsWith("calis")&&!(span!=null&&it.all(Char::isDigit))}
   fun historyDates(p:Plan):List<String>{val history=JSONObject(p.extraData).optJSONArray("outcomeHistory")?:return emptyList();return (0 until history.length()).mapNotNull{i->history.optJSONObject(i)?.takeIf{it.optString("status")==PlanOutcome.Status.POSTPONED.name}?.optString("date")}}
@@ -83,13 +83,15 @@ object PlanSearch {
    (!partial||PlanOutcome.status(p)==PlanOutcome.Status.PARTIAL)&&
    (!postponed||(PlanOutcome.status(p)==PlanOutcome.Status.POSTPONED||historyDates(p).isNotEmpty()))&&
    (!notDone||PlanOutcome.status(p)==PlanOutcome.Status.NOT_DONE)&&
-   (!awaiting||(PlanOutcome.status(p) in setOf(PlanOutcome.Status.UNKNOWN,PlanOutcome.Status.POSTPONED)&&((p.date<now.toLocalDate().toString()&&PlanTime.end(p)?.let{it>now}!=true)||PlanTime.overdue(p,now))))
+   (!awaiting||(PlanReviewPolicy.awaiting(p,now)))
   }.sortedWith(compareBy<Plan>{it.date}.thenBy{it.startTime?:it.endTime?:"99:99"}.thenBy{it.title})
   val description=span?.let{"${it.from} – ${it.to}"}?.plus(if(postponed)" · Ertelemeden önceki plan tarihi de aranır."else" · Plan tarihlerine göre.")
   val answer=if(localQuestion(query)){
    if(count&&terms.isEmpty()){
     val label=if(completed)"tamamlanmış plan"else if(notDone)"yapılmadı bildirilen plan"else if(partial)"kısmen yapılan plan"else"kayıtlı plan"
-    "Bu cihazdaki kayıtlara göre ${results.size} $label var."+
+    val routineCount=results.filter{it.seriesId!=0L}.map{it.seriesId}.distinct().size
+    val countText=if(!completed&&!notDone&&!partial&&!postponed&&!awaiting&&routineCount>0&&!Regex("\\b(kere|kez|defa)\\b").containsMatchIn(q))"Bu cihazdaki kayıtlara göre ${results.count{it.seriesId==0L}} tek seferlik plan ve $routineCount rutin var. Rutinlerin bu kapsamda ${results.count{it.seriesId!=0L}} tekrarı bulunuyor."else "Bu cihazdaki kayıtlara göre ${results.size} $label var."
+    countText+
      (if(completed){val unknown=relevant.count{it.date<=now.toLocalDate().toString()&&PlanOutcome.status(it)==PlanOutcome.Status.UNKNOWN};val part=relevant.count{PlanOutcome.status(it)==PlanOutcome.Status.PARTIAL};" $part kısmi ve $unknown sonucu bildirilmemiş kayıt tam tamamlanma sayısına eklenmedi."}else"")
    }else if(count)null else if(results.isEmpty())"Bu kapsamda kayıtlı plan yok."else results.take(20).joinToString("\n"){"${it.date} · ${it.title} · ${PlanTime.label(it)}"}+(if(results.size>20)"\nİlk 20 plan gösterildi; kalan kayıtlar aramada bulunur."else"")
   }else null

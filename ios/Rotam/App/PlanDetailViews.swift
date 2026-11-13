@@ -25,11 +25,15 @@ struct PlanDetailView:View {
    if let history=p.metadata["outcomeHistory"]?.items,!history.isEmpty{DisclosureGroup("Geçmiş hareketler"){ForEach(Array(history.enumerated()),id:\.offset){_,value in let d=value.fields ?? [:];Text((d["at"]?.string ?? "")+" · "+historyLabel(d["status"]?.string ?? "")+" · "+(d["date"]?.string ?? "")).brandFont(13).foregroundStyle(Brand.muted).frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,8)}}}
   }.padding(24).frame(maxWidth:760)}}else{ContentUnavailableView("Plan bulunamadı",systemImage:"calendar.badge.exclamationmark",description:Text("Silinmiş veya başka bir cihazda değiştirilmiş olabilir."))}}.background(Brand.background).foregroundStyle(Brand.ink).navigationTitle("Plan detayı").navigationBarTitleDisplayMode(.inline)
  .toolbar{ToolbarItem(placement:.topBarTrailing){Button(role:.destructive){deletion=true}label:{Image(systemName:"trash").frame(width:44,height:44)}.accessibilityLabel("Planı sil")}}
- .sheet(isPresented:$editing){if let p=plan{NavigationStack{PlanEditorView(record:p.record,day:p.date,onSaveFuture:p.seriesUID != nil ? {next in await model.edit(next,before:p.record,future:true)}:nil){next in await model.edit(next,before:p.record)}}}}
+ .sheet(isPresented:$editing){if let p=plan{editor(p)}}
  .sheet(isPresented:$postpone){if let p=plan{NavigationStack{PostponeView(plan:p)}}}
  .sheet(isPresented:$partial){if let p=plan{NavigationStack{PartialView(plan:p)}}}
  .sheet(isPresented:$ai){NavigationStack{AiView()}}
  .confirmationDialog("Bu plan silinsin mi?",isPresented:$deletion,titleVisibility:.visible){Button("Sil",role:.destructive){if let p=plan{Task{await model.delete(p)}}};Button("Vazgeç",role:.cancel){}}message:{Text("Rutinse yalnız bu günkü örnek silinir. İşlemi geri alabilirsin.")}
+ }
+ @ViewBuilder private func editor(_ p:PortablePlan)->some View{
+  if p.seriesUID != nil{NavigationStack{PlanEditorView(record:p.record,day:p.date,onSaveFuture:{next in await model.edit(next,before:p.record,future:true)}){next in await model.edit(next,before:p.record)}}}
+  else{NavigationStack{PlanEditorView(record:p.record,day:p.date){next in await model.edit(next,before:p.record)}}}
  }
  @ViewBuilder private func secondary(_ p:PortablePlan)->some View{Button("Kısmen yaptım"){partial=true}.buttonStyle(QuietButton());Button("Ertele"){postpone=true}.buttonStyle(QuietButton());Button(p.skipped ? "Yanıtı geri al":"Yapmadım"){Task{await model.outcome(p,p.skipped ? "UNKNOWN":"NOT_DONE")}}.buttonStyle(QuietButton())}
  private func historyLabel(_ value:String)->String{["COMPLETED":"Tamamlandı","PARTIAL":"Kısmen yapıldı","UNKNOWN":"Yanıt geri alındı","NOT_DONE":"Yapılmadı","POSTPONED":"Ertelendi"][value] ?? value}

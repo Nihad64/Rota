@@ -33,7 +33,7 @@ object StatsBuilder {
    PlanOutcome.Status.COMPLETED->Unit
    PlanOutcome.Status.NOT_DONE->notDone++
    PlanOutcome.Status.PARTIAL->partial++
-   else->if((p.date<now.toLocalDate().toString()&&PlanTime.end(p)?.let{it>now}!=true)||PlanTime.overdue(p,now))awaiting++else pending++
+   else->if(com.nihad64.rotam.domain.usecase.PlanReviewPolicy.awaiting(p,now))awaiting++else pending++
   }
   val routines=series.mapNotNull{s->val p=plans.filter{it.seriesId==s.id};if(p.isEmpty())null else {
    val template=PlanJson.decode(JSONObject(s.template));RoutineStat(template.title,p.count{it.isCompleted},p.size,RoutineState.paused(template))

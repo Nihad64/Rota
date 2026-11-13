@@ -33,12 +33,6 @@ class PlanFlowTest {
         shell("cp ${file.absolutePath} /sdcard/Download/rotam-test-screenshots/$name.png")
     }
     @org.junit.After fun finalScreenshot(){runCatching{shot("99-test-end")}}
-    private fun assertAiAbove(action:String) {
-        ui.waitUntil(10000){ui.onAllNodes(hasText("Rotam AI") and hasClickAction()).fetchSemanticsNodes().isNotEmpty()}
-        val ai=ui.onNode(hasText("Rotam AI") and hasClickAction()).getUnclippedBoundsInRoot()
-        val primary=ui.onNode(hasText(action) and hasClickAction()).getUnclippedBoundsInRoot()
-        org.junit.Assert.assertTrue("AI must not cover the primary action",ai.bottom<=primary.top)
-    }
     @Test fun createUntimedPlanAndEditInOnePage() {
         ui.waitUntil(20000){RotamApp.container.ready.value}
         // Close only the unrelated launcher ANR on Google APIs emulator images.
@@ -55,29 +49,26 @@ class PlanFlowTest {
         }
         ui.waitUntil(10000){ui.onAllNodesWithText("Video düzenleme").fetchSemanticsNodes().isNotEmpty()}
         ui.waitUntil(10000){ui.onAllNodesWithText("0 / 2 tamamlandı").fetchSemanticsNodes().isNotEmpty()}
-        ui.onNodeWithContentDescription("Odak oturumunu başlat").assertIsDisplayed()
+        ui.onNodeWithContentDescription("Plan ayrıntılarını aç").assertIsDisplayed()
+        ui.onNodeWithText("Başlat").assertDoesNotExist()
+        ui.onNodeWithText("Rotam AI").assertDoesNotExist()
         shot("01-home")
         ui.onNodeWithTag("home-list").performScrollToNode(hasText("Plan ekle"))
         ui.onAllNodesWithText("Plan ekle").onFirst().performClick()
         ui.onNodeWithText("Birlikte planlayalım").assertIsDisplayed()
         shot("02-ai-first")
-        ui.onNodeWithText("Elle ekle").performClick()
-        ui.waitUntil(10000){ui.onAllNodesWithText("Ne yapacaksın?").fetchSemanticsNodes().isNotEmpty()}
-        ui.onNodeWithText("Ne yapacaksın?").assertIsDisplayed()
-        assertAiAbove("Devam et")
+        ui.onNodeWithText("Kendin oluştur").performClick()
+        ui.waitUntil(10000){ui.onAllNodesWithText("Yeni plan").fetchSemanticsNodes().isNotEmpty()}
+        ui.onNodeWithText("Yeni plan").assertIsDisplayed()
+        ui.onNodeWithText("Planı kaydet").assertIsDisplayed()
         shot("02-create")
         ui.onNode(hasSetTextAction()).performTextInput("Saatsiz test planı")
         ui.waitUntil(10000){ui.onNode(hasSetTextAction()).isDisplayed()}
         ui.onNode(hasSetTextAction()).assertIsDisplayed()
-        ui.onNodeWithText("Devam et").performClick()
-        ui.onNodeWithText("Sana göre ayrıntılar").assertIsDisplayed()
-        ui.onNodeWithText("Devam et").performClick()
-        ui.onNodeWithText("Ne zaman?").assertIsDisplayed()
-        ui.onNodeWithText("Saat yok").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("Zaman").performScrollTo().assertIsDisplayed()
+        ui.onAllNodesWithText("Saat yok").onFirst().performScrollTo().assertIsDisplayed()
         shot("03-optional-times")
-        ui.onNodeWithText("Devam et").performClick()
-        ui.onNodeWithText("Devam et").performClick()
-        ui.onNodeWithText("Planı oluştur").performClick()
+        ui.onNodeWithText("Planı kaydet").performClick()
         ui.waitUntil(10000){runBlocking{RotamApp.container.db.planDao().all().any{it.title=="Saatsiz test planı"}}}
         val plan=runBlocking{RotamApp.container.db.planDao().all().first{it.title=="Saatsiz test planı"}}
         org.junit.Assert.assertNull(plan.startTime);org.junit.Assert.assertNull(plan.endTime)
@@ -103,9 +94,9 @@ class PlanFlowTest {
         ui.onNodeWithText("Düzenle").performClick()
         ui.waitUntil(10000){ui.onAllNodesWithText("Planını düzenle").fetchSemanticsNodes().isNotEmpty()}
         ui.onNodeWithText("Planını düzenle").assertIsDisplayed()
-        assertAiAbove("Değişiklikleri kaydet")
+        ui.onNodeWithText("Değişiklikleri kaydet").assertIsDisplayed()
         shot("04-edit")
-        ui.onNodeWithText("Ne zaman?").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("Zaman").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("Tekrar").performScrollTo().assertIsDisplayed()
         ui.onNode(hasText("Saatsiz test planı") and hasSetTextAction()).performScrollTo().performTextReplacement("Düzenlenmiş saatsiz plan")
         // Invoke the already-verified button without racing the soft keyboard's

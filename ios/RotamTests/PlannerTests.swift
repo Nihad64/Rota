@@ -77,4 +77,20 @@ import XCTest
   XCTAssertTrue(reply.text.contains("Henüz kaydedilmedi"));XCTAssertFalse(reply.text.contains("eklendi"))
   let p=try PortablePlan(reply.plans[0].plan);XCTAssertNil(p.start);XCTAssertNil(p.end);XCTAssertEqual("İşten önce",p.metadata["note"]?.string);XCTAssertEqual("Süt al\nYumurta al",p.metadata["subtasks"]?.string)
  }
+ func testDeletedRoutinePreservesResultsAndDoesNotRegenerate()async throws{
+  let root=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  defer{try? FileManager.default.removeItem(at:root)}
+  let store=try RecordStore(directory:root),p=try PortablePlan.make(title:"Okul",date:"2026-11-10").changing(["repeatType":.string("daily")]),batch=try RecurrenceRules.make(p,through:"2026-11-15"),rule=batch.first{$0.kind == .series}!,first=batch.first{$0.kind == .plan}!
+  try await store.replaceMany(batch);let done=try PlanActions.outcome(first,status:"COMPLETED");try await store.replace(done,expected:first)
+  let receipt=try await store.deleteRoutine(rule.uid,day:"2026-11-13"),deleted=await store.all()
+  XCTAssertTrue(deleted.contains(done));XCTAssertTrue(try deleted.filter{$0.kind == .plan && $0.uid != first.uid}.allSatisfy{try PortablePlan($0).deleted})
+  let generated=try await store.ensure(from:"2026-11-16",to:"2027-01-01");XCTAssertFalse(generated)
+  try await store.undoRoutineDeletion(receipt);let restored=await store.all();XCTAssertTrue(restored.contains(done));XCTAssertTrue(restored.contains(rule))
+ }
+ func testOneRoutineProducesOneSearchRowAndPastStartOnlyPlanNeedsReview()throws{
+  let p=try PortablePlan.make(title:"Okul",date:"2026-11-13",start:"06:00").changing(["repeatType":.string("daily")]),batch=try RecurrenceRules.make(p,through:"2027-03-16"),plans=try batch.filter{$0.kind == .plan}.map(PortablePlan.init)
+  let rows=SearchPresentation.rows(plans,records:batch,query:"Okul",today:"2026-11-13")
+  XCTAssertEqual("1 rutin",SearchPresentation.label(rows));XCTAssertEqual(1,rows.count)
+  XCTAssertTrue(plans[0].awaiting(now:try PlanDates.instant(day:"2026-11-13",time:"10:00")));XCTAssertNil(plans[0].end)
+ }
 }

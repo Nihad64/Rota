@@ -2,6 +2,10 @@ package com.nihad64.rotam.ui.settings
 
 import android.content.Intent
 import android.Manifest
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -69,7 +73,11 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
     var quietTarget by remember { mutableStateOf<String?>(null) }
     val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){it?.let(vm::export)}
     val import=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){it?.let(vm::preview)}
-    val notificationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){}
+    var notificationsAllowed by remember{mutableStateOf(NotificationManagerCompat.from(ctx).areNotificationsEnabled())}
+    val notificationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){notificationsAllowed=NotificationManagerCompat.from(ctx).areNotificationsEnabled()}
+    val lifecycle=LocalLifecycleOwner.current
+    DisposableEffect(lifecycle,ctx){val observer=LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_RESUME)notificationsAllowed=NotificationManagerCompat.from(ctx).areNotificationsEnabled()};lifecycle.lifecycle.addObserver(observer);onDispose{lifecycle.lifecycle.removeObserver(observer)}}
+    fun openNotificationSettings(){ctx.startActivity(Intent(AndroidSettings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(AndroidSettings.EXTRA_APP_PACKAGE,ctx.packageName))}
     fun clock(minutes:Int)="%02d:%02d".format(minutes/60,minutes%60)
 
     Column(
@@ -78,7 +86,7 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         PageHeader(page ?: "Ayarlar",onBack=if(page!=null)({page=null})else null)
-        Text("Rotam'ı kendi çalışma biçimine göre ayarla.", style = MaterialTheme.typography.bodyMedium, color = SubtleText)
+        if(page==null)Text("Rotam, senin istediğin gibi.",style=MaterialTheme.typography.bodyMedium,color=SubtleText)
 
         if(page=="Rotam hakkında") RotamCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -105,14 +113,14 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
                 }
             }
             SettingsGroup("TERCİHLER") {
-                SettingsLink(Icons.Outlined.NotificationsActive,"Hatırlatmalar","Ses, titreşim ve hatırlatma zamanı"){page="Hatırlatmalar"}
+                SettingsLink(Icons.Outlined.NotificationsActive,"Hatırlatmalar","Bildirimler ve sessiz saatler"){page="Hatırlatmalar"}
                 HorizontalDivider(color=Outline)
-                SettingsLink(Icons.Outlined.AutoAwesome,"Rotam AI","Birlikte planla, onaylayarak kaydet"){page="Rotam AI"}
+                SettingsLink(Icons.Outlined.Palette,"Görünüm ve ses","Animasyonlar, ses ve titreşim"){page="Görünüm ve ses"}
             }
             SettingsGroup("VERİLER VE GİZLİLİK") {
                 SettingsLink(Icons.Outlined.CloudQueue,"Verilerim","Eşitleme ve yedekleme"){page="Verilerim"}
                 HorizontalDivider(color=Outline)
-                SettingsLink(Icons.Outlined.Shield,"Gizlilik","AI ile paylaştıkların üzerinde kontrol"){page="Gizlilik"}
+                SettingsLink(Icons.Outlined.Shield,"Gizlilik ve hafıza","AI ile paylaşılanlar ve hatırlanan bilgiler"){page="Gizlilik"}
             }
             SettingsGroup("UYGULAMA") {
                 SettingsLink(Icons.Outlined.Info,"Rotam hakkında","Sürüm ve yenilikler"){page="Rotam hakkında"}
@@ -123,7 +131,7 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         if(page=="Hesabım") {
         Section("Hesabım")
         Text(account?.email ?: "Planların bu cihazda saklanıyor.", color=SubtleText)
-        Text("Planlarının diğer cihazlarında da görünmesini Verilerim bölümünden etkinleştirebilirsin. Eşitlemeyi açmadan kayıtların yalnız bu cihazda kalır.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+        DetailRow("Eşitleme ve yedekleme",when(cloud){is CloudStatus.Current->"Güncel";CloudStatus.Working->"Eşitleniyor…";is CloudStatus.Error->"Bağlantıyı kontrol et";else->"Yönet"}){page="Verilerim"}
         if(account==null) OutlinedButton(onClick={ vm.signIn(ctx) },enabled=!authBusy&&vm.accountConfigured) { Text(if(authBusy) "Google hesabı bekleniyor…" else "Google ile giriş yap") }
         else TextButton(onClick=vm::signOut,enabled=!busy) { Text("Çıkış yap") }
         if(authBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -134,9 +142,12 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         if(page=="Hatırlatmalar") {
         Section("Bildirimler")
         SwitchRow(Icons.Outlined.NotificationsActive, "Plan hatırlatmaları", "Her planın kendi hatırlatma seçimi uygulanır.", s.remindersEnabled, vm::setReminders)
-        if(Build.VERSION.SDK_INT>=33) ActionRow(Icons.Outlined.Notifications,"Android bildirim izni","Hatırlatmalar için telefonun bildirim iznini aç.","Kontrol et") { notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }
+        ActionRow(Icons.Outlined.Notifications,"Telefon bildirimleri",if(notificationsAllowed)"Bildirimler açık."else"Bildirim izni kapalı.",if(notificationsAllowed)"Yönet"else"İzin ver") {
+            if(!notificationsAllowed&&Build.VERSION.SDK_INT>=33)notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)else openNotificationSettings()
+        }
+        if(!notificationsAllowed)TextButton(onClick={openNotificationSettings()}){Text("Telefon ayarlarını aç")}
         RotamCard(Modifier.fillMaxWidth()) {
-            Text("Yeni planlarda varsayılan süre", style = MaterialTheme.typography.titleSmall, color = OnBackground)
+            Text("Özel hatırlatmalarda varsayılan süre", style = MaterialTheme.typography.titleSmall, color = OnBackground)
             Spacer(Modifier.height(8.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(5 to "5 dk", 15 to "15 dk", 30 to "30 dk", 60 to "1 saat").forEach { (m, l) ->
@@ -158,20 +169,22 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
             }
         }
 
-        Text("Otomatik takip: plan başına en fazla 4 aşama; tüm planlarda günde en fazla 6 otomatik bildirim ve aralarında en az 15 dakika. Biraz sonra, yalnız bildirimi 30 dakika erteler (en fazla 3 kez). Plan saatini değiştirmez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+
         val reminderError by vm.reminderError.collectAsStateWithLifecycle()
         reminderError?.let { Text(it,color=Danger);TextButton(onClick=vm::retryReminders){Text("Yeniden planla")} }
 
-        Section("Ses · Hareket")
+        }
+        if(page=="Görünüm ve ses") {
+        Section("Geri bildirim")
         SwitchRow(Icons.Outlined.VolumeUp, "Onay sesleri", "Başarılı kayıtta kısa ses; telefonun sessiz modu korunur.", s.uiSounds, vm::setSounds)
         SwitchRow(Icons.Outlined.Vibration, "Titreşim", "Hafif dokunsal geri bildirim.", s.haptics, vm::setHaptics)
 
         SwitchRow(Icons.Outlined.Animation,"Animasyonlar","Kısa ekran ve grafik geçişleri.",s.animations,vm::setAnimations)
 
         }
-        if(page=="Rotam AI" || page=="Gizlilik") {
+        if(page=="Gizlilik") {
         Section("Rotam AI")
-        Text("Rotam AI için API anahtarı gerekmez. Google hesabınla güvenli hizmete bağlanır. Öneriler yalnız onayından sonra kaydedilir.", color=SubtleText)
+        Text("Nelerin paylaşılacağını sen seç. Öneriler onayın olmadan planlarını değiştirmez.",color=SubtleText)
         SwitchRow(Icons.Outlined.PrivacyTip,"Planları AI ile paylaş","İzin verirsen sorundaki tarih aralığından en fazla 150 planın başlık, kategori ve tarih/saat özeti AI hizmetine gönderilir. Yazdığın mesajlar her istekte gönderilir.",s.sharePlans,{if(it)confirmAi=true else vm.setSharePlans(false)})
         }
         if((page=="Rotam AI"||page=="Gizlilik")&&s.sharePlans&&s.aiContextVersion<2)TextButton(onClick={confirmAi=true}){Text("Geçmiş kayıtlar için paylaşımı gözden geçir")}
@@ -196,12 +209,12 @@ fun SettingsScreen(vm: SettingsViewModel, onStats: ()->Unit, onSearch: ()->Unit)
         }
         if(page=="Gizlilik"&&memoryDraft==null)message?.let{Text(it,color=Danger)}
         if(page=="Verilerim") {
-        ActionRow(Icons.Outlined.Search,"Planlarında ara","Başlık, not ve geçmiş planlar.","Ara",onClick=onSearch)
+
         CloudSyncSection(cloud,account?.email,onEnable={confirmCloud=true},onDisable=vm::disableSync,onSync=vm::syncNow,onResolve=vm::resolveSync)
         if(account==null) OutlinedButton(onClick={page="Hesabım"}){Text("Google hesabını bağla")}
         PreferenceSyncSection(preferenceStatus,preferencesEnabled,onEnable={confirmPreferences=true},onDisable=vm::disablePreferences,onSync=vm::syncPreferences,onResolve=vm::resolvePreferences)
         Section("Yedekleme")
-        Text("Planlar, hedefler, rutinler, odak süreleri ve onaylı hafıza korunur. API anahtarı yedeğe eklenmez.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+        Text("Planlarını, rutinlerini ve kayıtlı ilerlemeni bir dosyada sakla.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
         PrimaryButton("Yedeği dışa aktar",{export.launch("Rotam-${java.time.LocalDate.now()}.json")},Modifier.fillMaxWidth(),enabled=!busy)
         OutlinedButton(onClick={import.launch(arrayOf("application/json","text/plain","application/octet-stream"))},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Yedekten geri yükle")}
         TextButton(onClick={vm.previewRecovery()},enabled=!busy){Text("Son işlemden önceki kayıtlara dön")}
@@ -234,36 +247,20 @@ private fun Section(text: String) =
     Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, color = Accent, modifier = Modifier.padding(top = 10.dp))
 
 @Composable
-private fun SwitchRow(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    RotamCard(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth().toggleable(value=checked,role=Role.Switch,onValueChange=onChange),verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = Primary)
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, color = OnBackground)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = SubtleText)
-            }
-            Switch(checked, null, colors = SwitchDefaults.colors(checkedTrackColor = Primary, checkedThumbColor = OnBackground,
-                uncheckedTrackColor = SurfaceVariant, uncheckedBorderColor = Outline))
-        }
-    }
+private fun SwitchRow(icon:ImageVector,title:String,subtitle:String,checked:Boolean,onChange:(Boolean)->Unit){
+ Row(Modifier.fillMaxWidth().toggleable(value=checked,role=Role.Switch,onValueChange=onChange).padding(vertical=16.dp),verticalAlignment=Alignment.CenterVertically){
+  Icon(icon,null,tint=Accent,modifier=Modifier.size(24.dp));Spacer(Modifier.width(16.dp))
+  Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.titleMedium);Text(subtitle,style=MaterialTheme.typography.bodySmall,color=SubtleText,modifier=Modifier.padding(top=4.dp))}
+  Spacer(Modifier.width(8.dp));Switch(checked,null,colors=SwitchDefaults.colors(checkedTrackColor=Accent,checkedThumbColor=Background,uncheckedTrackColor=SurfaceVariant,uncheckedBorderColor=Outline))
+ }
 }
-
 @Composable
-private fun ActionRow(icon: ImageVector, title: String, subtitle: String, action: String, danger: Boolean = false, onClick: () -> Unit) {
-    RotamCard(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = if (danger) Danger else Primary)
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, color = OnBackground)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = SubtleText)
-            }
-            FilledTonalButton(onClick = onClick, colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = (if (danger) Danger else Primary).copy(alpha = 0.18f),
-                contentColor = if (danger) Danger else PrimaryVariant)) { Text(action) }
-        }
-    }
+private fun ActionRow(icon:ImageVector,title:String,subtitle:String,action:String,danger:Boolean=false,onClick:()->Unit){
+ Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=16.dp),verticalAlignment=Alignment.CenterVertically){
+  Icon(icon,null,tint=if(danger)Danger else Accent,modifier=Modifier.size(24.dp));Spacer(Modifier.width(16.dp))
+  Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.titleMedium);Text(subtitle,style=MaterialTheme.typography.bodySmall,color=SubtleText,modifier=Modifier.padding(top=4.dp))}
+  Spacer(Modifier.width(8.dp));Text(action,color=if(danger)Danger else SubtleText,style=MaterialTheme.typography.labelMedium);Icon(Icons.Outlined.ChevronRight,null,tint=SubtleText)
+ }
 }
 
 @Composable

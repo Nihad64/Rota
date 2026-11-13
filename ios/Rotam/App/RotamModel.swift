@@ -40,6 +40,7 @@ struct AiMessage:Identifiable,Sendable {let id=UUID();let user:Bool;let text:Str
  private var draftRevision:Int64=0
  private var draftWritable=false
  private var inputGeneration:Int64=0
+ private var undoRoutineValue:RoutineDeletionReceipt?
  private var undoValue:(before:WireRecord,after:WireRecord)?
  let defaults=UserDefaults.standard
  let directory:URL
@@ -103,10 +104,10 @@ struct AiMessage:Identifiable,Sendable {let id=UUID();let user:Bool;let text:Str
  func create(_ plan:WireRecord)async{await perform{guard let store=self.store else{return};try await store.createPlan(plan);await self.changed("Plan kaydedildi")}}
  func edit(_ proposal:WireRecord,before:WireRecord,future:Bool=false)async{await perform{guard let store=self.store else{return};if future{try await store.editFuture(proposal,before:before)}else{try await store.updatePlan(proposal,before:before)};await self.changed("Plan güncellendi")}}
  func outcome(_ plan:PortablePlan,_ status:String,amount:Double?=nil,target:Double?=nil)async{
-  await perform{guard let store=self.store else{return};let next=try PlanActions.outcome(plan.record,status:status,amount:amount,target:target);try await store.replace(next,expected:plan.record);self.undoValue=(plan.record,next);await self.changed("Plan durumu kaydedildi")}
+  await perform{guard let store=self.store else{return};let next=try PlanActions.outcome(plan.record,status:status,amount:amount,target:target);try await store.replace(next,expected:plan.record);self.undoRoutineValue=nil;self.undoValue=(plan.record,next);await self.changed("Plan durumu kaydedildi")}
  }
- func delete(_ plan:PortablePlan)async{await perform{guard let store=self.store else{return};var e=plan.metadata;e.removeValue(forKey:"pausedByRoutine");let next=try plan.record.changing(["isDeleted":.bool(true),"extraData":.string(JSONValue.object(e).canonical())]);try await store.replace(next,expected:plan.record);self.undoValue=(plan.record,next);await self.changed("Plan silindi")}}
- func undo()async{await perform{guard let pair=self.undoValue,let store=self.store else{return};try await store.replace(pair.before,expected:pair.after);self.undoValue=nil;await self.changed("İşlem geri alındı")}}
+ func delete(_ plan:PortablePlan)async{await perform{guard let store=self.store else{return};var e=plan.metadata;e.removeValue(forKey:"pausedByRoutine");let next=try plan.record.changing(["isDeleted":.bool(true),"extraData":.string(JSONValue.object(e).canonical())]);try await store.replace(next,expected:plan.record);self.undoRoutineValue=nil;self.undoValue=(plan.record,next);await self.changed("Plan silindi")}}
+ func undo()async{if let receipt=undoRoutineValue{await perform{try await self.store?.undoRoutineDeletion(receipt);self.undoRoutineValue=nil;await self.changed("Rutin geri alındı")};return};await perform{guard let pair=self.undoValue,let store=self.store else{return};try await store.replace(pair.before,expected:pair.after);self.undoValue=nil;await self.changed("İşlem geri alındı")}}
  func postpone(_ plan:PortablePlan,date:String,time:String?,future:Bool=false)async{await perform{guard let store=self.store else{return};let next=try PlanActions.postpone(plan.record,date:date,time:time);if future{try await store.editFuture(next,before:plan.record);self.undoValue=nil}else{try await store.replace(next,expected:plan.record);self.undoValue=(plan.record,next)};await self.changed("Plan ertelendi")}}
  func toggleSubtask(_ plan:PortablePlan,task:String,done:Bool)async{await perform{guard let store=self.store else{return};try await store.replace(PlanActions.subtask(plan.record,task:task,done:done),expected:plan.record);await self.changed(nil)}}
  func remember(_ text:String,cloud:Bool,before:WireRecord?=nil)async{await perform{guard let uid=self.account?.uid,let store=self.store else{throw RotamDataError.invalid("Önce Google hesabınla giriş yap.")};try await store.saveMemory(owner:uid,text:text,cloud:cloud,uid:before?.uid,expected:before);await self.changed("Hafızaya kaydedildi")}}
@@ -288,4 +289,8 @@ extension RotamModel {
  func ensureRange(from:String,to:String)async{
   do{if try await store?.ensure(from:from,to:to)==true{await reload();requestSync();await publishWidgets();await ReminderService.shared.reschedule()}}catch{report(error)}
  }
+}
+
+extension RotamModel {
+ func deleteRoutine(_ uid:String)async{await perform{guard let store=self.store else{return};let receipt=try await store.deleteRoutine(uid);self.undoRoutineValue=receipt;self.undoValue=nil;await self.changed("Rutin silindi")}}
 }

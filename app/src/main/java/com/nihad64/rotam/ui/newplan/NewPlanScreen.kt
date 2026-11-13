@@ -27,55 +27,54 @@ import com.nihad64.rotam.ui.theme.*
 import org.json.JSONObject
 import java.time.LocalDate
 
-@OptIn(ExperimentalLayoutApi::class)
-@Composable fun NewPlanScreen(vm:NewPlanViewModel,onClose:()->Unit,onDuplicate:(Long)->Unit={},aiAction:(@Composable ()->Unit)?=null){
+@OptIn(ExperimentalLayoutApi::class,ExperimentalMaterial3Api::class)
+@Composable fun NewPlanScreen(vm:NewPlanViewModel,onClose:()->Unit,onDuplicate:(Long)->Unit={}){
  val focus=LocalFocusManager.current;val keyboard=LocalSoftwareKeyboardController.current
  val s by vm.state.collectAsStateWithLifecycle();val goals by vm.goals.collectAsStateWithLifecycle();val templates by vm.templates.collectAsStateWithLifecycle()
  var exit by remember{mutableStateOf(false)};var deleting by remember{mutableStateOf(false)}
+ var categoryPicker by remember{mutableStateOf(false)};var details by remember{mutableStateOf(false)};var repeats by remember{mutableStateOf(false)};var reminders by remember{mutableStateOf(false)};var options by remember{mutableStateOf(false)}
  val close={if(vm.dirty())exit=true else onClose()}
- BackHandler {if(!s.editing&&s.step>0)vm.step(s.step-1)else close()}
+ BackHandler {close()}
  LaunchedEffect(vm){for(event in vm.events)if(event=="saved")onClose()}
  if(s.loading){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()};return}
+ val extra=JSONObject(s.plan.extraData)
  Column(Modifier.fillMaxSize().imePadding()){
-  Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=24.dp).padding(top=16.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
-   PageHeader(if(s.editing)"Planını düzenle"else"Yeni bir adım",if(s.editing)"Tüm ayrıntılar bir arada."else"${s.step+1} / 5",onBack={if(!s.editing&&s.step>0)vm.step(s.step-1)else close()})
-   if(!s.editing)Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){repeat(5){i->Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(if(i<=s.step)Primary else Outline))}}
-   if(s.restored&&!s.editing&&s.step==0)Text("Taslağın kaldığın yerden açıldı.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
-   if(s.editing||s.step==0){Text("Ne yapacaksın?",style=MaterialTheme.typography.headlineMedium);RotamField(s.plan.title,{vm.change{p->p.copy(title=it)}},"Planına bir ad ver",Modifier.fillMaxWidth(),singleLine=false)
-    if(!s.editing&&templates.isNotEmpty()){Text("Şablonların",style=MaterialTheme.typography.titleMedium);FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){templates.forEach{t->SelectChip(t.title,false,{vm.useTemplate(t)})}}}}
-   if(s.editing||s.step==1){Text("Sana göre ayrıntılar",style=MaterialTheme.typography.headlineSmall)
-    FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){Category.entries.forEach{cat->SelectChip(cat.label,s.plan.category==cat.key,{vm.change{it.copy(category=cat.key)}})}}
-    CategoryFields(s.plan,vm::extra)
-    RotamField(JSONObject(s.plan.extraData).optString("note"),{vm.extra("note",it)},"Not ekle · isteğe bağlı",Modifier.fillMaxWidth(),singleLine=false)
-    RotamField(JSONObject(s.plan.extraData).optString("subtasks"),{vm.extra("subtasks",it)},"Alt adımlar · her satıra bir tane",Modifier.fillMaxWidth(),singleLine=false)
-    if(s.editing){val extras=JSONObject(s.plan.extraData);val subtasks=extras.optString("subtasks").lines().filter{it.isNotBlank()};val checked=extras.optString("checkedSubtasks").lines().toSet();subtasks.forEach{task->Row(verticalAlignment=Alignment.CenterVertically){Checkbox(task in checked,{yes->vm.extra("checkedSubtasks",(if(yes)checked+task else checked-task).filter{it.isNotBlank()}.joinToString("\n"))});Text(task)}}}
-    if(goals.isNotEmpty()){Text("Bir hedefe bağla",style=MaterialTheme.typography.titleMedium);FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){SelectChip("Bağlantı yok",s.plan.goalId==null,{vm.change{it.copy(goalId=null)}});goals.filter{!it.isCompleted}.forEach{g->SelectChip(g.title,s.plan.goalId==g.id,{vm.change{it.copy(goalId=g.id)}})}}}
-   }
-   if(s.editing||s.step==2){TimingFields(s.plan){vm.change(it)}}
-   if(s.editing||s.step==3){
-    if(s.editing&&s.plan.seriesId!=0L){Text("Değişiklik hangi planlara uygulansın?",style=MaterialTheme.typography.titleMedium);FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){EditScope.entries.forEach{SelectChip(it.label,s.scope==it,{vm.scope(it)})}};Text("Tamamlanan ve atlanan geçmiş planlar korunur.",color=SubtleText,style=MaterialTheme.typography.bodySmall)}
+  Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=24.dp).padding(top=16.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)){
+   PageHeader(if(s.editing)"Planını düzenle"else"Yeni plan",onBack=close,action={if(s.editing||templates.isNotEmpty())IconButton(onClick={options=true}){Icon(Icons.Outlined.MoreHoriz,"Diğer plan seçenekleri")}})
+   Text(if(s.editing)"Gereken ayrıntıları güncelle."else"Bir isim yeter. Diğer ayrıntılar sana bağlı.",style=MaterialTheme.typography.bodyMedium,color=SubtleText)
+   if(s.restored&&!s.editing)Text("Kaydetmediğin taslak geri geldi.",color=SubtleText,style=MaterialTheme.typography.bodySmall)
+   RotamField(s.plan.title,{vm.change{p->p.copy(title=it)}},"Plan adı",Modifier.fillMaxWidth(),singleLine=false,minLines=1)
+   RotamCard(Modifier.fillMaxWidth()){TimingFields(s.plan){vm.change(it)}}
+   DetailRow("Kategori",s.plan.categoryEnum.label){categoryPicker=!categoryPicker}
+   if(categoryPicker)FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Category.entries.forEach{cat->SelectChip(cat.label,s.plan.category==cat.key,{vm.change{it.copy(category=cat.key)};categoryPicker=false})}}
+   HorizontalDivider(color=Outline)
+   DetailRow("Tekrar",RepeatType.fromKey(s.plan.repeatType).label){repeats=!repeats}
+   if(repeats){
+    if(s.editing&&s.plan.seriesId!=0L){Text("Değişiklik hangi günlere uygulansın?",style=MaterialTheme.typography.titleMedium);FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){EditScope.entries.filter{it!=EditScope.ALL}.forEach{SelectChip(it.label,s.scope==it,{vm.scope(it)})}}}
     RepeatFields(s.plan,enabled=!s.editing||s.plan.seriesId==0L||s.scope!=EditScope.THIS){vm.change(it)}
-    ReminderFields(s.plan){vm.change(it)}
    }
-   if(!s.editing&&s.step==4){Text("Son bir bakış",style=MaterialTheme.typography.headlineMedium);RotamCard(Modifier.fillMaxWidth()){
-    DetailRow("Plan",s.plan.title){vm.step(0)};DetailRow("Kategori",s.plan.categoryEnum.label){vm.step(1)};DetailRow("Tarih ve saat","${TrFormat.dayMonth(LocalDate.parse(s.plan.date))} · ${PlanTime.label(s.plan)}"){vm.step(2)};DetailRow("Tekrar",RepeatType.fromKey(s.plan.repeatType).label){vm.step(3)};Text(ReminderPolicy.label(s.plan),color=SubtleText)
-   };val note=JSONObject(s.plan.extraData).optString("note");if(note.isNotBlank())Text(note,color=SubtleText)}
+   DetailRow("Hatırlatma",when(ReminderPolicy.mode(s.plan)){ReminderPolicy.Mode.AUTO->"Otomatik";ReminderPolicy.Mode.CUSTOM->"Seçtiğin saatte";ReminderPolicy.Mode.OFF->"Kapalı"}){reminders=!reminders}
+   if(reminders)ReminderFields(s.plan){vm.change(it)}
+   DetailRow("Not ve adımlar",if(extra.optString("note").isBlank()&&extra.optString("subtasks").isBlank())"İsteğe bağlı"else"Ayrıntıları gör"){details=!details}
+   if(details){
+    RotamField(extra.optString("note"),{vm.extra("note",it)},"Not",Modifier.fillMaxWidth(),singleLine=false)
+    RotamField(extra.optString("subtasks"),{vm.extra("subtasks",it)},"Adımlar · her satıra bir tane",Modifier.fillMaxWidth(),singleLine=false)
+    CategoryFields(s.plan,vm::extra)
+    if(goals.isNotEmpty()){Text("Hedef bağlantısı",style=MaterialTheme.typography.titleMedium);FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){SelectChip("Yok",s.plan.goalId==null,{vm.change{it.copy(goalId=null)}});goals.forEach{g->SelectChip(g.title,s.plan.goalId==g.id,{vm.change{it.copy(goalId=g.id)}})}}}
+   }
    if(s.error!=null)Text(s.error!!,color=Danger)
-   if(s.editing){HorizontalDivider(color=Outline);FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-    TextButton(onClick={vm.action("done")},enabled=!s.busy){Text(if(s.plan.isCompleted)"Tamamlamayı geri al"else"Tamamla")}
-    TextButton(onClick={vm.action("tomorrow")},enabled=!s.busy){Text("Yarına taşı")};TextButton(onClick={vm.action("skip")},enabled=!s.busy){Text("Atla")}
-    TextButton(onClick={onDuplicate(s.plan.id)},enabled=!s.busy){Text("Çoğalt")};TextButton(onClick={vm.saveTemplate()}){Text("Şablon yap")};TextButton(onClick={deleting=true},enabled=!s.busy){Text("Sil",color=Danger)}
-   }}
   }
   Column(Modifier.fillMaxWidth().background(Background).padding(horizontal=24.dp,vertical=12.dp)){
-   if(aiAction!=null&&!WindowInsets.isImeVisible)Box(Modifier.fillMaxWidth().padding(bottom=12.dp),contentAlignment=Alignment.CenterEnd){aiAction()}
-   PrimaryButton(if(s.busy)"Kaydediliyor…"else if(s.editing)"Değişiklikleri kaydet"else if(s.step==4)"Planı oluştur"else"Devam et",{focus.clearFocus();keyboard?.hide();if(s.editing||s.step==4)vm.save()else vm.next()},Modifier.fillMaxWidth(),enabled=!s.busy)
-   if(!s.editing&&s.step==0&&s.plan.title.isNotBlank())TextButton(onClick={vm.save()},modifier=Modifier.align(Alignment.CenterHorizontally),enabled=!s.busy){Text("Bu bilgilerle kaydet")}
+   PrimaryButton(if(s.busy)"Kaydediliyor…"else if(s.editing)"Değişiklikleri kaydet"else"Planı kaydet",{focus.clearFocus();keyboard?.hide();vm.save()},Modifier.fillMaxWidth(),enabled=!s.busy&&s.plan.title.isNotBlank())
   }
  }
- if(exit)AlertDialog(onDismissRequest={exit=false},title={Text(if(s.editing)"Değişiklikler kaydedilmedi"else"Taslağın korunsun mu?")},text={Text(if(s.editing)"Çıkarsan son değişiklikler uygulanmaz."else"Daha sonra aynı yerden devam edebilirsin.")},confirmButton={TextButton(onClick={exit=false;onClose()}){Text(if(s.editing)"Kaydetmeden çık"else"Taslağı tut")}},dismissButton={TextButton(onClick={if(s.editing)exit=false else{vm.discard();onClose()}}){Text(if(s.editing)"Düzenlemeye dön"else"Taslağı sil")}})
- if(s.conflicts.isNotEmpty())AlertDialog(onDismissRequest={vm.dismissConflicts()},title={Text("Bu aralıkta başka planların var")},text={Text(s.conflicts.take(5).joinToString("\n"))},confirmButton={TextButton(onClick={vm.save(true)},enabled=!s.busy){Text("Yine de kaydet")}},dismissButton={TextButton(onClick={vm.dismissConflicts();if(!s.editing)vm.step(2)}){Text("Saati değiştir")}})
- if(deleting)AlertDialog(onDismissRequest={deleting=false},title={Text("Bu plan silinsin mi?")},text={Text("Tekrarlıysa yalnız bu örnek silinir. İşlemden sonra geri alabilirsin.")},confirmButton={TextButton(onClick={deleting=false;vm.action("delete")}){Text("Sil",color=Danger)}},dismissButton={TextButton(onClick={deleting=false}){Text("Vazgeç")}})
+ if(options)ModalBottomSheet(onDismissRequest={options=false},containerColor=Surface){Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).padding(bottom=32.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+  if(s.editing){TextButton(onClick={options=false;onDuplicate(s.plan.id)}){Text("Kopyasını oluştur")};TextButton(onClick={options=false;vm.saveTemplate()}){Text("Şablon olarak sakla")};TextButton(onClick={options=false;deleting=true}){Text("Planı sil",color=Danger)}}
+  else{Text("Kayıtlı şablonlar",style=MaterialTheme.typography.titleLarge);templates.forEach{t->TextButton(onClick={options=false;vm.useTemplate(t)}){Text(t.title)}}}
+ }}
+ if(exit)AlertDialog(onDismissRequest={exit=false},title={Text(if(s.editing)"Değişiklikler kaydedilmedi"else"Taslağın korunsun mu?")},text={Text(if(s.editing)"Çıkarsan son değişiklikler uygulanmaz."else"Daha sonra kaldığın yerden devam edebilirsin.")},confirmButton={TextButton(onClick={exit=false;onClose()}){Text(if(s.editing)"Kaydetmeden çık"else"Taslağı tut")}},dismissButton={TextButton(onClick={if(s.editing)exit=false else{vm.discard();onClose()}}){Text(if(s.editing)"Düzenlemeye dön"else"Taslağı sil")}})
+ if(s.conflicts.isNotEmpty())AlertDialog(onDismissRequest={vm.dismissConflicts()},title={Text("Bu aralıkta başka planların var")},text={Text(s.conflicts.take(5).joinToString("\n"))},confirmButton={TextButton(onClick={vm.save(true)},enabled=!s.busy){Text("Yine de kaydet")}},dismissButton={TextButton(onClick={vm.dismissConflicts()}){Text("Saati değiştir")}})
+ if(deleting)AlertDialog(onDismissRequest={deleting=false},title={Text("Bu plan silinsin mi?")},text={Text("Rutinse yalnız bu günkü örnek silinir. Rutinin tamamını Rutinler ekranından kaldırabilirsin.")},confirmButton={TextButton(onClick={deleting=false;vm.action("delete")}){Text("Sil",color=Danger)}},dismissButton={TextButton(onClick={deleting=false}){Text("Vazgeç")}})
 }
 @OptIn(ExperimentalFoundationApi::class)
 @Composable fun RotamField(value:String,onChange:(String)->Unit,placeholder:String,modifier:Modifier=Modifier,singleLine:Boolean=true,number:Boolean=false,isError:Boolean=false,onSearch:(()->Unit)?=null,minLines:Int=if(singleLine)1 else 2){
@@ -92,14 +91,14 @@ import java.time.LocalDate
  Category.RANDEVU->listOf("place" to "Yer","person" to "Kişi / hazırlık")
  Category.YEMEK->listOf("meal" to "Yemek adı","shopping" to "Alışveriş / hazırlık")
  Category.OGRENME->listOf("subject" to "Konu / ders","source" to "Kaynak / çalışma hedefi")
- Category.KISISEL->emptyList()};fields.forEach{(key,label)->RotamField(e.optString(key),{set(key,it)},"$label · isteğe bağlı",Modifier.fillMaxWidth())};if(e.optString("legacyDetails").isNotBlank())RotamField(e.optString("legacyDetails"),{set("legacyDetails",it)},"Önceki ayrıntılar",Modifier.fillMaxWidth(),singleLine=false)}
+ Category.KISISEL->emptyList()};fields.filter{e.optString(it.first).isNotBlank()}.forEach{(key,label)->RotamField(e.optString(key),{set(key,it)},"$label · isteğe bağlı",Modifier.fillMaxWidth())};if(e.optString("legacyDetails").isNotBlank())RotamField(e.optString("legacyDetails"),{set("legacyDetails",it)},"Önceki ayrıntılar",Modifier.fillMaxWidth(),singleLine=false)}
 @OptIn(ExperimentalLayoutApi::class)
 @Composable private fun TimingFields(p:Plan,change:((Plan)->Plan)->Unit){var dateTarget by remember{mutableStateOf<String?>(null)};var timeTarget by remember{mutableStateOf<String?>(null)}
- Text("Ne zaman?",style=MaterialTheme.typography.headlineSmall);DetailRow("Gün",TrFormat.full(LocalDate.parse(p.date))){dateTarget="date"}
- Text("Başlangıç ve bitiş birbirinden bağımsız. İkisi de boş kalabilir.",color=SubtleText,style=MaterialTheme.typography.bodyMedium)
- DetailRow("Başlangıç",p.startTime?:"Saat ekle · isteğe bağlı"){timeTarget="start"};DetailRow("Bitiş / son teslim",p.endTime?:"Saat ekle · isteğe bağlı"){timeTarget="end"}
+ Text("Zaman",style=MaterialTheme.typography.titleMedium);DetailRow("Gün",TrFormat.full(LocalDate.parse(p.date))){dateTarget="date"}
+
+ DetailRow("Başlangıç",p.startTime?:"Saat yok"){timeTarget="start"};DetailRow("Bitiş / son teslim",p.endTime?:"Saat yok"){timeTarget="end"}
  if(p.endTime!=null){FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){SelectChip("Aynı gün",p.endDate==null||p.endDate==p.date,{change{it.copy(endDate=null)}});SelectChip("Ertesi gün",p.endDate==LocalDate.parse(p.date).plusDays(1).toString(),{change{it.copy(endDate=LocalDate.parse(it.date).plusDays(1).toString())}})};DetailRow("Bitiş tarihi",p.endDate?:p.date){dateTarget="end"}}
- Text(PlanTime.label(p),color=Primary,style=MaterialTheme.typography.titleMedium)
+
  if(dateTarget!=null)DateChooser(if(dateTarget=="end")p.endDate?:p.date else p.date,{dateTarget=null}){value->if(dateTarget=="end")change{it.copy(endDate=value)}else change{PlanTime.moved(it,LocalDate.parse(value))}}
  if(timeTarget!=null)TimeChooser(if(timeTarget=="start")p.startTime else p.endTime,if(timeTarget=="start")"Başlangıç"else"Bitiş / son teslim",{timeTarget=null}){v->if(timeTarget=="start")change{it.copy(startTime=v,reminderTime=null)}else change{it.copy(endTime=v,endDate=if(v==null)null else it.endDate,reminderTime=null)}}
 }

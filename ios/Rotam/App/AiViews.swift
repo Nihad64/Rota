@@ -20,7 +20,7 @@ struct AiView:View {
   .onChange(of:model.messages.count){_,_ in if reduced || !model.motion{proxy.scrollTo("bottom",anchor:.bottom)}else{withAnimation(.easeOut(duration:0.2)){proxy.scrollTo("bottom",anchor:.bottom)}}}
   .onChange(of:model.asking){_,_ in proxy.scrollTo("bottom",anchor:.bottom)}
  }.background(Brand.background).navigationTitle("Rotam AI").navigationBarTitleDisplayMode(.inline)
- .toolbar{ToolbarItem(placement:.topBarLeading){Button("Kapat"){speech.stop();dismiss()}};ToolbarItem(placement:.topBarTrailing){Button("Elle ekle"){manual=true}}}
+ .toolbar{ToolbarItem(placement:.topBarLeading){Button("Kapat"){speech.stop();dismiss()}};ToolbarItem(placement:.topBarTrailing){Button("Kendin oluştur"){manual=true}}}
  .safeAreaInset(edge:.bottom){composer}
  .sheet(isPresented:$manual){NavigationStack{PlanEditorView(day:model.selectedDay){p in await model.create(p)}}}
  .sheet(item:$editing){draft in NavigationStack{PlanEditorView(record:draft.plan,day:model.selectedDay){p in model.reviseDraft(message:draft.message,draft:draft.draft,plan:p)}}}

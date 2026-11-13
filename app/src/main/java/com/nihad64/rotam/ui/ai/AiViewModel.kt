@@ -68,6 +68,10 @@ class AiViewModel(private val c:AppContainer):ViewModel(){
   _state.update{st->st.copy(messages=st.messages.map{msg->if(msg.id!=mid)msg else msg.copy(suggestions=msg.suggestions.mapIndexed{i,v->if(i==index)v.copy(plan=plan)else v})})}
   return null
  }
+ fun discardSuggestion(messageId:Long,index:Int){
+  if(state.value.applying)return
+  _state.update{st->st.copy(messages=st.messages.map{m->if(m.id!=messageId||index in m.added||index !in m.suggestions.indices)m else m.copy(suggestions=m.suggestions.filterIndexed{i,_->i!=index},added=m.added.filter{it!=index}.map{if(it>index)it-1 else it}.toSet())})}
+ }
  fun addSuggestion(messageId:Long,index:Int)=apply(messageId,setOf(index))
  fun addAll(messageId:Long){val m=state.value.messages.firstOrNull{it.id==messageId}?:return;apply(messageId,m.suggestions.indices.toSet())}
  private fun apply(mid:Long,indices:Set<Int>){if(state.value.applying||c.account.account.value?.uid!=owner)return;val who=owner;val turn=generation;_state.update{it.copy(applying=true,applyError=null)}
