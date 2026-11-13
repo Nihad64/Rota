@@ -1,0 +1,128 @@
+# Rotam 3.1 geliştirme kaydı
+
+Bu kayıt teknik değişiklikleri ve test sonuçlarını içerir. Tam ürün teslimi değildir. Kaynak kararlar REQUIREMENTS EK A ve sonraki kullanıcı düzeltmeleridir.
+
+## Tamamlanan kod aşamaları
+
+- AI bağlantısı: gerekli App Check/Play Integrity servislerinin yapılandırması düzeltildi; korumalar kapatılmadı. Firebase AI Logic, auth-only ve sınırlı kullanımlı App Check belirteciyle kullanılır. Model kullanıcı kararıyla Gemini 3.5 Flash-Lite. Kullanıcıdan API anahtarı istenmez. BoM/Kotlin uyumluluğu korunur, metadata doğrulaması atlanmaz.
+- Karşılama/hesap: Google profili, yerel kullanım yolu, veri açıklaması; mevcut kullanıcı zorunlu onboarding ile engellenmez. Tekrarlanan isim formu kaldırıldı.
+- Room v3: rutin/hedef kalıcı UID, kanonik tekrar örnekleri; yerel sayısal kimlikler buluta taşınmaz. v2 şema fikstürüyle not/odak/ilişki koruması test edildi. v1/v2 yedek okunur.
+- Eşitleme: açık ilk hesap bağlama, hesap ayrımı, üç yönlü birleştirme, revizyon CAS, çakışma incelemesi, yerel değişikliği ezmeyen transaction, özel geri dönüş kopyası, bozuk/geriye giden bulut sürümünde güvenli duruş. Sıkıştırılmış sınır 700 KiB, açılmış veri 20 MiB. Çevrimdışı kayıt ve ağ koşullu yeniden deneme. Sınırsız depolama veya kesin periyodik zamanlama iddia edilmez.
+- Plan yönetimi: ayrı detay/erteleme ekranları, not/alt adımlar, seçili planı açıklayarak AI ile düzenleme, onay, silme/geri alma. Tarih değişikliği geçmişi, saatsiz ve geceyi aşan süre, tek örnek/sonraki tekrar ayrımı korunur.
+- Odak: gerçek monoton sayaç, ayrı mola, yeniden açılışta oturum/özet, bitir ile tamamlamanın ayrılması. Tarihli/kimlikli odak aralıkları gece yarısında doğru günlere bölünür; eski günü bilinmeyen süre korunur ve tahminî güne yazılmaz. Düzenleme/geri alma yeni odak ölçümünü kaybetmez.
+- Marka: onaylı mevcut R/elmas silueti yerel vektöre aktarılır; R saf beyaz, elmas turuncu. Normal/round/themed bağlantıları ve derlenmiş APK kaynakları denetlenir. Yeni logo uydurulmadı. iOS marka varlıkları aynı kaynaktan türetilir.
+- Widget: üç native RemoteViews boyutu; mevcut sağlayıcı kimliği korunur. Yerel veri, doğru detay/AI ekleme yolları; hızlı tamamlama UID doğrular. Desteklenen layout sınıfları gerçek Android'de açılır.
+- Rutin: ara verme/devam etme, geçmiş ve kısmi sonuçları koruma, silinen istisnaları canlandırmama, eski dönemlerin ayrıca açılması. Yeni kopya/rutin eski sonuç ve odak aralıklarını miras almaz.
+- Geçmiş kartları: sol/sağ sonuç, basılabilir eşdeğerler, kısmi miktarın elle girişi, erteleme için veri alma, geri alma, kontrollü çıkış/giriş ve azaltılmış hareket.
+- İlerlemem: gerçek hafta/ay, gün seçimi ve plan ayrıntıları; gelecek/yanıtsız/kısmi/yapılmadı ayrımı; gerçek ölçüm günlerine göre odak grafiği. Genel başarı puanı/seri baskısı yok.
+- Arama: tek alan; Türkçe tarih/dönem, durum/kategori, eski erteleme tarihi, yerel sayım/takvim soruları. İç metadata sözcük araması olmaz; belirsiz soruda kesin sayı uydurulmaz. Karmaşık istek aynı AI onay akışına gider. Eski veri paylaşım izni sessizce genişletilmez.
+- Hafıza / Room v4: öneri önce incelenir ve açıkça onaylanır. Hesapla ayrılmış, görünür/düzenlenebilir/silinebilir; bir günlük istisnadan kendiliğinden kalıcı bilgi çıkarılmaz. Yerel saklama, AI kullanımı ve diğer cihazlar için eşitleme ayrıdır. Unutma içeriksiz tombstone bırakır. Özel kayıtlar import'ta korunur. Yedek v3, önceki biçimler okunur.
+- Bildirim: yeni planlarda otomatik/özel/kapalı; eski tercihleri koruma. Bağlamsal aşamalar, sessiz saat, bilinen meşgul aralıkları, sınırlandırılmış takip, Başladım/Tamamladım/Biraz sonra ve bildirimi kapatmaya saygı. UID/takvim imzası, görünür kurulum hatası ve yeniden deneme. Ayrıntı: REMINDER-POLICY.md.
+- AI önizleme: başlık/tarih/bağımsız saatleri kayıt yapmadan düzenleme, açık nihai onay; hesapla ayrılmış özel cihaz taslağı, otomatik tekrar gönderim yok. Hesap değişince eski konuşmanın yeni hesaba taşınması engellenir. Paylaşım açıklaması erişilebilir.
+- Tercih eşitlemesi: ayrı onay, sekiz beyaz listeli ses/bildirim/hareket değeri, alan bazında birleştirme ve yeni cihazda farkları inceleme. Oturum/anahtar/AI izinleri taşınmaz. Ayrıntı: PREFERENCE-SYNC.md.
+
+## Görsel ve etkileşim kontrolü
+
+Sentetik Android emülatör ekranları açılıp incelendi. Hero/deste/günün akışı arasında aynı planın yinelenmesi, AI girişindeki başlık tekrarı, boş rutindeki açıklama tekrarı ve boş geçmiş kısayolu düzeltildi. İlerleme sıfırda yanlış nokta göstermez. Snackbar Rotam renklerini ve kapatma eylemini kullanır, AI yazma alanının üstüne taşınır.
+
+Manrope variable font çevrimdışı kaynak olarak eklendi (164700 bayt). SIL OFL lisansı licenses dizinindedir. Türkçe karakterler CoreText ile doğrulandı; 400–800 ağırlıkları ve tüm başlık stilleri tanımlandı. Sistem hareket tercihleri ve isteğe bağlı kısa yerel onay sesi/haptik korunur.
+
+## Doğrulanmış CI
+
+| Commit | Run | Sonuç |
+| --- | --- | --- |
+| daea12a | 42898647255 | verify/backend/device başarılı |
+| 8d305d2 | 43028708229 | verify/backend/rules başarılı; iki eski UI beklentisi başarısız, sonraki aşamada düzeltildi |
+| 6094f6e | 43031812236 | dört iş başarılı; 7 Android testi |
+| cb9a40f | 43034026224 | dört iş başarılı; 8 Android testi, ikon piksel/siluet ve üç widget inflate dahil |
+| bb7fa5d | 43038595651 | dört iş başarılı; rutin/kart/gerçek odak tarihi akışı |
+| 80beddb | 43041350525 | dört iş başarılı; birleşik arama/izin akışı |
+| 8e9939f | 43046783804 | dört iş başarılı; 10 Android testi, iki ayrı SDK/Room istemcisinde hafıza dahil |
+| 0f06b6a | 43048868646 | dört iş başarılı; sınırlı hatırlatma kodu |
+| 684fe53 | 43229581413 | dört iş başarılı; 1.8x metin boyutunda önizleme etkileşimi |
+| bcb8882 | 43231253800 | dört iş başarılı; tercih eşitlemesi SDK senaryosu ve kuralları |
+
+(46) yerel doğrulaması: 87 JVM testi, lint, app ve test APK derlemeleri başarılı. Yeni font/snackbar görüntüsü sonraki CI'da tekrar incelenecek. Cihaz testlerinde yalnız sentetik demo Firebase kullanılır; kişisel telefonda veri temizleyen test paketi çalıştırılmaz.
+
+## Devam eden kapsam
+
+Yeni görsel revizyonun CI görüntüleri; kalan ekran/erişilebilirlik ve bildirim yükseltme doğrulaması; iOS uygulama/iki platform sözleşmesi; son veri korumalı yükseltme ve tek açık isimli final APK.
+
+iOS için kullanıcı, başlangıç projesini benim oluşturmamı ve GitHub Mac ortamında test etmemi açıkça onayladı. Yerel Swift doğrulandı; büyük Xcode/Simulator indirmesi yapılmadı. FS-synchronized native app/test/widget hedefleri oluşturuluyor. Resmî Swift kurulum aracıyla güncel Firebase ve Google Sign-In paketleri bağlandı; -ObjC mevcut. Bu, iOS derlemesi/testi geçti anlamına gelmez. Ücretsiz mevcut proje korunur, Android uygulama kaydı değiştirilmez.
+
+
+## 12 Kasım — Apple veri çekirdeği ve iki yönlü sözleşme
+
+- 846fea8 / Android run 43235250025: dört iş başarılı. Yeni font/snackbar ve diğer görsel değişiklikler emülatör testlerinden geçti; son görüntüler ayrıca inceleniyor. Tercih kuralları demo CI sonrasında dağıtıldı ve uzak kurallarda ayrı yol/16 KiB sınırı/default deny tekrar doğrulandı.
+- Swift çekirdeği: sınırlı gzip/JSON, taşınabilir UID, plan/rutin/hedef/hafıza doğrulama, üç yönlü çakışma, atomik özel dosya deposu, hesap bağlama, eski ağ yanıtını uygulamama ve buluta çıkmayan özel hafıza. Silme/unutma metni redakte eder. Bilinmeyen plan metadata'sı korunur.
+- Android'in ürettiği sentetik ortak paket Swift'te açıldı; Swift başlık/odak alanlarını değiştirip yeniden paketledi; Android aynı kayıtları alan ve byte düzeyindeki kanonik gövdelerle doğruladı. JSON slash kaçış farkı bulunup düzeltildi; aksi hâlde semantik olarak aynı kayıt gereksiz çakışma çıkarabilirdi. İki gzip dosyası da yalnız sentetik test fikstürüdür.
+- Yerel Android 88 JVM testi/lint/app-test APK derlemeleri başarılı. Swift çekirdeği derlendi ve çalışan sözleşme kontrolü UID/not/metadata/bozuk gzip/ters paket/özel hafıza/eskimiş import senaryolarını doğruladı. Yerelde XCTest modülü eksik olduğundan XCTest geçmiş denmiyor; testler GitHub Mac/Xcode işinde çalışacak. Büyük yerel Xcode indirmesi yapılmadı.
+- Bu commit yalnız taşınabilir Apple çekirdeği ve CI sözleşmesidir. Native iOS ekranları, platform servisleri ve simülatör testi devam ediyor; iOS uygulaması bitmiş olarak sunulmaz.
+
+## 12 Kasım — Native iOS uygulamasının ilk derleme aşaması
+
+- Önceki sözleşme commit'inde Android run 43240282102 dört işte, Apple core run 43240282513 beş XCTest senaryosunda başarılı oldu.
+- Android (47): yeni kullanıcı için ayrı, açık eylemle bildirim izni adımı; reddetme/erteleme kullanım yolunu kesmez. 88 JVM testi, lint, app ve test APK derlemeleri yerelde başarılı. Yeni onboarding etkileşim testi CI'a eklendi.
+- Native iOS app/widget/test hedefleri, güncel Firebase/Google SPM bağlantıları, karşılama, Bugün, takvim, rutinler, AI önizleme, elle ekleme, detay/erteleme/kısmi sonuç, ölçülen odak/özet, hesap, izinler, gizlilik/hafıza, bağımsız tercih eşitlemesi, plan yedeği ve üç widget ailesi için ilk uygulama yazıldı. iOS testi yalnız sentetik demo projesi kullanır.
+- Swift'in yeni saatsiz planı Android'de tekrar paketlenince bilinen nullable alanların yazım farkı bulundu; yalnız bilinen null alanlar normalize edilir, bilinmeyen alanlar korunur. İki yönlü fikstür native oluşturulmuş yeni planı da içerir.
+- Rutin örnekleri kanonik UID kullanır; bitiş günü kayması korunur. AI güncellemesinde eksik saat alanı eski saatleri silemez. Onay topluca ve eski kayıt kontrolüyle uygulanır. Özel taslak son yazım sırasına göre saklanır; eski asenkron yazım yeni metni ezmez.
+- Bu aşama native uygulamanın ilk CI derlemesine gönderimidir; iOS derlemesi, simülatör arayüz testi veya gerçek iPhone bağlantısı geçmiş sayılmaz. Fiziksel iOS dağıtımı ve App Attest için Apple imzalama yapılandırması henüz tamamlanmadı. Android gerçek cihaz son yükseltmesi ve son ürün denetimi de bekliyor.
+
+## 12 Kasım — İlk native CI bulguları ve kayıt koruması
+
+- 57e7ea6 / Apple core run 43247761274: 12 XCTest başarılı. Android run 43247761254 verify/backend/rules ve emülatör adımı başarılı; son iş kapanışı izleniyor.
+- iOS native run 43247761251 ilk derlemede ses girdisi closure sözdizimi ve Debug simülatör mimarisi uyumsuzluğu buldu. Swift proje API'siyle Debug aktif mimari ve testability tanımlanıyor; ses closure'ı açık MainActor/Sendable türüyle düzeltiliyor. Testler atlanmaz, Release mimarileri daraltılmaz.
+- AI güncellemesinde tüm saat alanları zorunlu; kesirli/uydurulmuş yerel plan kimliği reddedilir. Yedekte rutin şablonunun eksik hedef bağlantısı içe aktarmadan reddedilir. Tekrarlama üretimi önce bitişe kırpılır ve tek çağrıda sınırlıdır.
+- Rutin ara verme geçmişindeki günler, devam ettikten sonra geçmiş takvim açılınca yeniden üretilmez. Android ve Apple aynı gün aralığı kuralını uygular. iOS'ta tek örnek/sonraki tekrar düzenleme, erteleme, ara verme/devam etme ve dönem açılınca eksik kanonik örnekleri tamamlama eklendi; tamamlanmış sonuçlar ve silinen istisnalar korunur.
+- Normal form ve AI üzerinden saat/gün değişikliği de eski plan zamanını hareket geçmişinde tutar; açık tamamlanma/kısmi sonucu sırf saat düzenlendi diye değiştirmez. Özel erteleme aynı olayı ikinci kez eklemez.
+- iOS birleşik arama için yerel Türkçe dönem/durum/kategori/sayım çözümlemesi eklendi. Tanınan dönem içinde bilinmeyen başlık sözcüğü düşürülmez; belirsiz/işlem isteyen istek AI taslak onayına gider.
+- Fiziksel telefonla veri denetiminin kişisel ayrıntıları yalnız özel yerel denetim kaydında tutulur; bu dosyaya veya GitHub test kanıtlarına eklenmez.
+
+## 12 Kasım — Önizleme durumu ve giriş alanı
+
+- 3331c6b / Apple core run 43250441155 başarılı. İlk native mimari sorunu giderildi; run 43250441025 derlemesi SwiftUI Section başlık/footer çağrısında bir hata buldu. Doğru native initializer ile düzeltilip yeniden test ediliyor; test atlanmadı.
+- AI modelinin onaylanmamış taslak için kayıt yapılmış gibi yazabilmesi önlendi: plan/hafıza taslağı yanındaki işlem durumu uygulama tarafından üretilir. Model açıklaması kayıt kanıtı sayılmaz. Her iki platformda regresyon testi bulunur.
+- AI gönderiminde klavye kapanır, önizleme için alan açılır. Android yazma alanı tek satırdan büyür; diğer çok satırlı form alanlarının davranışı korunur. Başlık ve not alanları ayrı erişilebilir etiket taşır.
+- Alışveriş malzemeleri ve saati belirsiz göreli ilişkiler not/alt adım olarak taşınır ve önizlemede gösterilir; yeni saat tahmin edilmez. Hatalı veya aşırı uzun ayrıntılar kayda dönüşmez. Mevcut notlar yalnız açık öneri varsa değiştirilir.
+- Önceki kayıtları olup bugün planı olmayan kullanıcıya yeniden ilk planını oluşturduğu söylenmez. iOS'ta bozuk taslak dosyası otomatik boş içerikle ezilmez; gecikmiş yükleme kullanıcının yeni metnini ezmez; istek öncesi taslak yazımı doğrulanır.
+
+## 13 Kasım — Kullanım sorunları ve sadeleştirme
+
+- Rutin silme artık ayrı bir kural işlemi. Kural için taşınabilir silme işareti ve bitiş sınırı saklanır; yanıtsız tekrarlar listeden kaldırılır, tamamlanmış/kısmi/yapılmadı sonuçları ve kayıt kimlikleri korunur. Silinmiş kural tekrar üretmez. Geri alma işleminde sonraki değişiklikler kontrol edilir; başka değişiklik üzerine yazılmaz. Kullanıcının gerçek rutinleri test amacıyla silinmez.
+- Takvim noktaları ve yıllık plan sayıları yalnız tek seferlik planları belirtir. Rutinler seçili günün akışında kalır; her güne bir nokta koyarak tek seferlik işleri gizlemez.
+- Arama bir rutin kuralını bir kartta toplar. Günler yalnız kullanıcı açarsa gösterilir, uzun dönem kademeli açılır. Başlıkta plan/rutin sayıları ayrıdır. Genel plan sayımı da rutin sayısı ile tekrar sayısını ayırır; kaç kez yapıldığı sorusunda gerçek tekil sonuçlar sayılmaya devam eder.
+- Başlangıç saati geçmiş, bitişi belirtilmemiş plan artık yanıtsız kartına gider; varsayılan bitiş/süre veya başarısız sonuç üretilmez. Home, arama ve istatistik aynı inceleme kuralını kullanır.
+- Ana sayfadaki başlatma eylemi ve en alttaki yinelenen AI düğmesi kaldırıldı. Ana kart plan ayrıntısını açar. Yalnız devam eden odak oturumuna dönüş kısayolu bulunabilir; sayaç başlatma Odaklan ekranındadır.
+- “Elle ekle” yerine “Kendin oluştur”; yeni plan formunda tek kaydet eylemi. Zaman alanları birlikte görünür, kategori/tekrar/hatırlatma/notlar gerektiğinde açılır. Eski taslak ve kayıtlar okunmaya devam eder. Tarih/saat, tekrar kapsamı, geceyi aşan süre ve çakışma onayı korunur.
+- Ayarlar: yinelenen AI bilgi sayfası kaldırıldı; paylaşım ve hafıza Gizlilik'te, ses/hareket ayrı bölümde. Gerçek telefon bildirim izni geri dönüşte okunur; sistem ayarlarına erişim var. Büyük tekrar eden kartlar sade satırlara dönüştürüldü. Teknik bildirim bütçesi normal akıştan çıkarıldı; uygulama politikası dokümanında durur.
+- AI, okul/iş hazırlığını kullanıcı ayrıca istemedikçe ayrı rutin yapmamak üzere yönlendirilir. Onaylanmamış fazla taslak menüden çıkarılabilir. Bu işlem mevcut plan silmez.
+- Apple karşılıklarında rutin silme, gruplanmış arama, başlangıç sonrası inceleme ve ana sayfadaki yinelenen eylemler güncellendi. iOS detay formundaki derleyici süre aşımı karmaşık closure'ı bölerek düzeltiliyor; native simülatör testi yeniden çalışacak.
+- Tasarımda özgün referanslar ve mevcut marka sistemi korunur. Yerel beceri araması Compose formu için doğrulanmış doğrudan eşleşme vermedi; bu ayrıntıda genel erişilebilirlik/form ilkeleri ve kullanıcının son düzeltmeleri esas alındı.
+- Yerelde 99 JVM testi, lint, uygulama ve test APK derlemeleri başarılı. Rutin silme/geri alma/yeniden üretmeme, 124 tekrarın tek arama kartı olması, yalnız tek seferlik gün noktaları ve sabah başlangıcının incelenmesi için yeni testler eklendi. Yeni arayüz akışı GitHub emülatör testine gönderilir; henüz geçmiş sayılmaz.
+
+## 13 Kasım — Doğrulama takibi
+
+- cc55ad7 / Android run 43452170934: JVM/lint/paket/ikon/backend/kurallar başarılı. Emülatörde 14 testin 13'ü geçti; yeni rutin silme testi ilk Room emisyonundan önce menüyü aradığı için durdu. Menü eylemi ve silme kontrolü kaldırılmadı; gerçek rutin kartının gelmesi ve silme sonrası kaybolması beklenerek test düzeltildi. Gruplanmış arama ve silme onayı için sentetik ekran kanıtı da ekleniyor.
+- Apple veri sözleşmesi run 43452170927 başarılı. Native iOS run 43452171204 hâlâ geçmiş satırının uzun metin ifadesinde derleyici süre aşımı bildirdi; geçmiş bir alt bileşene ve açık türlerle ayrı metin hesaplamasına ayrıldı. Önceki yardımcı forma bölme bu ayrı ifadeyi çözmemişti. Native iOS başarılı ilan edilmez; tekrar derlenip test edilecek.
+- Silinmiş rutinin bilinen geçmiş sonuçları aramayla bulunursa “Geçmiş rutin” olarak gösterilir. Seçili gündeki tek seferlik plan noktası kontrast taşır; günün tarihi/seçimi ve plan işareti ekran okuyucuya açıklanır. Kullanılmayan ve iş yapmayan eski tema ayarlama metodu kaldırıldı; çalışmayan bir tema düğmesi sunulmaz.
+
+Yeni test turu: native SDK katmanını yalnız gerçek SDK ile, kişisel projeye yazmadan doğrulamak için iki bağımsız Apple Auth/Firestore istemcili emülatör testi eklendi. Ortak plan paketi, ters yönde güncelleme, eski revizyonun reddi, ayrı tercih izni ve farklı hesabın erişememesi kontrol edilir. Test yardımcısı yalnız DEBUG'da derlenir ve demo proje kimliğini doğrulamadan kullanıcı oluşturmaz. Test-host arayüzü senkronizasyon iznini arka planda değiştirmez; normal uygulama ve UI testinin başlatılması korunur. Bu yeni test henüz geçmiş sayılmaz.
+
+Plan formunun boş başlangıç/bitiş kontrolleri “Saat” satırından açılır; saatsiz kaydetme tek adımda kalır. Android 3.1.0 (51) uygulama ve release APK'sı, 99 JVM testi ve lint ile yerelde derlendi. Nihai cihaz/CI doğrulaması tamamlanmadan final paket teslim edilmiş sayılmaz.
+
+## 13 Kasım — Paket ve platform doğrulaması
+
+- Release APK, PNG maskesini AAPT optimizasyonuyla RGBA'dan palet biçimine dönüştürür. Eski dosya hash kontrolü bu eşdeğer dosyayı reddediyordu. Yeni denetim boyut/renk/alfa piksellerini karşılaştırır; görünmez RGB dışında farkı kabul etmez. Dört negatif/pozitif test ve release normal/yuvarlak/temalı kaynak grafiği geçti. Saf beyazın kremle değiştirilmesi negatif testi reddedilir. CI tek imzalı release APK üretir.
+- Saat kontrollerini açma ekran testine eklendi; açmak saatsiz plana otomatik saat yazmamalı.
+- iOS run 43457060094 geçmiş metni derleme engelini geçti; şimdi Firebase transaction closure'ının Swift 6 eşzamanlılık sınırında Sendable olmaması bulundu. İki closure açık Sendable yapıldı, denetim kapatılmadı. Yeni native test turu gerekli.
+- iOS bildirim kapatma ve erteleme tercihi cihazda imza bağlı saklanır; yeniden zamanlama kapatılmış bildirimi canlandırmaz. Üç kullanıcı ertelemesi sınırı, sessiz saat ve tarih/saat değişince yeni sözleşme test edilir. Plan sonucu/bulut kaydı değiştirilmez. Yeniden zamanlama işlemleri sıraya alınır.
+
+## 13 Kasım — Uygulama ve test ortamını ayıran son bulgular
+
+- Android 15cedd5 / run 43457060172: 99 JVM testi, lint, backend, güvenlik kuralları ve 14 emülatör testi başarılı. Rutin silme menüsü/onayı, silinen tekrarların durması ve 124 örneğin tek rutin olarak aranması geçti. Sadeleştirilmiş plan formu görüntüsü incelendi.
+- Android 5b25ff3 / run 43458331387: release/debug derleme, dört optimize ikon testi ve her iki APK kaynak grafiği geçti. Emülatörde 13/14 geçti; odaktan detaya dönüşte korunan kaydırma konumu nedeniyle test ekran dışındaki Düzenle düğmesine basmıştı. Düğme görünür alana kaydırılıp görünürlüğü doğrulanarak aynı gerçek tıklama tekrar sınanacak. Test atlanmadı veya yalnız backend işlemine çevrilmedi.
+- Bağımsız rutin/arama testleri uygulamanın Scaffold contentColor yüzeyini kurmadığından başlıkları test görüntüsünde siyah bırakıyordu. Test Surface'ı gerçek uygulamanın onBackground rengiyle eşlendi; onay penceresinin ayrı penceresi de tüm ekran yakalamasına dahil edildi. Uygulamanın renkleri bu test sorunu için değiştirilmedi.
+- iOS 5b25ff3 / run 43458331576: app/widget derlemesi, 18 veri/planner testi ve bir gerçek simülatör UI testi başarılı. İki Apple SDK istemcisi testi Firebase Auth Keychain -34018 hatasında durdu. CI, imzasız çalıştırılıyordu. Apple'ın entitlement/code-signing belgelerine göre simülatörde yerel ad-hoc imzalama açılır; gerçek cihaz için Apple profilinin yerine geçmez. Keychain veya auth koruması kapatılmaz, sahte ağ cevabı kullanılmaz.
+- iOS UI testinde karşılama, saatsiz plan oluşturma, uygulama kapanıp açılınca kaydın korunması ve ayarlar akışı geçti. Tek eksik SDK testinin sonucu ayrıca tamamlanacak; bütün iOS doğrulaması henüz başarılı ilan edilmez. Test süreleri sınırlandı ve küçük ekran kanıtı ayrı çıktı oldu.
+
+İmza/entitlement kaynakları: [Apple Keychain erişim grupları](https://developer.apple.com/documentation/security/sharing-access-to-keychain-items-among-a-collection-of-apps), [Apple entitlement tanısı](https://developer.apple.com/documentation/bundleresources/diagnosing-issues-with-entitlements), [Firebase transaction API kaynağı](https://github.com/firebase/firebase-ios-sdk/blob/13.1.1/Firestore/Swift/Source/AsyncAwait/Firestore%2BAsyncAwait.swift).

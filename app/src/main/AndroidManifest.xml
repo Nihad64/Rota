@@ -2,35 +2,52 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:allowBackup="true"
+        android:name=".RotamApp"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="@string/app_name">
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Rotam">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize" />
+        <!-- Preserve the component used by installed 2.x launcher shortcuts. -->
+        <activity-alias android:name="com.rota.app.MainActivity"
+            android:targetActivity=".MainActivity" android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        <receiver
-            android:name=".ReminderReceiver"
-            android:exported="false" />
-        <receiver
-            android:name=".BootReceiver"
-            android:enabled="true"
-            android:exported="false">
+        </activity-alias>
+        <receiver android:name=".notification.ReminderReceiver" android:exported="false" />
+        <receiver android:name=".notification.BootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
+        </receiver>
+        <receiver android:name=".widget.TodayWidget" android:exported="false" android:label="Rotam · Bugün">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today_info"/>
+        </receiver>
+        <receiver android:name=".widget.SmallTodayWidget" android:exported="false" android:label="Rotam · Sıradaki plan">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_small_info"/>
+        </receiver>
+        <receiver android:name=".widget.LargeTodayWidget" android:exported="false" android:label="Rotam · Günün rotası">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_large_info"/>
         </receiver>
     </application>
 </manifest>

@@ -1,0 +1,14 @@
+{
+  "project": "rotam-nihad64",
+  "package": "com.rota.app",
+  "versionCode": 35,
+  "model": "gemini-2.5-flash",
+  "unitTests": 28,
+  "unitFailures": 0,
+  "deviceTests": 4,
+  "deviceFailures": 0,
+  "apkSha256": "6f340544185d9a890d574a0812f149efae55cbf96b1d32a56b5a8da7d6335b27",
+  "liveGoogleSignInTested": false,
+  "liveGeminiResponseTested": false,
+  "cloudSyncImplemented": false
+}

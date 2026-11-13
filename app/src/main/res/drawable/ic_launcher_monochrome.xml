@@ -1,0 +1,2 @@
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/rotam_launcher_mask" android:gravity="fill" />

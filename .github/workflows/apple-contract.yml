@@ -1,0 +1,21 @@
+name: Apple data contract
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apple-core:
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Swift and Xcode
+        run: |
+          swift --version
+          xcodebuild -version
+      - name: Test Android-to-Apple portable records and guarded local storage
+        run: swift test --package-path ios --scratch-path "$RUNNER_TEMP/rotam-core"
+      - name: Check Android wire fixture and generate Apple response
+        run: swift run --package-path ios --scratch-path "$RUNNER_TEMP/rotam-core" RotamContractCheck app/src/test/resources/core-wire.bin "$RUNNER_TEMP/apple-wire.bin" app/src/test/resources/apple-wire.bin

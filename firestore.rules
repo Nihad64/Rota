@@ -1,0 +1,41 @@
+rules_version = '2';
+// Prototype personal-sync schema, reviewed against app data/sync/FirestoreSyncEndpoint.
+// Owner-only /users/{auth.uid}/sync/snapshot and /preferences/snapshot.
+// No public profiles or collection queries. Preference consent is separate in the app.
+// Preferences use the same outer fields, max 16384 payload bytes, eight whitelisted
+// typed non-secret settings validated by the client before import. No session/consent keys.
+// Required fields: schema (int=1), revision (int, +1 on each write, max 2^53-1),
+// writer (installation UUID, 1..100 chars; diagnostic only, grants no permissions),
+// updatedAt (server timestamp), payload (opaque gzip bytes, 1..716800 bytes).
+// The client validates payload format, record identities, dates and relationships before import.
+// Ownership is fixed by the path; no owner/role/access fields are permitted in the document.
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function isAuthenticated() { return request.auth != null; }
+  function isOwner(uid) { return isAuthenticated() && request.auth.uid == uid; }
+  function isValidSnapshot(data) {
+   return data.keys().hasAll(['schema','revision','writer','updatedAt','payload']) &&
+    data.keys().hasOnly(['schema','revision','writer','updatedAt','payload']) &&
+    data.schema is int && data.schema == 1 &&
+    data.revision is int && data.revision > 0 && data.revision <= 9007199254740991 &&
+    data.writer is string && data.writer.size() > 0 && data.writer.size() <= 100 &&
+    data.updatedAt is timestamp && data.updatedAt == request.time &&
+    data.payload is bytes && data.payload.size() > 0 && data.payload.size() <= 716800;
+  }
+  function isValidPreferences(data) { return isValidSnapshot(data) && data.payload.size() <= 16384; }
+  match /users/{uid}/preferences/snapshot {
+   allow read: if isOwner(uid);
+   allow create: if isOwner(uid) && isValidPreferences(request.resource.data) && request.resource.data.revision == 1;
+   allow update: if isOwner(uid) && isValidPreferences(request.resource.data) && request.resource.data.revision == resource.data.revision + 1;
+   allow delete: if false;
+  }
+  match /users/{uid}/sync/snapshot {
+   allow read: if isOwner(uid);
+   allow create: if isOwner(uid) && isValidSnapshot(request.resource.data) && request.resource.data.revision == 1;
+   allow update: if isOwner(uid) && isValidSnapshot(request.resource.data) && request.resource.data.revision == resource.data.revision + 1;
+   // Pausing sync keeps the cloud copy. Erasing the cloud dataset is a separate reviewed flow.
+   allow delete: if false;
+  }
+  match /{document=**} { allow read, write: if false; }
+ }
+}

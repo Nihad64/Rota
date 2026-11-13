@@ -1,0 +1,4 @@
+# Bu dosyayı local.properties olarak kopyalayın (git'e eklenmez).
+GEMINI_API_KEY=buraya_anahtar
+ROTAM_STORE_PASSWORD=
+ROTAM_KEY_PASSWORD=

@@ -1,45 +1,151 @@
-name: Build Rota APK
-
+name: Android review build
 on:
-  push:
+  pull_request:
     branches: [main]
   workflow_dispatch:
-
+permissions:
+  contents: read
+  actions: read
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v3
         with:
-          packages: 'platforms;android-35 build-tools;35.0.0 platform-tools'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
-
-      - name: Restore stable signing key
-        shell: bash
+          cache-read-only: false
+      - name: Restore existing install identity
+        run: python3 scripts/restore_legacy_signing.py
+      - run: chmod +x gradlew
+      - run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease --stacktrace
+      - name: Test optimized launcher pixel checks
+        run: python3 -m unittest discover -s tests -p test_launcher_audit.py
+      - name: Verify packaged launcher artwork
+        run: python3 scripts/verify_apk_brand.py
+      - name: Verify compiled launcher references
         run: |
-          echo "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" | base64 --decode > rotam-stable.jks
+          python3 scripts/audit_launcher.py app/build/outputs/apk/debug/app-debug.apk > launcher-audit.json
+          python3 scripts/audit_launcher.py app/build/outputs/apk/release/app-release.apk > launcher-release-audit.json
+      - name: Prepare single installable APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/Rotam-3.1.0.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Rotam-Android-APK
+          path: dist/Rotam-3.1.0.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Rotam-test-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-debug.html
+            launcher-audit.json
+            launcher-release-audit.json
 
-      - name: Build debug APK
-        run: gradle --no-daemon :app:assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+  device:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firestore-emulator-1.22.0
+      - name: Start isolated Firebase demo for two-client Android tests
+        run: |
+          npx --yes firebase-tools@15.35.0 emulators:start --only auth,firestore --project demo-rotam-sync --config firebase.test.json > firebase-demo.log 2>&1 &
+          echo $! > firebase-demo.pid
+          python3 tests/firestore/wait_ready.py
+      - name: Restore existing install identity
+        run: python3 scripts/restore_legacy_signing.py
+      - uses: actions/download-artifact@v4
         with:
           name: rota-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          run-id: 41357845600
+          github-token: ${{ github.token }}
+          path: legacy-apk
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb install legacy-apk/app-debug.apk
+            python3 scripts/seed_upgrade_fixture.py
+            set +e; ./gradlew connectedDebugAndroidTest --stacktrace; test_result=$?; adb pull /sdcard/Download/rotam-test-screenshots device-screenshots; screenshot_result=$?; if [ "$test_result" -ne 0 ]; then exit "$test_result"; else exit "$screenshot_result"; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Rotam-emulator-report
+          path: |
+            device-screenshots/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+
+  backend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: backend
+      - run: npm test
+        working-directory: backend
+      - run: npm audit --omit=dev --audit-level=moderate
+        working-directory: backend
+
+  firestore-rules:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firestore-emulator-1.22.0
+      - name: Test owner isolation and snapshot validation with synthetic demo data
+        run: npx --yes firebase-tools@15.35.0 emulators:exec --only firestore --project demo-rotam-sync --config firebase.test.json 'python3 tests/firestore/test_rules.py'

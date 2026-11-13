@@ -1,0 +1,670 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0000000000000000000001AE /* RotamWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000022 /* RotamWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3EE9AA080AEB8E199C753A0B /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 171EC8D0A0A11AEF85170CB0 /* GoogleSignInSwift */; };
+		50FD1F9E5A756FA6E8FA78F6 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = 12973A4210DC935B8A57D8A7 /* FirebaseAILogic */; };
+		563297E12FE2CAD2DA5DE51D /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 77264F94F55C3E39A3DFEE29 /* GoogleSignIn */; };
+		A33DC2BC9E0D6C806FEF1650 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0C07677E4320BAF06388A4 /* FirebaseFirestore */; };
+		E9EB68CD7DE61084319F39E5 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = B105E0F7FE25471BF72D0529 /* FirebaseAuth */; };
+		F3A1AC57A9DDEC77AE07BC3B /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 96978F0A3F0E9FAAD3769FC6 /* FirebaseAppCheck */; };
+		FCF3EAA8EC31741744CFDF81 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 19CE5279C7BA6A0402FEFECA /* FirebaseCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		000000000000000000000191 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 00000000000000000000000A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000000000004;
+			remoteInfo = RotamWidget;
+		};
+		000000000000000000000192 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 00000000000000000000000A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000000000001;
+			remoteInfo = Rotam;
+		};
+		000000000000000000000193 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 00000000000000000000000A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000000000001;
+			remoteInfo = Rotam;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		0000000000000000000001AF /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				0000000000000000000001AE /* RotamWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		00000000000000000000001F /* Rotam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Rotam.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000020 /* RotamTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = RotamTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000021 /* RotamUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = RotamUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000022 /* RotamWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; path = RotamWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		000000000000000000000019 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				Rotam.entitlements,
+			);
+			target = 000000000000000000000001 /* Rotam */;
+		};
+		00000000000000000000001A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				RotamWidget.entitlements,
+			);
+			target = 000000000000000000000004 /* RotamWidget */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		000000000000000000000014 /* Rotam */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				000000000000000000000019 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			path = Rotam;
+			sourceTree = "<group>";
+		};
+		000000000000000000000015 /* RotamTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RotamTests;
+			sourceTree = "<group>";
+		};
+		000000000000000000000016 /* RotamUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = RotamUITests;
+			sourceTree = "<group>";
+		};
+		000000000000000000000017 /* RotamWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				00000000000000000000001A /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			path = RotamWidget;
+			sourceTree = "<group>";
+		};
+		000000000000000000000018 /* Rotam/Core */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Rotam/Core;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		00000000000000000000003D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FCF3EAA8EC31741744CFDF81 /* FirebaseCore in Frameworks */,
+				E9EB68CD7DE61084319F39E5 /* FirebaseAuth in Frameworks */,
+				A33DC2BC9E0D6C806FEF1650 /* FirebaseFirestore in Frameworks */,
+				F3A1AC57A9DDEC77AE07BC3B /* FirebaseAppCheck in Frameworks */,
+				50FD1F9E5A756FA6E8FA78F6 /* FirebaseAILogic in Frameworks */,
+				563297E12FE2CAD2DA5DE51D /* GoogleSignIn in Frameworks */,
+				3EE9AA080AEB8E199C753A0B /* GoogleSignInSwift in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		00000000000000000000003E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		00000000000000000000003F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000040 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000046 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000001F /* Rotam.app */,
+				000000000000000000000020 /* RotamTests.xctest */,
+				000000000000000000000021 /* RotamUITests.xctest */,
+				000000000000000000000022 /* RotamWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		000000000000000000000047 = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000014 /* Rotam */,
+				000000000000000000000015 /* RotamTests */,
+				000000000000000000000016 /* RotamUITests */,
+				000000000000000000000017 /* RotamWidget */,
+				000000000000000000000018 /* Rotam/Core */,
+				000000000000000000000046 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000001 /* Rotam */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0000000000000000000000D4 /* Build configuration list for PBXNativeTarget "Rotam" */;
+			buildPhases = (
+				000000000000000000000029 /* Sources */,
+				00000000000000000000003D /* Frameworks */,
+				000000000000000000000033 /* Resources */,
+				0000000000000000000001AF /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				00000000000000000000019B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				000000000000000000000014 /* Rotam */,
+			);
+			name = Rotam;
+			packageProductDependencies = (
+				19CE5279C7BA6A0402FEFECA /* FirebaseCore */,
+				B105E0F7FE25471BF72D0529 /* FirebaseAuth */,
+				1A0C07677E4320BAF06388A4 /* FirebaseFirestore */,
+				96978F0A3F0E9FAAD3769FC6 /* FirebaseAppCheck */,
+				12973A4210DC935B8A57D8A7 /* FirebaseAILogic */,
+				77264F94F55C3E39A3DFEE29 /* GoogleSignIn */,
+				171EC8D0A0A11AEF85170CB0 /* GoogleSignInSwift */,
+			);
+			productName = Rotam;
+			productReference = 00000000000000000000001F /* Rotam.app */;
+			productType = "com.apple.product-type.application";
+		};
+		000000000000000000000002 /* RotamTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0000000000000000000000DE /* Build configuration list for PBXNativeTarget "RotamTests" */;
+			buildPhases = (
+				00000000000000000000002A /* Sources */,
+				00000000000000000000003E /* Frameworks */,
+				000000000000000000000034 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				00000000000000000000019C /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				000000000000000000000015 /* RotamTests */,
+			);
+			name = RotamTests;
+			packageProductDependencies = (
+			);
+			productName = RotamTests;
+			productReference = 000000000000000000000020 /* RotamTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		000000000000000000000003 /* RotamUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0000000000000000000000E8 /* Build configuration list for PBXNativeTarget "RotamUITests" */;
+			buildPhases = (
+				00000000000000000000002B /* Sources */,
+				00000000000000000000003F /* Frameworks */,
+				000000000000000000000035 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				00000000000000000000019D /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				000000000000000000000016 /* RotamUITests */,
+			);
+			name = RotamUITests;
+			packageProductDependencies = (
+			);
+			productName = RotamUITests;
+			productReference = 000000000000000000000021 /* RotamUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		000000000000000000000004 /* RotamWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0000000000000000000000F2 /* Build configuration list for PBXNativeTarget "RotamWidget" */;
+			buildPhases = (
+				00000000000000000000002C /* Sources */,
+				000000000000000000000040 /* Frameworks */,
+				000000000000000000000036 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				000000000000000000000017 /* RotamWidget */,
+				000000000000000000000018 /* Rotam/Core */,
+			);
+			name = RotamWidget;
+			packageProductDependencies = (
+			);
+			productName = RotamWidget;
+			productReference = 000000000000000000000022 /* RotamWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		00000000000000000000000A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					000000000000000000000002 = {
+						TestTargetID = 000000000000000000000001;
+					};
+					000000000000000000000003 = {
+						TestTargetID = 000000000000000000000001;
+					};
+				};
+			};
+			buildConfigurationList = 000000000000000000000066 /* Build configuration list for PBXProject "Rotam" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = tr;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				tr,
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000000047;
+			packageReferences = (
+				EEABC3BBF83C7705B2014553 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				B6D6E4907E30262C57A60A23 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 000000000000000000000046 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000001 /* Rotam */,
+				000000000000000000000002 /* RotamTests */,
+				000000000000000000000003 /* RotamUITests */,
+				000000000000000000000004 /* RotamWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		000000000000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000034 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000035 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000036 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000000029 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		00000000000000000000002A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		00000000000000000000002B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		00000000000000000000002C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		00000000000000000000019B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000000000004 /* RotamWidget */;
+			targetProxy = 000000000000000000000191 /* PBXContainerItemProxy */;
+		};
+		00000000000000000000019C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000000000001 /* Rotam */;
+			targetProxy = 000000000000000000000192 /* PBXContainerItemProxy */;
+		};
+		00000000000000000000019D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000000000001 /* Rotam */;
+			targetProxy = 000000000000000000000193 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		000000000000000000000064 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 46;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 3.1.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		000000000000000000000065 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 46;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 3.1.0;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		0000000000000000000000D2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Rotam/Rotam.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Rotam/Info.plist;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rota.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		0000000000000000000000D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Rotam/Rotam.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Rotam/Info.plist;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rota.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		0000000000000000000000DC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rota.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rotam.app/Rotam";
+			};
+			name = Debug;
+		};
+		0000000000000000000000DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rota.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rotam.app/Rotam";
+			};
+			name = Release;
+		};
+		0000000000000000000000E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				OTHER_LDFLAGS = (
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rota.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TEST_TARGET_NAME = Rotam;
+			};
+			name = Debug;
+		};
+		0000000000000000000000E7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				OTHER_LDFLAGS = (
+					"-ObjC",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rota.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TEST_TARGET_NAME = Rotam;
+			};
+			name = Release;
+		};
+		0000000000000000000000F0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = RotamWidget/RotamWidget.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RotamWidget/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rota.app.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		0000000000000000000000F1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = RotamWidget/RotamWidget.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RotamWidget/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rota.app.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000000066 /* Build configuration list for PBXProject "Rotam" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000064 /* Debug */,
+				000000000000000000000065 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0000000000000000000000D4 /* Build configuration list for PBXNativeTarget "Rotam" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0000000000000000000000D2 /* Debug */,
+				0000000000000000000000D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0000000000000000000000DE /* Build configuration list for PBXNativeTarget "RotamTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0000000000000000000000DC /* Debug */,
+				0000000000000000000000DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0000000000000000000000E8 /* Build configuration list for PBXNativeTarget "RotamUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0000000000000000000000E6 /* Debug */,
+				0000000000000000000000E7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0000000000000000000000F2 /* Build configuration list for PBXNativeTarget "RotamWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0000000000000000000000F0 /* Debug */,
+				0000000000000000000000F1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B6D6E4907E30262C57A60A23 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.1.0;
+			};
+		};
+		EEABC3BBF83C7705B2014553 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.1.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		12973A4210DC935B8A57D8A7 /* FirebaseAILogic */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EEABC3BBF83C7705B2014553 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAILogic;
+		};
+		171EC8D0A0A11AEF85170CB0 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B6D6E4907E30262C57A60A23 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		19CE5279C7BA6A0402FEFECA /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EEABC3BBF83C7705B2014553 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		1A0C07677E4320BAF06388A4 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EEABC3BBF83C7705B2014553 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		77264F94F55C3E39A3DFEE29 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B6D6E4907E30262C57A60A23 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		96978F0A3F0E9FAAD3769FC6 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EEABC3BBF83C7705B2014553 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		B105E0F7FE25471BF72D0529 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EEABC3BBF83C7705B2014553 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 00000000000000000000000A /* Project object */;
+}

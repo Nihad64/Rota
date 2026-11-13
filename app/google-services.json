@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "612038382105",
+    "project_id": "rotam-nihad64",
+    "storage_bucket": "rotam-nihad64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:612038382105:android:7bc018e5a6872a32d91088",
+        "android_client_info": {
+          "package_name": "com.rota.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "612038382105-fq5gepgbq2u8310hgnd5a3971ukrd8ob.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rota.app",
+            "certificate_hash": "dec4b1d7ced2c0c5c94993e4299576fb3f0c63d0"
+          }
+        },
+        {
+          "client_id": "612038382105-j2pq4pq2hh378emkqrpphi1c4s7jd5u6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA61yvupdKuXpvq1h3HCpAWUENJmtM7ESE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "612038382105-j2pq4pq2hh378emkqrpphi1c4s7jd5u6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

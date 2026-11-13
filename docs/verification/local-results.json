@@ -1,0 +1,10 @@
+{
+  "unitTests": 25,
+  "unitFailures": 0,
+  "deviceTests": 3,
+  "deviceFailures": 0,
+  "sameUpgradeCertificate": true,
+  "apkSha256": "9c6a4716392191017c8807ab77b65c434770d1183b4952ba8dbdaa42d05a0d3b",
+  "package": "com.rota.app",
+  "versionCode": 34
+}
